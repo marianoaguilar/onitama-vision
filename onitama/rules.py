@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from onitama.moves import Move
-from onitama.pieces import Player
+from onitama.pieces import Player, PieceType
 from onitama.state import GameState
 from copy import deepcopy
 
@@ -10,19 +10,67 @@ def _in_bounds(r: int, c: int) -> bool:
     return 0 <= r < 5 and 0 <= c < 5
 
 
+def _find_master(state: GameState, player: Player) -> tuple[int, int] | None:
+    for r in range(5):
+        for c in range(5):
+            p = state.board[r][c]
+            if p is None:
+                continue
+            if p.owner == player and p.kind is PieceType.MASTER:
+                return (r, c)
+    return None
+
+
+def winner(state: GameState) -> Player | None:
+    """
+    Return the winning player if the position is terminal, else None.
+
+    Win conditions:
+    - Way of the Stone: opponent master is captured (missing from board)
+    - Way of the Stream: your master reaches opponent temple
+        * RED wins if red master is at (0, 2)
+        * BLUE wins if blue master is at (4, 2)
+    """
+    red_master = _find_master(state, Player.RED)
+    blue_master = _find_master(state, Player.BLUE)
+
+    # Stone (capture master)
+    if red_master is None and blue_master is not None:
+        return Player.BLUE
+    if blue_master is None and red_master is not None:
+        return Player.RED
+
+    # If both missing (invalid), treat as no winner
+    if red_master is None or blue_master is None:
+        return None
+
+    # Stream (reach temple)
+    if red_master == (0, 2):
+        return Player.RED
+    if blue_master == (4, 2):
+        return Player.BLUE
+
+    return None
+
+
+def is_terminal(state: GameState) -> bool:
+    return winner(state) is not None
+
+
+
 def generate_legal_moves(state: GameState) -> list[Move]:
     """
     Generate all legal moves for the current player.
 
-    Rules implemented (v1):
+    Rules implemented:
+    - Win conditions
     - A move must stay inside the 5x5 board.
     - A move cannot land on a square occupied by your own piece.
-
-    Not implemented yet:
-    - Applying the move / swapping cards
-    - Win conditions
-    - Any advanced validation beyond the basic rules above
     """
+
+    if is_terminal(state):
+        return []
+
     player = state.to_move
     cards = state.red_cards if player is Player.RED else state.blue_cards
 
