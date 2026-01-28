@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import Optional
 
-from onitama.cards import Card, TIGER
+from onitama.cards import ALL_CARDS, Card
 from onitama.pieces import Piece, PieceType, Player
-
 
 Board = list[list[Optional[Piece]]]
 CardPair = tuple[Card, Card]
@@ -29,14 +29,22 @@ class GameState:
     side_card: Card
 
     @staticmethod
-    def empty(to_move: Player = Player.RED) -> GameState:
-        """Create an empty 5x5 board, with placeholder cards."""
+    def empty(
+        to_move: Player = Player.RED,
+        red_cards: Optional[CardPair] = None,
+        blue_cards: Optional[CardPair] = None,
+        side_card: Optional[Card] = None,
+    ) -> GameState:
+        """Create an empty 5x5 board (no pieces). Cards can be provided or defaulted."""
         board: Board = [[None for _ in range(5)] for _ in range(5)]
 
-        # Temporary: we use TIGER everywhere just to have the structure in place.
-        red_cards: CardPair = (TIGER, TIGER)
-        blue_cards: CardPair = (TIGER, TIGER)
-        side_card: Card = TIGER
+        # Safe defaults (only used if you explicitly call empty()).
+        if red_cards is None:
+            red_cards = (ALL_CARDS[0], ALL_CARDS[1])
+        if blue_cards is None:
+            blue_cards = (ALL_CARDS[2], ALL_CARDS[3])
+        if side_card is None:
+            side_card = ALL_CARDS[4]
 
         return GameState(
             board=board,
@@ -47,14 +55,30 @@ class GameState:
         )
 
     @staticmethod
-    def initial(to_move: Player = Player.RED) -> GameState:
+    def initial(seed: Optional[int] = None) -> GameState:
         """
-        Standard Onitama initial position:
+        Standard Onitama initial position + real card setup:
 
-        Top row (row 0): BLUE students, BLUE master in the center.
-        Bottom row (row 4): RED students, RED master in the center.
+        - Choose 5 distinct cards from the 16.
+        - Deal 2 to RED, 2 to BLUE, 1 as SIDE.
+        - Starting player is determined by the SIDE card stamp.
         """
-        state = GameState.empty(to_move=to_move)
+        rng = random.Random(seed)
+        chosen = rng.sample(list(ALL_CARDS), k=5)
+
+        red_cards: CardPair = (chosen[0], chosen[1])
+        blue_cards: CardPair = (chosen[2], chosen[3])
+        side_card: Card = chosen[4]
+
+        # Who starts is determined by the side card's stamp.
+        to_move = side_card.stamp
+
+        state = GameState.empty(
+            to_move=to_move,
+            red_cards=red_cards,
+            blue_cards=blue_cards,
+            side_card=side_card,
+        )
 
         # Row 0: BLUE pieces
         for c in range(5):
