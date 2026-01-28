@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from onitama.moves import Move
-from onitama.pieces import Player, PieceType
-from onitama.state import GameState
 from copy import deepcopy
+
+from onitama.moves import Move, Pass
+from onitama.pieces import Player, PieceType
+from onitama.state import GameState, CardPair
+from onitama.cards import Card
+
+Action = Move | Pass
 
 
 def _in_bounds(r: int, c: int) -> bool:
@@ -58,7 +62,7 @@ def is_terminal(state: GameState) -> bool:
 
 
 
-def generate_legal_moves(state: GameState) -> list[Move]:
+def generate_legal_actions(state: GameState) -> list[Action]:
     """
     Generate all legal moves for the current player.
 
@@ -66,6 +70,7 @@ def generate_legal_moves(state: GameState) -> list[Move]:
     - Win conditions
     - A move must stay inside the 5x5 board.
     - A move cannot land on a square occupied by your own piece.
+    - If no legal piece moves exist, the player must PASS by choosing a card to swap.
     """
 
     if is_terminal(state):
@@ -74,14 +79,12 @@ def generate_legal_moves(state: GameState) -> list[Move]:
     player = state.to_move
     cards = state.red_cards if player is Player.RED else state.blue_cards
 
-    legal_moves: list[Move] = []
+    legal_moves: list[Action] = []
 
     for r in range(5):
         for c in range(5):
             piece = state.board[r][c]
-            if piece is None:
-                continue
-            if piece.owner != player:
+            if piece is None or piece.owner != player:
                 continue
 
             for card_index, card in enumerate(cards):
@@ -98,80 +101,96 @@ def generate_legal_moves(state: GameState) -> list[Move]:
                     legal_moves.append(
                         Move(from_pos=(r, c), to_pos=(rr, cc), card_index=card_index)
                     )
+    
+    if len(legal_moves) == 0:
+        # No legal piece moves, must pass
+        return [Pass(0), Pass(1)]
 
 
     return legal_moves
 
 
-
-def apply_move(state: GameState, move: Move) -> GameState:
+def _swap_cards(state: GameState, card_index: int) -> tuple[CardPair, CardPair, Card]:
     """
-    Apply a move and return a NEW GameState.
+    Apply the Onitama card swap rule for the current player, returning:
+      (new_red_cards, new_blue_cards, new_side_card)
+    """
+    if card_index not in (0, 1):
+        raise ValueError("Invalid action: card_index must be 0 or 1")
+
+    incoming = state.side_card
+    player = state.to_move
+
+    if player is Player.RED:
+        active = state.red_cards
+        used = active[card_index]
+        if card_index == 0:
+            new_red = (incoming, active[1])
+        else:
+            new_red = (active[0], incoming)
+        return new_red, state.blue_cards, used
+
+    # player is BLUE
+    active = state.blue_cards
+    used = active[card_index]
+    if card_index == 0:
+        new_blue = (incoming, active[1])
+    else:
+        new_blue = (active[0], incoming)
+
+    return state.red_cards, new_blue, used
+
+
+def apply_action(state: GameState, action: Action) -> GameState:
+    """
+    Apply an action and return a NEW GameState.
 
     Implemented:
-    - Move the piece from from_pos to to_pos (captures by replacement)
+    - If Move: move the piece (captures by replacement)
+    - If Pass: do not move any piece
     - Switch turn to the opponent
-    - Swap cards according to Onitama rules:
-        * the used card becomes the new side card
-        * the old side card replaces the used card in the player's hand
+    - Swap cards according to Onitama rules
     """
-    fr, fc = move.from_pos
-    tr, tc = move.to_pos
-
-    piece = state.board[fr][fc]
-    if piece is None:
-        raise ValueError("Invalid move: no piece at from_pos")
-
-    if piece.owner != state.to_move:
-        raise ValueError("Invalid move: piece does not belong to player to move")
-
-    target = state.board[tr][tc]
-    if target is not None and target.owner == state.to_move:
-        raise ValueError("Invalid move: cannot capture your own piece")
-
-    # Copy board so we don't mutate the previous state
-    new_board = deepcopy(state.board)
-    new_board[fr][fc] = None
-    new_board[tr][tc] = piece
+    
+    if is_terminal(state):
+        raise ValueError("Cannot apply move: game is already terminal")
 
     player = state.to_move
     opponent = player.opponent()
 
-    if player is Player.RED:
-        active = state.red_cards
-        other_active = state.blue_cards
+    # 1) Update board (or keep it unchanged for Pass)
+    if isinstance(action, Pass):
+        new_board = deepcopy(state.board)
+        chosen_index = action.card_index
     else:
-        active = state.blue_cards
-        other_active = state.red_cards
+        assert isinstance(action, Move)
+        fr, fc = action.from_pos
+        tr, tc = action.to_pos
 
-    used_card = active[move.card_index]
-    incoming_card = state.side_card
+        piece = state.board[fr][fc]
+        if piece is None:
+            raise ValueError("Invalid move: no piece at from_pos")
+        if piece.owner != state.to_move:
+            raise ValueError("Invalid move: piece does not belong to player to move")
 
-    # Replace the used card with the incoming side card
-    if move.card_index == 0:
-        new_active = (incoming_card, active[1])
-    elif move.card_index == 1:
-        new_active = (active[0], incoming_card)
-    else:
-        raise ValueError("Invalid move: card_index must be 0 or 1")
+        target = state.board[tr][tc]
+        if target is not None and target.owner == state.to_move:
+            raise ValueError("Invalid move: cannot capture your own piece")
 
-    new_side = used_card
+        new_board = deepcopy(state.board)
+        new_board[fr][fc] = None
+        new_board[tr][tc] = piece
+        chosen_index = action.card_index
 
-    # Build next state
-    if player is Player.RED:
-        return GameState(
-            board=new_board,
-            to_move=opponent,
-            red_cards=new_active,
-            blue_cards=other_active,
-            side_card=new_side,
-        )
+    # 2) Swap cards
+    new_red_cards, new_blue_cards, new_side = _swap_cards(state, chosen_index)
 
+    # 3) Next state
     return GameState(
         board=new_board,
         to_move=opponent,
-        red_cards=other_active,
-        blue_cards=new_active,
+        red_cards=new_red_cards,
+        blue_cards=new_blue_cards,
         side_card=new_side,
     )
 

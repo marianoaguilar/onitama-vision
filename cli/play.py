@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from onitama.rules import apply_move, generate_legal_moves, winner
+from onitama.rules import apply_action, generate_legal_actions, winner
 from onitama.state import GameState
-from cli.render import render_state, format_move
+from cli.render import render_state, format_action
 
 
 def _prompt_int(prompt: str, lo: int, hi: int) -> int:
@@ -34,21 +34,16 @@ def main() -> None:
 
         print(render_state(state))
 
-        moves = generate_legal_moves(state)
-        if not moves:
-            # In theory this shouldn't happen in Onitama before winner(),
-            # but it's a safe fallback.
-            print("No legal moves available.")
-            break
+        actions = generate_legal_actions(state)
 
-        print("\nLegal moves:")
-        for i, mv in enumerate(moves, start=1):
-            print(f"{i:2d}) {format_move(state, mv)}")
+        print("\nLegal actions:")
+        for i, act in enumerate(actions, start=1):
+            print(f"{i:2d}) {format_action(state, act)}")
 
-        choice = _prompt_int(f"\nChoose a move (1-{len(moves)}): ", 1, len(moves))
-        move = moves[choice - 1]
+        choice = _prompt_int(f"\nChoose an action (1-{len(actions)}): ", 1, len(actions))
+        action = actions[choice - 1]
 
-        state = apply_move(state, move)
+        state = apply_action(state, action)
         print("\n" + "-" * 60 + "\n")
 
 

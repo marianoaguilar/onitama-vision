@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from onitama.pieces import PieceType, Player
 from onitama.state import GameState
-from onitama.moves import Move
+from onitama.moves import Move, Pass
 
 
 def _cell_to_token(piece) -> str:
@@ -20,9 +20,22 @@ def pos_to_coord(pos: tuple[int, int]) -> str:
     rank_num = 5 - r                # row 4->1, row 0->5
     return f"{file_char}{rank_num}"
 
-def format_move(state: GameState, mv: Move) -> str:
-    card = state.red_cards[mv.card_index] if state.to_move is Player.RED else state.blue_cards[mv.card_index]
-    return f"{pos_to_coord(mv.from_pos)} -> {pos_to_coord(mv.to_pos)} ({card.name})"
+
+def format_action(state: GameState, action: Move | Pass) -> str:
+    """
+    Human-friendly representation of an action for the current player.
+    Shows:
+      - Move: a1 -> a2 (CardName)
+      - Pass: PASS (CardName)
+    """
+    cards = state.red_cards if state.to_move is Player.RED else state.blue_cards
+    card = cards[action.card_index]
+
+    if isinstance(action, Pass):
+        return f"PASS ({card.name})"
+
+    return f"{pos_to_coord(action.from_pos)} -> {pos_to_coord(action.to_pos)} ({card.name})"
+
 
 
 def render_state(state: GameState) -> str:
@@ -35,7 +48,7 @@ def render_state(state: GameState) -> str:
       B = BLUE master, b = BLUE student
     """
     lines: list[str] = []
-    lines.append(f"To move: {state.to_move.value}")
+    lines.append(f"\nTo move: {state.to_move.value}")
     
     def _fmt_card(card) -> str:
         return f"{card.name}({card.stamp.value})"
