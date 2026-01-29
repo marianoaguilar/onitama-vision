@@ -1,8 +1,39 @@
 from __future__ import annotations
 
+import os
+
 from onitama.rules import apply_action, generate_legal_actions, winner
 from onitama.state import GameState
 from cli.render import render_state, format_action
+
+from ai.agent import choose_action
+from onitama.pieces import Player
+
+
+# Determine AI mode and depth from environment variables
+def _get_ai_mode() -> str:
+    return os.environ.get("ONITAMA_AI", "none").strip().lower()
+
+
+def _get_ai_depth() -> int:
+    raw = os.environ.get("ONITAMA_AI_DEPTH", "3").strip()
+    try:
+        depth = int(raw)
+    except ValueError:
+        depth = 3
+    return max(1, depth)
+
+
+def _is_ai_turn(player: Player) -> bool:
+    mode = _get_ai_mode()
+    if mode == "both":
+        return True
+    if mode == "red":
+        return player == Player.RED
+    if mode == "blue":
+        return player == Player.BLUE
+    return False
+
 
 
 def _print_help() -> None:
@@ -63,7 +94,19 @@ def main(seed: int | None = None) -> str:
             print(f"*** WINNER: {w.value} ***")
             print(f"*** REASON: {reason} ***")
             return "quit"
+        
+        # AI turn (optional, controlled by env vars)
+        if _is_ai_turn(state.to_move):
+            depth = _get_ai_depth()
+            action = choose_action(state, depth=depth)
+            assert action is not None
 
+            print(f"\n[AI {state.to_move.value}] {format_action(state, action)}")
+            state = apply_action(state, action)
+            print("\n" + "-" * 60 + "\n")
+            input("Press Enter to continue...")
+            continue
+        
         actions = generate_legal_actions(state)
 
         print("\nLegal actions:")
