@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 from onitama.moves import Move, Pass
 from onitama.pieces import Player, PieceType
 from onitama.state import GameState, CardPair
@@ -160,7 +158,7 @@ def apply_action(state: GameState, action: Action) -> GameState:
 
     # 1) Update board (or keep it unchanged for Pass)
     if isinstance(action, Pass):
-        new_board = deepcopy(state.board)
+        new_board = [row[:] for row in state.board]  # shallow copy
         chosen_index = action.card_index
     else:
         assert isinstance(action, Move)
@@ -177,7 +175,7 @@ def apply_action(state: GameState, action: Action) -> GameState:
         if target is not None and target.owner == state.to_move:
             raise ValueError("Invalid move: cannot capture your own piece")
 
-        new_board = deepcopy(state.board)
+        new_board = [row[:] for row in state.board]  # shallow copy
         new_board[fr][fc] = None
         new_board[tr][tc] = piece
         chosen_index = action.card_index

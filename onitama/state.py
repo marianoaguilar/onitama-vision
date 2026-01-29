@@ -73,21 +73,23 @@ class GameState:
         # Who starts is determined by the side card's stamp.
         to_move = side_card.stamp
 
-        state = GameState.empty(
+        board: Board = [[None for _ in range(5)] for _ in range(5)]
+
+        # Row 0: BLUE pieces
+        for c in range(5):
+            board[0][c] = Piece(owner=Player.BLUE, kind=PieceType.STUDENT)
+        board[0][2] = Piece(owner=Player.BLUE, kind=PieceType.MASTER)
+
+        # Row 4: RED pieces
+        for c in range(5):
+            board[4][c] = Piece(owner=Player.RED, kind=PieceType.STUDENT)
+        board[4][2] = Piece(owner=Player.RED, kind=PieceType.MASTER)
+
+        return GameState(
+            board=board,
             to_move=to_move,
             red_cards=red_cards,
             blue_cards=blue_cards,
             side_card=side_card,
         )
 
-        # Row 0: BLUE pieces
-        for c in range(5):
-            state.board[0][c] = Piece(owner=Player.BLUE, kind=PieceType.STUDENT)
-        state.board[0][2] = Piece(owner=Player.BLUE, kind=PieceType.MASTER)
-
-        # Row 4: RED pieces
-        for c in range(5):
-            state.board[4][c] = Piece(owner=Player.RED, kind=PieceType.STUDENT)
-        state.board[4][2] = Piece(owner=Player.RED, kind=PieceType.MASTER)
-
-        return state

@@ -26,7 +26,7 @@ class Card:
         """Return movement deltas adjusted for the player's perspective."""
         if player is Player.RED:
             return self.deltas
-        return tuple((-dr, dc) for dr, dc in self.deltas)
+        return tuple((-dr, -dc) for dr, dc in self.deltas)
 
 
 # --- 16 real base-game cards ---
