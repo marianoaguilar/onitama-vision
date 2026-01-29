@@ -23,9 +23,9 @@ def _find_master(state: GameState, player: Player) -> tuple[int, int] | None:
     return None
 
 
-def winner(state: GameState) -> Player | None:
+def winner(state: GameState) -> tuple[Player, str] | None:
     """
-    Return the winning player if the position is terminal, else None.
+    Return the winning player and the reason if the position is terminal, else None.
 
     Win conditions:
     - Way of the Stone: opponent master is captured (missing from board)
@@ -36,21 +36,21 @@ def winner(state: GameState) -> Player | None:
     red_master = _find_master(state, Player.RED)
     blue_master = _find_master(state, Player.BLUE)
 
-    # Stone (capture master)
+    # Capture master
     if red_master is None and blue_master is not None:
-        return Player.BLUE
+        return (Player.BLUE, "Capture of Master")
     if blue_master is None and red_master is not None:
-        return Player.RED
+        return (Player.RED, "Capture of Master")
 
     # If both missing (invalid), treat as no winner
     if red_master is None or blue_master is None:
         return None
 
-    # Stream (reach temple)
+    # Reach temple
     if red_master == (0, 2):
-        return Player.RED
+        return (Player.RED, "Reach Temple")
     if blue_master == (4, 2):
-        return Player.BLUE
+        return (Player.BLUE, "Reach Temple")
 
     return None
 
