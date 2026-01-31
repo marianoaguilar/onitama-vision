@@ -15,7 +15,7 @@ class Card:
     - deltas are defined from RED's perspective:
       * dr < 0 means "forward" for RED (towards row 0, since RED starts at row 4).
       * dc < 0 means "left", dc > 0 means "right".
-    - For BLUE, we mirror vertically (dr -> -dr).
+    - For BLUE, we rotate 180 degrees (dr -> -dr, dc -> -dc).
     - stamp indicates the card's seal color (used later to decide who starts when this is the side card).
     """
     name: str
