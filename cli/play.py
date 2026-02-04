@@ -1,81 +1,122 @@
 from __future__ import annotations
 
-import os
+from dataclasses import dataclass
 
-from onitama.rules import apply_action, generate_legal_actions, winner
-from onitama.state import GameState
+from ai.controllers import AIController
+from ai.evaluate import EVALUATORS
+from cli.controllers import HumanCLIController
 from cli.render import render_state, format_action
-
-from ai.agent import choose_action
+from onitama.controllers import Controller
 from onitama.pieces import Player
+from onitama.rules import apply_action, winner
+from onitama.state import GameState
 
 
-# Determine AI mode and depth from environment variables
-def _get_ai_mode() -> str:
-    return os.environ.get("ONITAMA_AI", "none").strip().lower()
+@dataclass(frozen=True)
+class GameConfig:
+    red_controller: Controller
+    blue_controller: Controller
 
 
-def _get_ai_depth() -> int:
-    raw = os.environ.get("ONITAMA_AI_DEPTH", "3").strip()
-    try:
-        depth = int(raw)
-    except ValueError:
-        depth = 3
-    return max(1, depth)
-
-
-def _is_ai_turn(player: Player) -> bool:
-    mode = _get_ai_mode()
-    if mode == "both":
-        return True
-    if mode == "red":
-        return player == Player.RED
-    if mode == "blue":
-        return player == Player.BLUE
-    return False
-
-
-
-def _print_help() -> None:
-    print("\nCommands:")
-    print("  <number>         Choose an action by its index")
-    print("  h / help         Show this help")
-    print("  q / quit         Quit the game")
-    print("  r / restart      Restart the game\n")
-
-
-def _prompt_command_or_int(prompt: str, lo: int, hi: int) -> int | str:
-    """
-    Prompt until user enters:
-      - an integer in [lo, hi], or
-      - a command: help / quit / restart (and their short forms).
-    Returns:
-      int for an action selection, or str for a command.
-    """
+def _prompt_int(prompt: str, default: int, lo: int, hi: int) -> int:
     while True:
-        raw = input(prompt).strip().lower()
-
-        if raw in ("h", "help"):
-            return "help"
-        if raw in ("q", "quit"):
-            return "quit"
-        if raw in ("r", "restart"):
-            return "restart"
-
+        raw = input(f"\n{prompt} [{default}]: ").strip()
+        if raw == "":
+            return default
         try:
             n = int(raw)
         except ValueError:
-            print("Invalid input. Enter a number, or 'h' for help.")
+            print("Please enter a valid integer.")
             continue
-
         if n < lo or n > hi:
             print(f"Please enter a number between {lo} and {hi}.")
             continue
-
         return n
 
 
-def main(seed: int | None = None) -> str:
+def _prompt_choice(prompt: str, options: list[str], default_index: int = 0) -> str:
+    assert options, "Options must not be empty."
+    while True:
+        print(prompt)
+        for i, opt in enumerate(options, start=1):
+            mark = " (default)" if (i - 1) == default_index else ""
+            print(f"  {i}) {opt}{mark}")
+
+        raw = input("Select an option: ").strip()
+        if raw == "":
+            return options[default_index]
+
+        try:
+            idx = int(raw)
+        except ValueError:
+            print("Please enter a number.")
+            continue
+
+        if idx < 1 or idx > len(options):
+            print(f"Please enter a number between 1 and {len(options)}.")
+            continue
+
+        return options[idx - 1]
+
+
+def _prompt_ai_settings(player_name: str) -> AIController:
+    depth = _prompt_int(f"{player_name} AI depth", default=3, lo=1, hi=8)
+
+    eval_names = sorted(EVALUATORS.keys())
+    eval_name = _prompt_choice(
+        f"{player_name} evaluator:",
+        options=eval_names,
+        default_index=0,
+    )
+
+    return AIController(depth=depth, evaluator_name=eval_name)
+
+
+def prompt_game_config() -> GameConfig:
+    print("\n=== Onitama CLI ===\n")
+    mode = _prompt_choice(
+        "Game mode:",
+        options=[
+            "Human vs Human",
+            "Human (RED) vs AI (BLUE)",
+            "AI (RED) vs Human (BLUE)",
+            "AI vs AI",
+        ],
+        default_index=1,
+    )
+
+    red_is_ai = mode in ("AI (RED) vs Human (BLUE)", "AI vs AI")
+    blue_is_ai = mode in ("Human (RED) vs AI (BLUE)", "AI vs AI")
+
+    red_controller: Controller = HumanCLIController()
+    blue_controller: Controller = HumanCLIController()
+
+    if red_is_ai:
+        red_controller = _prompt_ai_settings("RED")
+    if blue_is_ai:
+        blue_controller = _prompt_ai_settings("BLUE")
+
+    print("\nConfiguration:")
+    if isinstance(red_controller, AIController):
+        print(f"  RED : AI | depth={red_controller.depth} | eval={red_controller.evaluator_name}")
+    else:
+        print("  RED : Human")
+
+    if isinstance(blue_controller, AIController):
+        print(f"  BLUE: AI | depth={blue_controller.depth} | eval={blue_controller.evaluator_name}")
+    else:
+        print("  BLUE: Human")
+
+    input("\nPress Enter to start the game...")
+
+    return GameConfig(red_controller=red_controller, blue_controller=blue_controller)
+
+
+def _controller_for(config: GameConfig, player: Player) -> Controller:
+    return config.red_controller if player == Player.RED else config.blue_controller
+
+
+def main(config: GameConfig, seed: int | None = None) -> str:
     """
     Runs a single game session.
     Returns:
@@ -86,7 +127,7 @@ def main(seed: int | None = None) -> str:
 
     while True:
         print(render_state(state))
-        
+
         outcome = winner(state)
         if outcome is not None:
             w, reason = outcome
@@ -94,49 +135,29 @@ def main(seed: int | None = None) -> str:
             print(f"*** WINNER: {w.value} ***")
             print(f"*** REASON: {reason} ***")
             return "quit"
-        
-        # AI turn (optional, controlled by env vars)
-        if _is_ai_turn(state.to_move):
-            depth = _get_ai_depth()
-            action = choose_action(state, depth=depth)
-            assert action is not None
 
+        controller = _controller_for(config, state.to_move)
+
+        try:
+            action = controller.select_action(state)
+        except RuntimeError as e:
+            if str(e) == "quit":
+                print("Bye!")
+                return "quit"
+            if str(e) == "restart":
+                print("Restarting...\n")
+                return "restart"
+            raise
+
+        # If it's an AI, print what it played (nice for demo/debug)
+        if isinstance(controller, AIController):
             print(f"\n[AI {state.to_move.value}] {format_action(state, action)}")
             state = apply_action(state, action)
             print("\n" + "-" * 60 + "\n")
             input("Press Enter to continue...")
-            continue
-        
-        actions = generate_legal_actions(state)
-
-        print("\nLegal actions:")
-        for i, act in enumerate(actions, start=1):
-            print(f"{i:2d}) {format_action(state, act)}")
-
-        choice = _prompt_command_or_int(
-            f"\nChoose an action (1-{len(actions)}) or (h/q/r): ",
-            1,
-            len(actions),
-        )
-
-        if choice == "help":
-            _print_help()
-            input("Press Enter to continue...")
-            continue
-
-        if choice == "quit":
-            print("Bye!")
-            return "quit"
-
-        if choice == "restart":
-            print("Restarting...\n")
-            return "restart"
-
-        # choice is an int in [1, len(actions)]
-        action = actions[choice - 1]
-
-        state = apply_action(state, action)
-        print("\n" + "-" * 60 + "\n")
+        else:
+            state = apply_action(state, action)
+            print("\n" + "-" * 60 + "\n")
 
 
 def run() -> None:
@@ -144,11 +165,13 @@ def run() -> None:
     Wrapper to allow restarting without exiting the program.
     """
     seed = None
+
+    # Menu once; keep the same config across restarts.
+    config = prompt_game_config()
+
     while True:
-        result = main(seed=seed)
+        result = main(config=config, seed=seed)
         if result == "restart":
-            # For now, restart with a fresh random setup.
-            # Later we can ask for a seed or reuse the same seed.
             seed = None
             continue
         break

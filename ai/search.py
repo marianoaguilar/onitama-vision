@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from math import inf
+from typing import Callable
 
 from onitama.pieces import Player
 from onitama.rules import apply_action, generate_legal_actions, is_terminal, Action
 from onitama.state import GameState
 from onitama.moves import Move
 
-from ai.evaluate import evaluate
+Evaluator = Callable[[GameState, Player], int]
 
 
 def _is_capture(state: GameState, action: Action, mover: Player) -> bool:
@@ -34,6 +35,7 @@ def alphabeta(
     alpha: float,
     beta: float,
     perspective: Player,
+    evaluator: Evaluator,
 ) -> int:
     """
     Negamax alpha-beta search.
@@ -42,7 +44,7 @@ def alphabeta(
 
     # Terminal or depth limit
     if depth <= 0 or is_terminal(state):
-        return _color(state, perspective) * evaluate(state, perspective)
+        return _color(state, perspective) * evaluator(state, perspective)
 
     actions = generate_legal_actions(state)
     assert actions, "Non-terminal state must have legal actions (Move or Pass)."
@@ -55,7 +57,7 @@ def alphabeta(
 
     for action in actions:
         child = apply_action(state, action)
-        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective)
+        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective, evaluator)
 
         best = max(best, score)
         alpha = max(alpha, best)

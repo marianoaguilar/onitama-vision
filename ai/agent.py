@@ -8,8 +8,8 @@ from onitama.pieces import Player
 from onitama.rules import apply_action, generate_legal_actions, is_terminal, winner
 from onitama.state import GameState
 from onitama.moves import Move, Pass
-
 from ai.search import alphabeta
+from ai.evaluate import get_evaluator, Evaluator
 
 
 def _action_priority(state: GameState, action: Action, perspective: Player) -> tuple[int, int]:
@@ -33,7 +33,7 @@ def _action_priority(state: GameState, action: Action, perspective: Player) -> t
 
 
 
-def choose_action(state: GameState, depth: int = 2) -> Optional[Action]:
+def choose_action(state: GameState, depth: int = 3, evaluator: Evaluator | None = None) -> Optional[Action]:
     """
     Choose the best action for the player to move in `state` using alpha-beta search.
 
@@ -59,12 +59,15 @@ def choose_action(state: GameState, depth: int = 2) -> Optional[Action]:
 
     alpha = -inf
     beta = inf
+    
+    if evaluator is None:
+        evaluator = get_evaluator("v1")
 
     for action in actions:
         child = apply_action(state, action)
 
         # After making one move, it's opponent's turn. Negamax handles this via sign flip.
-        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective)
+        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective, evaluator)
 
         if score > best_score:
             best_score = score
