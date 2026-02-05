@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from onitama.moves import Move, Pass
-from onitama.pieces import Player, PieceType
-from onitama.state import GameState, CardPair
-from onitama.cards import Card
+from onitama.pieces import Player, PieceType, Piece
+from onitama.state import GameState, CardPair, Board
+from onitama.cards import Card, ALL_CARDS
 
 Action = Move | Pass
 
@@ -12,15 +12,49 @@ def _in_bounds(r: int, c: int) -> bool:
     return 0 <= r < 5 and 0 <= c < 5
 
 
-def _find_master(state: GameState, player: Player) -> tuple[int, int] | None:
-    for r in range(5):
-        for c in range(5):
-            p = state.board[r][c]
-            if p is None:
-                continue
-            if p.owner == player and p.kind is PieceType.MASTER:
-                return (r, c)
-    return None
+def _precompute_moves() -> dict[Player, dict[Card, tuple[tuple[tuple[int, int], ...], ...]]]:
+    table: dict[Player, dict[Card, tuple[tuple[tuple[int, int], ...], ...]]] = {
+        Player.RED: {},
+        Player.BLUE: {},
+    }
+    for player in Player:
+        for card in ALL_CARDS:
+            per_pos: list[tuple[tuple[int, int], ...]] = []
+            deltas = card.deltas_for(player)
+            for r in range(5):
+                for c in range(5):
+                    targets: list[tuple[int, int]] = []
+                    for dr, dc in deltas:
+                        rr = r + dr
+                        cc = c + dc
+                        if _in_bounds(rr, cc):
+                            targets.append((rr, cc))
+                    per_pos.append(tuple(targets))
+            table[player][card] = tuple(per_pos)
+    return table
+
+
+_MOVE_TABLE = _precompute_moves()
+
+
+def _board_after_move(
+    board: Board, fr: int, fc: int, tr: int, tc: int, piece: Piece
+) -> Board:
+    rows = list(board)
+    if fr == tr:
+        row = list(rows[fr])
+        row[fc] = None
+        row[tc] = piece
+        rows[fr] = tuple(row)
+    else:
+        row_from = list(rows[fr])
+        row_from[fc] = None
+        rows[fr] = tuple(row_from)
+
+        row_to = list(rows[tr])
+        row_to[tc] = piece
+        rows[tr] = tuple(row_to)
+    return tuple(rows)
 
 
 def winner(state: GameState) -> tuple[Player, str] | None:
@@ -33,8 +67,8 @@ def winner(state: GameState) -> tuple[Player, str] | None:
         * RED wins if red master is at (0, 2)
         * BLUE wins if blue master is at (4, 2)
     """
-    red_master = _find_master(state, Player.RED)
-    blue_master = _find_master(state, Player.BLUE)
+    red_master = state.red_master_pos
+    blue_master = state.blue_master_pos
 
     # Capture master
     if red_master is None and blue_master is not None:
@@ -85,13 +119,9 @@ def generate_legal_actions(state: GameState) -> list[Action]:
             if piece is None or piece.owner != player:
                 continue
 
+            pos_index = r * 5 + c
             for card_index, card in enumerate(cards):
-                for dr, dc in card.deltas_for(player):
-                    rr = r + dr
-                    cc = c + dc
-                    if not _in_bounds(rr, cc):
-                        continue
-
+                for rr, cc in _MOVE_TABLE[player][card][pos_index]:
                     target = state.board[rr][cc]
                     if target is not None and target.owner == player:
                         continue
@@ -157,8 +187,11 @@ def apply_action(state: GameState, action: Action) -> GameState:
     opponent = player.opponent()
 
     # 1) Update board (or keep it unchanged for Pass)
+    new_red_master = state.red_master_pos
+    new_blue_master = state.blue_master_pos
+
     if isinstance(action, Pass):
-        new_board = [row[:] for row in state.board]  # shallow copy
+        new_board = state.board
         chosen_index = action.card_index
     else:
         assert isinstance(action, Move)
@@ -175,10 +208,20 @@ def apply_action(state: GameState, action: Action) -> GameState:
         if target is not None and target.owner == state.to_move:
             raise ValueError("Invalid move: cannot capture your own piece")
 
-        new_board = [row[:] for row in state.board]  # shallow copy
-        new_board[fr][fc] = None
-        new_board[tr][tc] = piece
+        new_board = _board_after_move(state.board, fr, fc, tr, tc, piece)
         chosen_index = action.card_index
+
+        # Update cached master positions.
+        if piece.kind is PieceType.MASTER:
+            if player is Player.RED:
+                new_red_master = (tr, tc)
+            else:
+                new_blue_master = (tr, tc)
+        if target is not None and target.kind is PieceType.MASTER:
+            if target.owner is Player.RED:
+                new_red_master = None
+            else:
+                new_blue_master = None
 
     # 2) Swap cards
     new_red_cards, new_blue_cards, new_side = _swap_cards(state, chosen_index)
@@ -190,5 +233,6 @@ def apply_action(state: GameState, action: Action) -> GameState:
         red_cards=new_red_cards,
         blue_cards=new_blue_cards,
         side_card=new_side,
+        red_master_pos=new_red_master,
+        blue_master_pos=new_blue_master,
     )
-

@@ -7,8 +7,23 @@ from typing import Optional
 from onitama.cards import ALL_CARDS, Card
 from onitama.pieces import Piece, PieceType, Player
 
-Board = list[list[Optional[Piece]]]
+Board = tuple[tuple[Optional[Piece], ...], ...]
 CardPair = tuple[Card, Card]
+
+
+def _find_master_positions(board: Board) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    red_pos: tuple[int, int] | None = None
+    blue_pos: tuple[int, int] | None = None
+    for r in range(5):
+        for c in range(5):
+            p = board[r][c]
+            if p is None or p.kind is not PieceType.MASTER:
+                continue
+            if p.owner is Player.RED:
+                red_pos = (r, c)
+            else:
+                blue_pos = (r, c)
+    return red_pos, blue_pos
 
 
 @dataclass(frozen=True)
@@ -20,6 +35,7 @@ class GameState:
     - to_move: which player must move next.
     - red_cards / blue_cards: the 2 active cards for each player.
     - side_card: the card to be swapped after a move.
+    - red_master_pos / blue_master_pos: cached master positions (None if captured).
     """
 
     board: Board
@@ -27,6 +43,23 @@ class GameState:
     red_cards: CardPair
     blue_cards: CardPair
     side_card: Card
+    red_master_pos: tuple[int, int] | None = None
+    blue_master_pos: tuple[int, int] | None = None
+
+    def __post_init__(self) -> None:
+        # Normalize board to an immutable tuple-of-tuples for hashing/caching.
+        board = self.board
+        if not isinstance(board, tuple) or (board and not isinstance(board[0], tuple)):
+            board = tuple(tuple(row) for row in board)
+            object.__setattr__(self, "board", board)
+
+        # Fill cached master positions if not provided.
+        if self.red_master_pos is None or self.blue_master_pos is None:
+            red_pos, blue_pos = _find_master_positions(board)
+            if self.red_master_pos is None:
+                object.__setattr__(self, "red_master_pos", red_pos)
+            if self.blue_master_pos is None:
+                object.__setattr__(self, "blue_master_pos", blue_pos)
 
     @staticmethod
     def empty(
@@ -36,7 +69,7 @@ class GameState:
         side_card: Optional[Card] = None,
     ) -> GameState:
         """Create an empty 5x5 board (no pieces). Cards can be provided or defaulted."""
-        board: Board = [[None for _ in range(5)] for _ in range(5)]
+        board = [[None for _ in range(5)] for _ in range(5)]
 
         # Safe defaults (only used if you explicitly call empty()).
         if red_cards is None:
@@ -52,6 +85,8 @@ class GameState:
             red_cards=red_cards,
             blue_cards=blue_cards,
             side_card=side_card,
+            red_master_pos=None,
+            blue_master_pos=None,
         )
 
     @staticmethod
@@ -73,7 +108,7 @@ class GameState:
         # Who starts is determined by the side card's stamp.
         to_move = side_card.stamp
 
-        board: Board = [[None for _ in range(5)] for _ in range(5)]
+        board = [[None for _ in range(5)] for _ in range(5)]
 
         # Row 0: BLUE pieces
         for c in range(5):
@@ -91,5 +126,6 @@ class GameState:
             red_cards=red_cards,
             blue_cards=blue_cards,
             side_card=side_card,
+            red_master_pos=(4, 2),
+            blue_master_pos=(0, 2),
         )
-
