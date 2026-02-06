@@ -8,6 +8,8 @@ from onitama.moves import Move
 
 from ai.types import Evaluator, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
 
+HistoryTable = dict[tuple[int, int, int, int], int]  # (fr, fc, tr, tc)
+
 
 def _is_capture(state: GameState, action: Action, mover: Player) -> bool:
     """
@@ -20,6 +22,14 @@ def _is_capture(state: GameState, action: Action, mover: Player) -> bool:
     tr, tc = action.to_pos
     target = state.board[tr][tc]
     return target is not None and target.owner != mover
+
+
+def _history_key(action: Action) -> tuple[int, int, int, int] | None:
+    if not isinstance(action, Move):
+        return None
+    fr, fc = action.from_pos
+    tr, tc = action.to_pos
+    return (fr, fc, tr, tc)
 
 
 def _color(state: GameState, perspective: Player) -> int:
@@ -35,6 +45,8 @@ def alphabeta(
     perspective: Player,
     evaluator: Evaluator,
     tt: TranspositionTable | None = None,
+    killer_moves: list[list[Action | None]] | None = None,
+    history: HistoryTable | None = None,
 ) -> int:
     """
     Negamax alpha-beta search.
@@ -65,10 +77,26 @@ def alphabeta(
     actions = generate_legal_actions(state)
     assert actions, "Non-terminal state must have legal actions (Move or Pass)."
 
-    # Move ordering inside the search: TT best_action first, then captures
+    # Move ordering inside the search: TT best_action, then killers, then captures, then history
     mover = state.to_move
+    killers = None
+    if killer_moves is not None and depth < len(killer_moves):
+        killers = killer_moves[depth]
+
+    # History heuristic: prefer moves that have been good in past cutoffs.
+    def _history_score(action: Action) -> int:
+        if history is None:
+            return 0
+        key = _history_key(action)
+        return 0 if key is None else history.get(key, 0)
+
     actions.sort(
-        key=lambda a: (a == tt_action, _is_capture(state, a, mover)),
+        key=lambda a: (
+            a == tt_action,
+            (killers is not None and a in killers),
+            _is_capture(state, a, mover),
+            _history_score(a),
+        ),
         reverse=True,
     )
 
@@ -79,15 +107,35 @@ def alphabeta(
 
     for action in actions:
         child = apply_action(state, action)
-        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective, evaluator, tt)
+        score = -alphabeta(
+            child,
+            depth - 1,
+            -beta,
+            -alpha,
+            perspective,
+            evaluator,
+            tt,
+            killer_moves,
+            history,
+        )
 
         if score > best:
             best = score
             best_action = action
+            # Reward moves that improve the best score at this node.
+            if history is not None:
+                key = _history_key(action)
+                if key is not None:
+                    history[key] = history.get(key, 0) + (depth * depth)
         alpha = max(alpha, best)
         
         if alpha >= beta:
-            break  # beta cut-off
+            # Beta cutoff: store the move as a killer at this depth.
+            if killer_moves is not None and depth < len(killer_moves):
+                if killers is not None and action not in killers:
+                    killers[1] = killers[0]
+                    killers[0] = action
+            break
 
     if tt is not None:
         if best <= orig_alpha:

@@ -69,6 +69,10 @@ def choose_action(
     if tt is None:
         tt = {} if use_tt else None
 
+    # Per-search move ordering helpers.
+    killer_moves = [[None, None] for _ in range(depth + 1)]
+    history = {}
+
     def _search_at_depth(d: int, alpha: float, beta: float, root_actions: list[Action]) -> tuple[Action, int]:
         best_action_local = root_actions[0]
         best_score_local = -inf
@@ -79,7 +83,17 @@ def choose_action(
             child = apply_action(state, action)
 
             # After making one move, it's opponent's turn. Negamax handles this via sign flip.
-            score = -alphabeta(child, d - 1, -b, -a, perspective, evaluator, tt)
+            score = -alphabeta(
+                child,
+                d - 1,
+                -b,
+                -a,
+                perspective,
+                evaluator,
+                tt,
+                killer_moves,
+                history,
+            )
 
             if score > best_score_local:
                 best_score_local = score
