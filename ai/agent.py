@@ -40,6 +40,8 @@ def choose_action(
     evaluator: Evaluator | None = None,
     use_tt: bool = True,
     tt: TranspositionTable | None = None,
+    use_iterative_deepening: bool = True,
+    aspiration_window: int | None = 100,
 ) -> Optional[Action]:
     """
     Choose the best action for the player to move in `state` using alpha-beta search.
@@ -61,28 +63,58 @@ def choose_action(
     
     actions = sorted(actions, key=lambda a: _action_priority(state, a, perspective), reverse=True)
 
-    best_action = actions[0]
-    best_score = -inf
-
-    alpha = -inf
-    beta = inf
-    
     if evaluator is None:
         evaluator = get_evaluator("v1")
 
     if tt is None:
         tt = {} if use_tt else None
 
-    for action in actions:
-        child = apply_action(state, action)
+    def _search_at_depth(d: int, alpha: float, beta: float, root_actions: list[Action]) -> tuple[Action, int]:
+        best_action_local = root_actions[0]
+        best_score_local = -inf
+        a = alpha
+        b = beta
 
-        # After making one move, it's opponent's turn. Negamax handles this via sign flip.
-        score = -alphabeta(child, depth - 1, -beta, -alpha, perspective, evaluator, tt)
+        for action in root_actions:
+            child = apply_action(state, action)
 
-        if score > best_score:
-            best_score = score
-            best_action = action
+            # After making one move, it's opponent's turn. Negamax handles this via sign flip.
+            score = -alphabeta(child, d - 1, -b, -a, perspective, evaluator, tt)
 
-        alpha = max(alpha, best_score)
+            if score > best_score_local:
+                best_score_local = score
+                best_action_local = action
+
+            a = max(a, best_score_local)
+            if a >= b:
+                break
+
+        return best_action_local, int(best_score_local)
+
+    if not use_iterative_deepening:
+        return _search_at_depth(depth, -inf, inf, actions)[0]
+
+    best_action = actions[0]
+    best_score = -inf
+    last_best_action: Action | None = None
+
+    for d in range(1, depth + 1):
+        if last_best_action is not None:
+            actions = sorted(
+                actions,
+                key=lambda a: (a == last_best_action, _action_priority(state, a, perspective)),
+                reverse=True,
+            )
+
+        if aspiration_window is None or d == 1:
+            best_action, best_score = _search_at_depth(d, -inf, inf, actions)
+        else:
+            a0 = best_score - aspiration_window
+            b0 = best_score + aspiration_window
+            best_action, best_score = _search_at_depth(d, a0, b0, actions)
+            if best_score <= a0 or best_score >= b0:
+                best_action, best_score = _search_at_depth(d, -inf, inf, actions)
+
+        last_best_action = best_action
 
     return best_action
