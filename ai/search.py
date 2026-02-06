@@ -8,7 +8,7 @@ from onitama.moves import Move
 
 from ai.types import Evaluator, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
 
-HistoryTable = dict[tuple[int, int, int, int], int]  # (fr, fc, tr, tc)
+HistoryTable = dict[tuple[int, int, int, int, int], int]  # (fr, fc, tr, tc, card_index)
 
 
 def _is_capture(state: GameState, action: Action, mover: Player) -> bool:
@@ -29,11 +29,89 @@ def _history_key(action: Action) -> tuple[int, int, int, int] | None:
         return None
     fr, fc = action.from_pos
     tr, tc = action.to_pos
-    return (fr, fc, tr, tc)
+    return (fr, fc, tr, tc, action.card_index)
 
 
 def _color(state: GameState, perspective: Player) -> int:
     return 1 if state.to_move == perspective else -1
+
+
+def _captures_only(state: GameState, actions: list[Action], mover: Player) -> list[Action]:
+    return [a for a in actions if _is_capture(state, a, mover)]
+
+
+def quiescence(
+    state: GameState,
+    alpha: float,
+    beta: float,
+    perspective: Player,
+    evaluator: Evaluator,
+    q_depth: int,
+    tt: TranspositionTable | None = None,
+    killer_moves: list[list[Action | None]] | None = None,
+    history: HistoryTable | None = None,
+) -> int:
+    # Stand-pat evaluation.
+    stand_pat = _color(state, perspective) * evaluator(state, perspective)
+    if stand_pat >= beta:
+        return int(stand_pat)
+    if stand_pat > alpha:
+        alpha = stand_pat
+
+    if q_depth <= 0 or is_terminal(state):
+        return int(stand_pat)
+
+    actions = generate_legal_actions(state)
+    mover = state.to_move
+    actions = _captures_only(state, actions, mover)
+    if not actions:
+        return int(stand_pat)
+
+    # Order captures using TT/killer/history to maximize cutoffs.
+    tt_action: Action | None = None
+    if tt is not None:
+        entry = tt.get(state)
+        if entry is not None:
+            tt_action = entry[3]
+
+    killers = None
+    if killer_moves is not None and q_depth < len(killer_moves):
+        killers = killer_moves[q_depth]
+
+    def _history_score(action: Action) -> int:
+        if history is None:
+            return 0
+        key = _history_key(action)
+        return 0 if key is None else history.get(key, 0)
+
+    actions.sort(
+        key=lambda a: (
+            a == tt_action,
+            (killers is not None and a in killers),
+            _history_score(a),
+        ),
+        reverse=True,
+    )
+
+    for action in actions:
+        child = apply_action(state, action)
+        score = -quiescence(
+            child,
+            -beta,
+            -alpha,
+            perspective,
+            evaluator,
+            q_depth - 1,
+            tt,
+            killer_moves,
+            history,
+        )
+        if score >= beta:
+            return int(score)
+        if score > alpha:
+            alpha = score
+
+    return int(alpha)
 
 
 
@@ -47,6 +125,7 @@ def alphabeta(
     tt: TranspositionTable | None = None,
     killer_moves: list[list[Action | None]] | None = None,
     history: HistoryTable | None = None,
+    q_depth: int = 0,
 ) -> int:
     """
     Negamax alpha-beta search.
@@ -72,7 +151,17 @@ def alphabeta(
 
     # Terminal or depth limit
     if depth <= 0 or is_terminal(state):
-        return _color(state, perspective) * evaluator(state, perspective)
+        return quiescence(
+            state,
+            alpha,
+            beta,
+            perspective,
+            evaluator,
+            q_depth,
+            tt,
+            killer_moves,
+            history,
+        )
 
     actions = generate_legal_actions(state)
     assert actions, "Non-terminal state must have legal actions (Move or Pass)."
@@ -117,6 +206,7 @@ def alphabeta(
             tt,
             killer_moves,
             history,
+            q_depth,
         )
 
         if score > best:

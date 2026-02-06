@@ -42,6 +42,7 @@ def choose_action(
     tt: TranspositionTable | None = None,
     use_iterative_deepening: bool = True,
     aspiration_window: int | None = 100,
+    q_depth: int = 2,
 ) -> Optional[Action]:
     """
     Choose the best action for the player to move in `state` using alpha-beta search.
@@ -93,6 +94,7 @@ def choose_action(
                 tt,
                 killer_moves,
                 history,
+                q_depth,
             )
 
             if score > best_score_local:
