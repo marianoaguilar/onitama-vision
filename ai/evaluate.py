@@ -5,13 +5,11 @@ from __future__ import annotations
 from dataclasses import replace, dataclass
 
 from onitama.moves import Move
-from onitama.pieces import PieceType, Player
+from onitama.pieces import PieceType, Player, Piece
 from onitama.rules import generate_legal_actions, winner
 from onitama.state import GameState
 
-from typing import Callable
-
-Evaluator = Callable[[GameState, Player], int]
+from ai.types import Evaluator
 
 
 WIN_SCORE = 100_000
@@ -28,7 +26,7 @@ HANGING_STUDENT_PENALTY = 600
 MOBILITY_WEIGHT = 0
 
 # ----------------------------------------------------------------------------
-# V2: generic heuristic with tunable weights (variants: v2a, v2b, v2c, ...)
+# V2: generic heuristic with tunable weights
 
 @dataclass(frozen=True)
 class EvalWeightsV2:
@@ -46,21 +44,7 @@ class EvalWeightsV2:
     centrality_weight: int
     advancement_weight: int
 
-
-V2A = EvalWeightsV2(
-    student_weight=300,
-    master_distance_weight=10,
-    master_threat_penalty=8000,
-    master_threat_bonus=7000,
-    hanging_student_penalty=550,
-    hanging_student_bonus=450,
-    mobility_weight=8,
-    centrality_weight=25,
-    advancement_weight=12,
-)
-
-# Slightly more "tactical": punish hanging more, reward threats more.
-V2B = EvalWeightsV2(
+V2 = EvalWeightsV2(
     student_weight=300,
     master_distance_weight=10,
     master_threat_penalty=8500,
@@ -72,22 +56,59 @@ V2B = EvalWeightsV2(
     advancement_weight=10,
 )
 
-# Slightly more "positional": emphasize centrality/advancement a bit more.
-V2C = EvalWeightsV2(
-    student_weight=280,
-    master_distance_weight=10,
-    master_threat_penalty=8000,
-    master_threat_bonus=6500,
-    hanging_student_penalty=550,
-    hanging_student_bonus=450,
-    mobility_weight=10,
-    centrality_weight=35,
-    advancement_weight=18,
+
+# ----------------------------------------------------------------------------
+# V3
+
+# Simple PSTs (defined from RED perspective).
+STUDENT_PST: list[list[int]] = [
+    [4, 5, 6, 5, 4],
+    [3, 4, 5, 4, 3],
+    [2, 3, 4, 3, 2],
+    [1, 2, 3, 2, 1],
+    [0, 1, 2, 1, 0],
+]
+
+MASTER_PST: list[list[int]] = [
+    [0, 1, 2, 1, 0],
+    [1, 2, 3, 2, 1],
+    [1, 2, 4, 2, 1],
+    [1, 2, 3, 2, 1],
+    [0, 1, 2, 1, 0],
+]
+
+@dataclass(frozen=True)
+class EvalWeightsV3:
+    student_weight: int
+    master_distance_weight_opening: int
+    master_distance_weight_endgame: int
+    master_threat_penalty: int
+    master_threat_bonus: int
+    hanging_student_penalty: int
+    hanging_student_bonus: int
+    mobility_weight_opening: int
+    mobility_weight_endgame: int
+    pst_weight_opening: int
+    pst_weight_endgame: int
+    
+
+V3 = EvalWeightsV3(
+    student_weight=300,
+    master_distance_weight_opening=10,
+    master_distance_weight_endgame=25,
+    master_threat_penalty=8_500,
+    master_threat_bonus=5_500,
+    hanging_student_penalty=600,
+    hanging_student_bonus=400,
+    mobility_weight_opening=12,
+    mobility_weight_endgame=4,
+    pst_weight_opening=90,
+    pst_weight_endgame=25,
 )
 
 
 # ----------------------------------------------------------------------------
-# Helpers
+# Helpers V1 (Shared helpers)
 
 def _target_temple_for(player: Player) -> tuple[int, int]:
     """
@@ -102,115 +123,43 @@ def _manhattan(a: tuple[int, int], b: tuple[int, int]) -> int:
 
 
 def _find_master_pos(state: GameState, owner: Player) -> tuple[int, int] | None:
-    for r in range(5):
-        for c in range(5):
-            piece = state.board[r][c]
-            if piece is None:
-                continue
-            if piece.owner == owner and piece.kind == PieceType.MASTER:
-                return (r, c)
-    return None
+    return state.red_master_pos if owner is Player.RED else state.blue_master_pos
 
-
-def _count_students(state: GameState, owner: Player) -> int:
-    count = 0
-    for r in range(5):
-        for c in range(5):
-            piece = state.board[r][c]
-            if piece is None:
-                continue
-            if piece.owner == owner and piece.kind == PieceType.STUDENT:
-                count += 1
-    return count
-
-
-def _opponent_can_capture_master_next(state: GameState, perspective: Player) -> bool:
-    """
-    Returns True if the opponent has any legal Move that lands on perspective's Master square
-    on their next turn (1-ply threat).
-    """
-    master_pos = _find_master_pos(state, perspective)
-    if master_pos is None:
-        # Should be terminal, but if not, treat as immediate danger.
-        return True
-
-    opponent = perspective.opponent()
-    opp_state = replace(state, to_move=opponent)
-    opp_actions = generate_legal_actions(opp_state)
-
-    for a in opp_actions:
-        if isinstance(a, Move) and a.to_pos == master_pos:
-            return True
-
-    return False
-
-
-def _count_legal_actions_for(state: GameState, player: Player) -> int:
-    s = replace(state, to_move=player)
-    return len(generate_legal_actions(s))
-
-
-def _count_hanging_students_next(state: GameState, perspective: Player) -> int:
-    """
-    Counts how many of perspective's STUDENT pieces can be captured by the opponent
-    on their next move (1-ply).
-    """
-    opponent = perspective.opponent()
-    opp_state = replace(state, to_move=opponent)
-    opp_actions = generate_legal_actions(opp_state)
-
-    hanging = 0
-    for a in opp_actions:
-        if not isinstance(a, Move):
-            continue
-        tr, tc = a.to_pos
-        target = state.board[tr][tc]
-        if target is None:
-            continue
-        if target.owner != perspective:
-            continue
-        if target.kind == PieceType.STUDENT:
-            hanging += 1
-
-    return hanging
 
 # ----------------------------------------------------------------------------
 # Helpers V2
 
-def _actions_for(state: GameState, player: Player) -> list:
-    """Legal actions as if `player` were to move now."""
-    s = replace(state, to_move=player)
-    return list(generate_legal_actions(s))
+CENTRALITY_TABLE: tuple[tuple[int, ...], ...] = tuple(
+    tuple(4 - (abs(r - 2) + abs(c - 2)) for c in range(5))
+    for r in range(5)
+)
+
+ADVANCEMENT_RED_TABLE: tuple[tuple[int, ...], ...] = tuple(
+    tuple(4 - r for _c in range(5))
+    for r in range(5)
+)
+
+ADVANCEMENT_BLUE_TABLE: tuple[tuple[int, ...], ...] = tuple(
+    tuple(r for _c in range(5))
+    for r in range(5)
+)
 
 
-def _move_actions(actions: list) -> list[Move]:
-    """Filter only real moves (exclude Pass)."""
-    return [a for a in actions if isinstance(a, Move)]
+# ----------------------------------------------------------------------------
+# Helpers V3
 
-
-def _iter_positions(state: GameState, owner: Player, kind: PieceType) -> list[tuple[int, int]]:
-    out: list[tuple[int, int]] = []
-    for r in range(5):
-        for c in range(5):
-            p = state.board[r][c]
-            if p is None:
-                continue
-            if p.owner == owner and p.kind == kind:
-                out.append((r, c))
-    return out
-
-
-def _centrality_value(pos: tuple[int, int]) -> int:
-    """Closer to center (2,2) is better. Range: 0..4"""
+def _rotate_180(pos: tuple[int, int]) -> tuple[int, int]:
     r, c = pos
-    return 4 - (abs(r - 2) + abs(c - 2))
+    return (4 - r, 4 - c)
 
 
-def _advancement_value(pos: tuple[int, int], owner: Player) -> int:
-    """How advanced a piece is towards the opponent side."""
-    r, _c = pos
-    return (4 - r) if owner == Player.RED else r
-
+def _pst_value(table: list[list[int]], pos: tuple[int, int], owner: Player) -> int:
+    """
+    PSTs are defined from RED's perspective (row 0 is RED-forward).
+    For BLUE pieces we rotate 180 degrees.
+    """
+    r, c = pos if owner == Player.RED else _rotate_180(pos)
+    return table[r][c]
 
 
 # ----------------------------------------------------------------------------
@@ -226,38 +175,74 @@ def evaluate_v1(state: GameState, perspective: Player) -> int:
         return WIN_SCORE if winner_player == perspective else -WIN_SCORE
 
     opponent = perspective.opponent()
+    board = state.board
 
-    # 1) Material: students difference
-    my_students = _count_students(state, perspective)
-    opp_students = _count_students(state, opponent)
+    # 1) Material: students difference (single board scan).
+    my_students = 0
+    opp_students = 0
+    my_students_pos: set[tuple[int, int]] = set() # used in step 5
+    for r in range(5):
+        for c in range(5):
+            piece = board[r][c]
+            if piece is None or piece.kind != PieceType.STUDENT:
+                continue
+            if piece.owner == perspective:
+                my_students += 1
+                my_students_pos.add((r, c))
+            else:
+                opp_students += 1
     material_score = (my_students - opp_students) * STUDENT_WEIGHT
 
-    # 2) Master progress: closer to target temple is better
+    # 2) Master progress (relative): better if we are closer than opponent.
     my_master = _find_master_pos(state, perspective)
+    opp_master = _find_master_pos(state, opponent)
     if my_master is None:
         # Should be terminal (loss), but just in case:
         return -WIN_SCORE
+    if opp_master is None:
+        # Should be terminal (win), but just in case:
+        return WIN_SCORE
 
-    target = _target_temple_for(perspective)
-    dist = _manhattan(my_master, target)
-    master_progress_score = -dist * MASTER_DISTANCE_WEIGHT
+    my_target = _target_temple_for(perspective)
+    opp_target = _target_temple_for(opponent)
+    my_dist = _manhattan(my_master, my_target)
+    opp_dist = _manhattan(opp_master, opp_target)
+    master_progress_score = (opp_dist - my_dist) * MASTER_DISTANCE_WEIGHT
+
+    # Build opponent actions once and reuse for both tactical terms.
+    opp_actions = generate_legal_actions(replace(state, to_move=opponent))
 
     # 3) Tactical safety: avoid positions where opponent can capture our Master next move
-    threat_penalty = -MASTER_THREAT_PENALTY if _opponent_can_capture_master_next(state, perspective) else 0
+    opp_can_capture_master = any(isinstance(a, Move) and a.to_pos == my_master for a in opp_actions)
+    threat_penalty = -MASTER_THREAT_PENALTY if opp_can_capture_master else 0
 
-    # 4) Mobility: prefer having more legal actions than opponent
-    my_moves = _count_legal_actions_for(state, perspective)
-    opp_moves = _count_legal_actions_for(state, opponent)
-    mobility_score = (my_moves - opp_moves) * MOBILITY_WEIGHT
-    
-    # 5) Hanging students: penalize having students that can be captured next move
-    hanging_students = _count_hanging_students_next(state, perspective)
+    # 4) Mobility: legal actions difference.
+    if MOBILITY_WEIGHT != 0:
+        my_moves = len(generate_legal_actions(replace(state, to_move=perspective)))
+        opp_moves = len(opp_actions)
+        mobility_score = (my_moves - opp_moves) * MOBILITY_WEIGHT
+    else:
+        mobility_score = 0
+
+    # 5) Hanging students: penalize own students capturable next move.
+    opp_attack_squares: set[tuple[int, int]] = set()
+    for a in opp_actions:
+        if not isinstance(a, Move):
+            continue
+        opp_attack_squares.add(a.to_pos)
+    hanging_students = len(my_students_pos & opp_attack_squares)
     hanging_penalty = -hanging_students * HANGING_STUDENT_PENALTY
 
     return material_score + master_progress_score + threat_penalty + mobility_score + hanging_penalty
 
 
 # ----------------------------------------------------------------------------
+# Differences in V2 compared to V1:
+# - More tunable weights, including for new features.
+# - New features:
+#   - Master threat bonus: reward positions where we can capture opponent's Master next move.
+#   - Hanging students counted as unique threatened pieces (set intersection, no multiplicity).
+#   - Positional: centrality + advancement (students only, Master is all-or-nothing).
 
 def evaluate_v2_generic(state: GameState, perspective: Player, w2: EvalWeightsV2) -> int:
     """
@@ -269,16 +254,29 @@ def evaluate_v2_generic(state: GameState, perspective: Player, w2: EvalWeightsV2
         return WIN_SCORE if winner_player == perspective else -WIN_SCORE
 
     opponent = perspective.opponent()
+    board = state.board
 
     # Actions (as if each player were to move now)
-    my_actions = _actions_for(state, perspective)
-    opp_actions = _actions_for(state, opponent)
-    my_moves = _move_actions(my_actions)
-    opp_moves = _move_actions(opp_actions)
+    my_actions = generate_legal_actions(replace(state, to_move=perspective))
+    opp_actions = generate_legal_actions(replace(state, to_move=opponent))
 
-    # 1) Material
-    my_students = _count_students(state, perspective)
-    opp_students = _count_students(state, opponent)
+    # 1) Material + student positions (single board scan)
+    my_students = 0
+    opp_students = 0
+    my_students_pos: set[tuple[int, int]] = set()
+    opp_students_pos: set[tuple[int, int]] = set()
+    for r in range(5):
+        for c in range(5):
+            p = board[r][c]
+            if p is None or p.kind != PieceType.STUDENT:
+                continue
+            pos = (r, c)
+            if p.owner == perspective:
+                my_students += 1
+                my_students_pos.add(pos)
+            else:
+                opp_students += 1
+                opp_students_pos.add(pos)
     material_score = (my_students - opp_students) * w2.student_weight
 
     # 2) Master progress (relative)
@@ -293,66 +291,222 @@ def evaluate_v2_generic(state: GameState, perspective: Player, w2: EvalWeightsV2
     opp_dist = _manhattan(opp_master, _target_temple_for(opponent))
     master_progress_score = (opp_dist - my_dist) * w2.master_distance_weight
 
+    # Build move-derived features in one pass per player.
+    my_move_count = 0
+    opp_move_count = 0
+    my_attack_squares: set[tuple[int, int]] = set()
+    opp_attack_squares: set[tuple[int, int]] = set()
+
+    for a in my_actions:
+        if not isinstance(a, Move):
+            continue
+        my_move_count += 1
+        my_attack_squares.add(a.to_pos)
+
+    for a in opp_actions:
+        if not isinstance(a, Move):
+            continue
+        opp_move_count += 1
+        opp_attack_squares.add(a.to_pos)
+
     # 3) Master threats (symmetric 1-ply)
-    threat_penalty = -w2.master_threat_penalty if any(m.to_pos == my_master for m in opp_moves) else 0
-    threat_bonus = w2.master_threat_bonus if any(m.to_pos == opp_master for m in my_moves) else 0
-
+    threat_score = 0
+    if my_master in opp_attack_squares:
+        threat_score -= w2.master_threat_penalty
+    if opp_master in my_attack_squares:
+        threat_score += w2.master_threat_bonus
+        
     # 4) Hanging students (unique threatened pieces)
-    my_students_pos = set(_iter_positions(state, perspective, PieceType.STUDENT))
-    opp_students_pos = set(_iter_positions(state, opponent, PieceType.STUDENT))
-
-    my_attack_squares = {m.to_pos for m in my_moves}
-    opp_attack_squares = {m.to_pos for m in opp_moves}
-
     my_hanging = len(my_students_pos & opp_attack_squares)
     opp_hanging = len(opp_students_pos & my_attack_squares)
 
-    hanging_penalty = -my_hanging * w2.hanging_student_penalty
-    hanging_bonus = opp_hanging * w2.hanging_student_bonus
+    hanging_score = (
+        -my_hanging * w2.hanging_student_penalty
+        + opp_hanging * w2.hanging_student_bonus
+    )
 
     # 5) Mobility (Moves only)
-    mobility_score = (len(my_moves) - len(opp_moves)) * w2.mobility_weight
+    mobility_score = (my_move_count - opp_move_count) * w2.mobility_weight
 
     # 6) Positional: centrality + advancement (students only)
     positional_score = 0
     for pos in my_students_pos:
-        positional_score += _centrality_value(pos) * w2.centrality_weight
-        positional_score += _advancement_value(pos, perspective) * w2.advancement_weight
+        r, c = pos
+        positional_score += CENTRALITY_TABLE[r][c] * w2.centrality_weight
+        if perspective == Player.RED:
+            positional_score += ADVANCEMENT_RED_TABLE[r][c] * w2.advancement_weight
+        else:
+            positional_score += ADVANCEMENT_BLUE_TABLE[r][c] * w2.advancement_weight
     for pos in opp_students_pos:
-        positional_score -= _centrality_value(pos) * w2.centrality_weight
-        positional_score -= _advancement_value(pos, opponent) * w2.advancement_weight
+        r, c = pos
+        positional_score -= CENTRALITY_TABLE[r][c] * w2.centrality_weight
+        if opponent == Player.RED:
+            positional_score -= ADVANCEMENT_RED_TABLE[r][c] * w2.advancement_weight
+        else:
+            positional_score -= ADVANCEMENT_BLUE_TABLE[r][c] * w2.advancement_weight
 
     return (
         material_score
         + master_progress_score
-        + threat_penalty
-        + threat_bonus
-        + hanging_penalty
-        + hanging_bonus
+        + threat_score
+        + hanging_score
         + mobility_score
         + positional_score
     )
 
 
-def evaluate_v2a(state: GameState, perspective: Player) -> int:
-    return evaluate_v2_generic(state, perspective, V2A)
+def evaluate_v2(state: GameState, perspective: Player) -> int:
+    return evaluate_v2_generic(state, perspective, V2)
 
 
-def evaluate_v2b(state: GameState, perspective: Player) -> int:
-    return evaluate_v2_generic(state, perspective, V2B)
+# ----------------------------------------------------------------------------
+# Differences in V3 compared to V2:
+# - Endgame-aware blending for key weights (master progress, mobility, PST).
+# - Hanging students uses unique threatened pieces (same criterion as V2).
+# - Mobility includes phase-dependent weights.
+# - Positional model upgraded from centrality/advancement to PST (students + master).
+
+def evaluate_v3_generic(
+    state: GameState,
+    perspective: Player,
+    w3: EvalWeightsV3,
+) -> int:
+    """
+    Generic V3 heuristic driven by weights.
+    """
+    w = winner(state)
+    if w is not None:
+        winner_player, _reason = w
+        return WIN_SCORE if winner_player == perspective else -WIN_SCORE
+
+    opponent = perspective.opponent()
+    
+    my_actions = generate_legal_actions(replace(state, to_move=perspective))
+    opp_actions = generate_legal_actions(replace(state, to_move=opponent))
+    
+    # Single board scan to collect piece list and student counts.
+    my_students = 0
+    opp_students = 0
+    my_students_pos: set[tuple[int, int]] = set()
+    opp_students_pos: set[tuple[int, int]] = set()
+    pieces: list[tuple[int, int, Piece]] = []
+
+    board = state.board
+    for r in range(5):
+        for c in range(5):
+            p = board[r][c]
+            if p is None:
+                continue
+            pieces.append((r, c, p))
+            if p.owner == perspective:
+                if p.kind == PieceType.STUDENT:
+                    my_students += 1
+                    my_students_pos.add((r, c))
+            else:
+                if p.kind == PieceType.STUDENT:
+                    opp_students += 1
+                    opp_students_pos.add((r, c))
+
+    total_students = my_students + opp_students
+    endgame = 1.0 - (total_students / 8.0)  # 0: opening, 1: endgame
+
+    # 1) Material
+    material_score = (my_students - opp_students) * w3.student_weight
+
+    # 2) Master progress (relative, phase-blended)
+    my_master = _find_master_pos(state, perspective)
+    opp_master = _find_master_pos(state, opponent)
+    if my_master is None:
+        return -WIN_SCORE
+    if opp_master is None:
+        return WIN_SCORE
+
+    my_dist = _manhattan(my_master, _target_temple_for(perspective))
+    opp_dist = _manhattan(opp_master, _target_temple_for(opponent))
+
+    master_progress_weight = int(
+        w3.master_distance_weight_opening * (1.0 - endgame)
+        + w3.master_distance_weight_endgame * endgame
+    )
+    master_progress_score = (opp_dist - my_dist) * master_progress_weight
+
+    # Build move-derived tactical features in one pass per player.
+    my_move_count = 0
+    opp_move_count = 0
+
+    my_attack_squares: set[tuple[int, int]] = set()
+    opp_attack_squares: set[tuple[int, int]] = set()
+
+    for a in opp_actions:
+        if not isinstance(a, Move):
+            continue
+        opp_move_count += 1
+        tr, tc = a.to_pos
+        opp_attack_squares.add((tr, tc))
+
+    for a in my_actions:
+        if not isinstance(a, Move):
+            continue
+        my_move_count += 1
+        tr, tc = a.to_pos
+        my_attack_squares.add((tr, tc))
+
+    # 3) Master threats (symmetric 1-ply)
+    threat_score = 0
+    if my_master in opp_attack_squares:
+        threat_score -= w3.master_threat_penalty
+    if opp_master in my_attack_squares:
+        threat_score += w3.master_threat_bonus
+
+    # 4) Hanging students (unique threatened pieces, as in V2)
+    my_hanging = len(my_students_pos & opp_attack_squares)
+    opp_hanging = len(opp_students_pos & my_attack_squares)
+
+    hanging_score = (
+        -my_hanging * w3.hanging_student_penalty
+        + opp_hanging * w3.hanging_student_bonus
+    )
+    
+    # 5) Mobility (move-count difference, phase-blended)
+    mobility_weight = int(
+        w3.mobility_weight_opening * (1.0 - endgame)
+        + w3.mobility_weight_endgame * endgame
+    )
+    mobility_score = (my_move_count - opp_move_count) * mobility_weight
+
+    # 6) Positional: PST (students + master)
+    pst_weight = int(
+        w3.pst_weight_opening * (1.0 - endgame)
+        + w3.pst_weight_endgame * endgame
+    )
+
+    pst_score = 0
+    for r, c, p in pieces:
+        pos = (r, c)
+        if p.kind == PieceType.STUDENT:
+            v = _pst_value(STUDENT_PST, pos, p.owner)
+        else:
+            v = _pst_value(MASTER_PST, pos, p.owner)
+
+        if p.owner == perspective:
+            pst_score += v * pst_weight
+        else:
+            pst_score -= v * pst_weight
 
 
-def evaluate_v2c(state: GameState, perspective: Player) -> int:
-    return evaluate_v2_generic(state, perspective, V2C)
+    return material_score + master_progress_score + threat_score + hanging_score + mobility_score + pst_score
+
+
+def evaluate_v3(state: GameState, perspective: Player) -> int:
+    return evaluate_v3_generic(state, perspective, V3)
 
 
 # ----------------------------------------------------------------------------
 
 EVALUATORS: dict[str, Evaluator] = {
     "v1": evaluate_v1,
-    "v2a": evaluate_v2a,
-    "v2b": evaluate_v2b,
-    "v2c": evaluate_v2c,
+    "v2": evaluate_v2,
+    "v3": evaluate_v3,
 }
 
 def get_evaluator(name: str) -> Evaluator:
@@ -360,4 +514,3 @@ def get_evaluator(name: str) -> Evaluator:
         return EVALUATORS[name]
     except KeyError as e:
         raise ValueError(f"Unknown evaluator '{name}'. Available: {sorted(EVALUATORS)}") from e
-    

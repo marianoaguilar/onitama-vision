@@ -9,3 +9,4 @@ scripts/
 *.egg-info/
 build/
 dist/
+AGENTS.md

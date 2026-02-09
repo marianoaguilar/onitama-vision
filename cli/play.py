@@ -60,13 +60,13 @@ def _prompt_choice(prompt: str, options: list[str], default_index: int = 0) -> s
 
 
 def _prompt_ai_settings(player_name: str) -> AIController:
-    depth = _prompt_int(f"{player_name} AI depth", default=3, lo=1, hi=8)
+    depth = _prompt_int(f"{player_name} AI depth", default=5, lo=1, hi=8)
 
     eval_names = sorted(EVALUATORS.keys())
     eval_name = _prompt_choice(
         f"{player_name} evaluator:",
         options=eval_names,
-        default_index=0,
+        default_index=2,
     )
 
     return AIController(depth=depth, evaluator_name=eval_name)
