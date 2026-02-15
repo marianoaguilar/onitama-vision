@@ -1,7 +1,7 @@
-from onitama.state import GameState
-from onitama.pieces import Player, Piece, PieceType
-from onitama.rules import winner
-from onitama.cards import ALL_CARDS
+from onitama.engine.state import GameState
+from onitama.engine.pieces import Player, Piece, PieceType
+from onitama.engine.rules import winner
+from onitama.engine.cards import ALL_CARDS
 
 
 def test_winner_stone_when_opponent_master_missing():

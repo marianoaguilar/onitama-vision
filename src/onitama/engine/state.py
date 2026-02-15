@@ -4,8 +4,8 @@ import random
 from dataclasses import dataclass
 from typing import Optional
 
-from onitama.cards import ALL_CARDS, Card
-from onitama.pieces import Piece, PieceType, Player
+from onitama.engine.cards import ALL_CARDS, Card
+from onitama.engine.pieces import Piece, PieceType, Player
 
 Board = tuple[tuple[Optional[Piece], ...], ...]
 CardPair = tuple[Card, Card]

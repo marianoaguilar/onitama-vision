@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from onitama.pieces import PieceType, Player
-from onitama.state import GameState
-from onitama.moves import Move, Pass
+from onitama.engine.pieces import PieceType, Player
+from onitama.engine.state import GameState
+from onitama.engine.moves import Move, Pass
 
 
 def _cell_to_token(piece) -> str:

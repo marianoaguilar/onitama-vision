@@ -1,6 +1,6 @@
-from onitama.state import GameState
-from onitama.rules import generate_legal_actions, apply_action
-from onitama.moves import Move, Pass
+from onitama.engine.state import GameState
+from onitama.engine.rules import generate_legal_actions, apply_action
+from onitama.engine.moves import Move, Pass
 
 
 def test_apply_action_does_not_mutate_original_state_board():

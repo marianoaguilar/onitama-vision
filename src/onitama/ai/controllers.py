@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ai.agent import choose_action
-from ai.evaluate import get_evaluator
-from ai.types import Evaluator, TranspositionTable
-from onitama.controllers import Controller
-from onitama.rules import Action
-from onitama.state import GameState
+from onitama.ai.agent import choose_action
+from onitama.ai.evaluate import get_evaluator
+from onitama.ai.types import Evaluator, TranspositionTable
+from onitama.engine.controllers import Controller
+from onitama.engine.rules import Action
+from onitama.engine.state import GameState
 
 
 @dataclass

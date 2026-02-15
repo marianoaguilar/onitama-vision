@@ -5,7 +5,7 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
-scripts/
+/scripts/results/
 *.egg-info/
 build/
 dist/

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import replace, dataclass
 
-from onitama.moves import Move
-from onitama.pieces import PieceType, Player, Piece
-from onitama.rules import generate_legal_actions, winner
-from onitama.state import GameState
+from onitama.engine.moves import Move
+from onitama.engine.pieces import PieceType, Player, Piece
+from onitama.engine.rules import generate_legal_actions, winner
+from onitama.engine.state import GameState
 
-from ai.types import Evaluator
+from onitama.ai.types import Evaluator
 
 
 WIN_SCORE = 100_000

@@ -1,5 +1,5 @@
-from onitama.state import GameState
-from onitama.pieces import Player, PieceType
+from onitama.engine.state import GameState
+from onitama.engine.pieces import Player, PieceType
 
 
 def test_initial_board_setup_and_unique_cards():

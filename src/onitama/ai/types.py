@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Callable
 
-from onitama.rules import Action
-from onitama.pieces import Player
-from onitama.state import GameState
+from onitama.engine.rules import Action
+from onitama.engine.pieces import Player
+from onitama.engine.state import GameState
 
 Evaluator = Callable[[GameState, Player], int]
 

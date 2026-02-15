@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from cli.render import format_action
-from onitama.controllers import Controller
-from onitama.rules import Action, generate_legal_actions
-from onitama.state import GameState
+from onitama.cli.render import format_action
+from onitama.engine.controllers import Controller
+from onitama.engine.rules import Action, generate_legal_actions
+from onitama.engine.state import GameState
 
 
 def _print_help() -> None:

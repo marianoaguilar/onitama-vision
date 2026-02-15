@@ -1,8 +1,8 @@
-from onitama.state import GameState
-from onitama.pieces import Player, Piece, PieceType
-from onitama.rules import generate_legal_actions
-from onitama.cards import HORSE, TIGER, CRAB, BOAR
-from onitama.moves import Pass, Move
+from onitama.engine.state import GameState
+from onitama.engine.pieces import Player, Piece, PieceType
+from onitama.engine.rules import generate_legal_actions
+from onitama.engine.cards import HORSE, TIGER, CRAB, BOAR
+from onitama.engine.moves import Pass, Move
 
 
 def test_generate_pass_when_no_moves_exist():

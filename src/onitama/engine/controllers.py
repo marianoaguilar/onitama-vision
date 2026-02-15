@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from onitama.rules import Action
-from onitama.state import GameState
+from onitama.engine.rules import Action
+from onitama.engine.state import GameState
 
 
 class Controller(Protocol):

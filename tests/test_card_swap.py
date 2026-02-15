@@ -1,8 +1,8 @@
-from onitama.state import GameState
-from onitama.rules import apply_action, generate_legal_actions
-from onitama.moves import Pass, Move
-from onitama.cards import TIGER, HORSE, CRAB, BOAR
-from onitama.pieces import Player
+from onitama.engine.state import GameState
+from onitama.engine.rules import apply_action, generate_legal_actions
+from onitama.engine.moves import Pass, Move
+from onitama.engine.cards import TIGER, HORSE, CRAB, BOAR
+from onitama.engine.pieces import Player
 
 
 def test_swap_cards_after_pass_index_0():

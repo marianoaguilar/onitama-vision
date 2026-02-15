@@ -1,5 +1,5 @@
-from onitama.cards import RABBIT
-from onitama.pieces import Player
+from onitama.engine.cards import RABBIT
+from onitama.engine.pieces import Player
 
 
 def test_rabbit_is_rotated_180_for_blue():

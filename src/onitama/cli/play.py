@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ai.controllers import AIController
-from ai.evaluate import EVALUATORS
-from cli.controllers import HumanCLIController
-from cli.render import render_state, format_action
-from onitama.controllers import Controller
-from onitama.pieces import Player
-from onitama.rules import apply_action, winner
-from onitama.state import GameState
+from onitama.ai.controllers import AIController
+from onitama.ai.evaluate import EVALUATORS
+from onitama.cli.controllers import HumanCLIController
+from onitama.cli.render import render_state, format_action
+from onitama.engine.controllers import Controller
+from onitama.engine.pieces import Player
+from onitama.engine.rules import apply_action, winner
+from onitama.engine.state import GameState
 
 
 @dataclass(frozen=True)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from onitama.moves import Move, Pass
-from onitama.pieces import Player, PieceType, Piece
-from onitama.state import GameState, CardPair, Board
-from onitama.cards import Card, ALL_CARDS
+from onitama.engine.moves import Move, Pass
+from onitama.engine.pieces import Player, PieceType, Piece
+from onitama.engine.state import GameState, CardPair, Board
+from onitama.engine.cards import Card, ALL_CARDS
 
 Action = Move | Pass
 

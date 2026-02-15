@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Optional
 from math import inf
 
-from onitama.rules import Action
-from onitama.pieces import Player
-from onitama.rules import apply_action, generate_legal_actions, is_terminal, winner
-from onitama.state import GameState
-from onitama.moves import Move, Pass
-from ai.search import alphabeta
-from ai.evaluate import get_evaluator
-from ai.types import Evaluator, TranspositionTable
+from onitama.engine.rules import Action
+from onitama.engine.pieces import Player
+from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal, winner
+from onitama.engine.state import GameState
+from onitama.engine.moves import Move, Pass
+from onitama.ai.search import alphabeta
+from onitama.ai.evaluate import get_evaluator
+from onitama.ai.types import Evaluator, TranspositionTable
 
 
 def _action_priority(state: GameState, action: Action, perspective: Player) -> tuple[int, int]:

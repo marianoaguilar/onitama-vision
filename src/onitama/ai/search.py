@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from math import inf
-from onitama.pieces import Player
-from onitama.rules import apply_action, generate_legal_actions, is_terminal, Action
-from onitama.state import GameState
-from onitama.moves import Move
+from onitama.engine.pieces import Player
+from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal, Action
+from onitama.engine.state import GameState
+from onitama.engine.moves import Move
 
-from ai.types import Evaluator, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
+from onitama.ai.types import Evaluator, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
 
 HistoryTable = dict[tuple[int, int, int, int, int], int]  # (fr, fc, tr, tc, card_index)
 

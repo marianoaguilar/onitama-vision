@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from onitama.pieces import Player
+from onitama.engine.pieces import Player
 
 MoveDelta = tuple[int, int]  # (dr, dc)
 
