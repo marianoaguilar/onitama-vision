@@ -19,11 +19,10 @@ WIN_SCORE = 100_000
 STUDENT_WEIGHT = 300
 MASTER_DISTANCE_WEIGHT = 8
 
-# New weights for tactical safety / positioning
 MASTER_THREAT_PENALTY = 8_000
 HANGING_STUDENT_PENALTY = 600
 
-MOBILITY_WEIGHT = 0
+MOBILITY_WEIGHT = 0  # Disabled in V1
 
 # ----------------------------------------------------------------------------
 # V2: generic heuristic with tunable weights

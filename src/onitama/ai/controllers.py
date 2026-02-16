@@ -14,6 +14,7 @@ from onitama.engine.state import GameState
 class AIController(Controller):
     depth: int
     evaluator_name: str
+    # One TT per controller instance (no shared mutable default).
     tt: TranspositionTable = field(default_factory=dict)
 
     def select_action(self, state: GameState) -> Action:

@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import Optional
 from math import inf
 
-from onitama.engine.rules import Action
 from onitama.engine.pieces import Player
-from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal, winner
+from onitama.engine.rules import Action, apply_action, generate_legal_actions, is_terminal, winner
 from onitama.engine.state import GameState
-from onitama.engine.moves import Move, Pass
+from onitama.engine.moves import Move
 from onitama.ai.search import alphabeta
 from onitama.ai.evaluate import get_evaluator
 from onitama.ai.types import Evaluator, TranspositionTable
@@ -19,6 +18,7 @@ def _action_priority(state: GameState, action: Action, perspective: Player) -> t
     First key: immediate win (1/0)
     Second key: capture (1/0)
     """
+    # Cheap 1-ply tactical hint for root ordering.
     child = apply_action(state, action)
     w = winner(child)
     immediate_win = 1 if (w is not None and w[0] == perspective) else 0
@@ -60,8 +60,10 @@ def choose_action(
     actions = generate_legal_actions(state)
     assert actions, "Non-terminal state must have legal actions (Move or Pass)."
     
+    # Root side: scores are interpreted from this player's perspective.
     perspective: Player = state.to_move
     
+    # Initial root ordering before any search information is available.
     actions = sorted(actions, key=lambda a: _action_priority(state, a, perspective), reverse=True)
 
     if evaluator is None:
@@ -70,11 +72,15 @@ def choose_action(
     if tt is None:
         tt = {} if use_tt else None
 
-    # Per-search move ordering helpers.
+    # Per-search move ordering helpers shared across deepening iterations.
     killer_moves = [[None, None] for _ in range(depth + 1)]
     history = {}
 
+    # -------------------
     def _search_at_depth(d: int, alpha: float, beta: float, root_actions: list[Action]) -> tuple[Action, int]:
+        """
+        Search at a given depth with alpha-beta and return the best action and its score.
+        """
         best_action_local = root_actions[0]
         best_score_local = -inf
         a = alpha
@@ -101,11 +107,13 @@ def choose_action(
                 best_score_local = score
                 best_action_local = action
 
+            # Root alpha update can cut siblings early.
             a = max(a, best_score_local)
             if a >= b:
                 break
 
         return best_action_local, int(best_score_local)
+    # -------------------
 
     if not use_iterative_deepening:
         return _search_at_depth(depth, -inf, inf, actions)[0]
@@ -114,8 +122,10 @@ def choose_action(
     best_score = -inf
     last_best_action: Action | None = None
 
+    # Iterative deepening driver
     for d in range(1, depth + 1):
         if last_best_action is not None:
+            # Principal variation move from previous iteration first.
             actions = sorted(
                 actions,
                 key=lambda a: (a == last_best_action, _action_priority(state, a, perspective)),
@@ -123,11 +133,14 @@ def choose_action(
             )
 
         if aspiration_window is None or d == 1:
+            # Full window for the first iteration (or when aspiration is disabled).
             best_action, best_score = _search_at_depth(d, -inf, inf, actions)
         else:
+            # Narrow window around the previous score, often increasing cutoffs.
             a0 = best_score - aspiration_window
             b0 = best_score + aspiration_window
             best_action, best_score = _search_at_depth(d, a0, b0, actions)
+            # Fail-low / fail-high: re-search with full window for correctness.
             if best_score <= a0 or best_score >= b0:
                 best_action, best_score = _search_at_depth(d, -inf, inf, actions)
 
