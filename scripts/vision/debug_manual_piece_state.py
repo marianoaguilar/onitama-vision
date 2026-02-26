@@ -59,7 +59,7 @@ def draw_state_overlay(img, state: VisionBoard, board_size: int = 5):
 
 
 def main() -> None:
-    calib = HomographyCalibration.load(Path("assets/vision/calibration.json"))
+    calib = HomographyCalibration.load(Path("data/vision/calibration.json"))
     M = compute_homography_matrix(calib)
 
     cap = open_camera()
@@ -85,7 +85,7 @@ def main() -> None:
 
     help_1 = "1:RM 2:RS 3:BM 4:BS 0:EMPTY | click: set"
     help_2 = "p:print json  j:save json  c:clear  f:freeze  q:quit"
-    out_path = Path("assets/vision/manual_piece_board.json")
+    out_path = Path("data/vision/manual_piece_board.json")
 
     while True:
         if frozen_frame is None:

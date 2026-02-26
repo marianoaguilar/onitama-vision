@@ -97,11 +97,11 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
 
 
 def main() -> None:
-    out_path = Path("assets/vision/calibration.json")
+    out_path = Path("data/vision/calibration.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     dst_w, dst_h = 500, 500
-    rotate = 270   # it depends on how your camera is mounted. Adjust if the output looks rotated.
+    rotate = 90   # it depends on how your camera is mounted. Adjust if the output looks rotated.
 
     cap = open_camera()
 

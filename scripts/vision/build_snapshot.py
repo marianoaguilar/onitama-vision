@@ -24,12 +24,12 @@ def _parse_card_pair(value: str) -> tuple[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a vision snapshot JSON from a vision board JSON + turn/cards.")
-    parser.add_argument("--board-path", default="assets/vision/manual_piece_board.json")
+    parser.add_argument("--board-path", default="data/vision/manual_piece_board.json")
     parser.add_argument("--to-move", default="RED")
     parser.add_argument("--red-cards", default="Tiger,Horse")
     parser.add_argument("--blue-cards", default="Crab,Boar")
     parser.add_argument("--side-card", default="Rabbit")
-    parser.add_argument("--out-path", default="assets/vision/snapshot.json")
+    parser.add_argument("--out-path", default="data/vision/snapshot.json")
     args = parser.parse_args()
 
     board = VisionBoard.load_json(Path(args.board_path))

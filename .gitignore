@@ -11,4 +11,4 @@ __pycache__/
 build/
 dist/
 AGENTS.md
-assets/vision/
+data/vision/

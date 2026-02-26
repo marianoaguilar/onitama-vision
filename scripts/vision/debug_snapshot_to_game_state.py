@@ -8,7 +8,7 @@ from onitama.vision.snapshot import VisionSnapshot
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build and print a GameState from a vision snapshot JSON.")
-    parser.add_argument("--snapshot-path", default="assets/vision/snapshot.json")
+    parser.add_argument("--snapshot-path", default="data/vision/snapshot.json")
     args = parser.parse_args()
 
     snapshot = VisionSnapshot.load_json(Path(args.snapshot_path))
