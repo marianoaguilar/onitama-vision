@@ -1,81 +1,14 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple
 
 import cv2
-import numpy as np
-
-
-@dataclass
-class Calibration:
-    src_points: List[Tuple[float, float]]  # 4 points in camera image
-    dst_size: Tuple[int, int]              # (width, height)
-    rotate: int = 0                        # 0/90/180/270
-
-    def to_dict(self) -> dict:
-        return {
-            "src_points": self.src_points,
-            "dst_size": list(self.dst_size),
-            "rotate": self.rotate,
-        }
+from onitama.vision.homography import HomographyCalibration, compute_homography_matrix, draw_grid, warp_board
 
 
 def decode_fourcc(v: float) -> str:
     v = int(v)
     return "".join([chr((v >> (8 * i)) & 0xFF) for i in range(4)])
-
-
-def order_points_clockwise(pts: np.ndarray) -> np.ndarray:
-    """
-    Returns points in order: top-left, top-right, bottom-right, bottom-left.
-    Works even if the user clicks in random order.
-    """
-    pts = pts.astype(np.float32)
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1).reshape(-1)
-
-    tl = pts[np.argmin(s)]
-    br = pts[np.argmax(s)]
-    tr = pts[np.argmin(diff)]
-    bl = pts[np.argmax(diff)]
-
-    return np.array([tl, tr, br, bl], dtype=np.float32)
-
-
-def compute_homography(src_points: List[Tuple[float, float]], dst_w: int, dst_h: int) -> np.ndarray:
-    src = np.array(src_points, dtype=np.float32)
-    src = order_points_clockwise(src)
-
-    dst = np.array(
-        [(0, 0), (dst_w - 1, 0), (dst_w - 1, dst_h - 1), (0, dst_h - 1)],
-        dtype=np.float32,
-    )
-    return cv2.getPerspectiveTransform(src, dst)
-
-
-def apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
-    rotate = rotate % 360
-    if rotate == 0:
-        return img
-    if rotate == 90:
-        return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-    if rotate == 180:
-        return cv2.rotate(img, cv2.ROTATE_180)
-    if rotate == 270:
-        return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    raise ValueError("rotate must be one of {0, 90, 180, 270}")
-
-
-def draw_grid(img: np.ndarray, cells: int = 5) -> np.ndarray:
-    h, w = img.shape[:2]
-    out = img.copy()
-    for i in range(1, cells):
-        x = int(i * w / cells)
-        y = int(i * h / cells)
-        cv2.line(out, (x, 0), (x, h - 1), (0, 255, 0), 1)
-        cv2.line(out, (0, y), (w - 1, y), (0, 255, 0), 1)
-    return out
 
 
 def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30) -> cv2.VideoCapture:
@@ -152,9 +85,13 @@ def main() -> None:
             clicked = []
 
         if key == ord("s") and frozen is not None and len(clicked) == 4:
-            M = compute_homography(clicked, dst_w, dst_h)
-            warped = cv2.warpPerspective(frozen, M, (dst_w, dst_h))
-            warped = apply_rotation(warped, rotate)
+            calib = HomographyCalibration(
+                src_points=tuple(clicked),
+                dst_size=(dst_w, dst_h),
+                rotate=rotate,
+            )
+            M = compute_homography_matrix(calib)
+            warped = warp_board(frozen, calib, M=M)
             warped = draw_grid(warped, cells=5)
 
             cv2.imshow("warped", warped)
@@ -162,8 +99,12 @@ def main() -> None:
             cv2.waitKey(0)
             cv2.destroyWindow("warped")
 
-            calib = Calibration(src_points=clicked, dst_size=(dst_w, dst_h), rotate=rotate)
-            out_path.write_text(json.dumps(calib.to_dict(), indent=2), encoding="utf-8")
+            out_data = {
+                "src_points": [[p[0], p[1]] for p in calib.src_points],
+                "dst_size": [calib.dst_size[0], calib.dst_size[1]],
+                "rotate": calib.rotate,
+            }
+            out_path.write_text(json.dumps(out_data, indent=2), encoding="utf-8")
             print(f"Saved calibration to: {out_path}")
 
             frozen = None
