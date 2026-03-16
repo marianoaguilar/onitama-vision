@@ -111,9 +111,11 @@ def draw_roi_grid(img: np.ndarray, roi: Tuple[int, int, int, int], cells: int = 
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Preview and capture one padded board warp.")
+    parser = argparse.ArgumentParser(
+        description="Preview and capture one warped board image for piece detection."
+    )
     parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
-    parser.add_argument("--output", type=Path, default=Path("data/vision/padded_capture.jpg"))
+    parser.add_argument("--output", type=Path, default=Path("data/vision/piece_detection_warp.jpg"))
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
@@ -187,7 +189,7 @@ def main() -> None:
             1,
         )
 
-        cv2.imshow("padded_warp_preview", preview)
+        cv2.imshow("piece_detection_warp_preview", preview)
         last_preview = rotated
 
         key = cv2.waitKey(1) & 0xFF

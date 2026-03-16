@@ -126,7 +126,9 @@ def utc_now_iso() -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Capture padded warped board images for detection dataset.")
+    parser = argparse.ArgumentParser(
+        description="Capture padded warped board images for the piece detection dataset."
+    )
     parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
     parser.add_argument("--output-root", type=Path, default=Path("data/vision/raw"))
     parser.add_argument("--session-id", type=str, default="")
@@ -286,7 +288,7 @@ def main() -> None:
                     (0, 255, 255),
                     1,
                 )
-                cv2.imshow("capture_padded_dataset", preview)
+                cv2.imshow("capture_piece_detection_dataset", preview)
                 key = cv2.waitKey(1) & 0xFF
             else:
                 key = cv2.waitKey(1) & 0xFF
