@@ -67,30 +67,29 @@ class VisionBoard:
     def __post_init__(self) -> None:
         object.__setattr__(self, "board", _normalize_board(self.board))
 
-    @staticmethod
-    def empty() -> "VisionBoard":
-        return VisionBoard(
+    @classmethod
+    def empty(cls) -> "VisionBoard":
+        return cls(
             board=tuple(tuple(None for _ in range(BOARD_SIZE)) for _ in range(BOARD_SIZE))
         )
 
+    @classmethod
+    def from_board_tokens(cls, board: list[list[str | None]]) -> "VisionBoard":
+        return cls(board=board)
 
-    @staticmethod
-    def from_board_tokens(board: list[list[str | None]]) -> "VisionBoard":
-        return VisionBoard(board=board)
-
-    @staticmethod
-    def from_dict(data: dict[str, object]) -> "VisionBoard":
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> "VisionBoard":
         board = data.get("board")
         if not isinstance(board, list):
             raise ValueError("Invalid vision board dict: 'board' must be a 5x5 list.")
-        return VisionBoard.from_board_tokens(board=board)
+        return cls.from_board_tokens(board=board)
 
-    @staticmethod
-    def load_json(path: str | Path) -> "VisionBoard":
+    @classmethod
+    def load_json(cls, path: str | Path) -> "VisionBoard":
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError("Invalid vision board JSON: root must be an object.")
-        return VisionBoard.from_dict(data)
+        return cls.from_dict(data)
 
     
     def with_cell(self, row: int, col: int, value: CellValue | str) -> "VisionBoard":
@@ -103,7 +102,7 @@ class VisionBoard:
         parsed = _parse_cell_value(value)
         rows = [list(r) for r in self.board]
         rows[row][col] = parsed
-        return VisionBoard(board=tuple(tuple(r) for r in rows))
+        return type(self)(board=tuple(tuple(r) for r in rows))
 
 
     def to_board_tokens(self) -> list[list[str | None]]:
