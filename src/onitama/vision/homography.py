@@ -25,14 +25,16 @@ class HomographyCalibration:
         src_points = tuple(tuple(p) for p in data["src_points"])
         dst_size = tuple(data["dst_size"])
         rotate = int(data.get("rotate", 0))
+        
         if len(src_points) != 4:
             raise ValueError("src_points must have exactly 4 points.")
         if rotate not in (0, 90, 180, 270):
             raise ValueError("rotate must be one of {0, 90, 180, 270}.")
+        
         return HomographyCalibration(src_points=src_points, dst_size=dst_size, rotate=rotate)
 
 
-def _order_points_clockwise(pts: np.ndarray) -> np.ndarray:
+def order_points_clockwise(pts: np.ndarray) -> np.ndarray:
     """
     Returns points in order: top-left, top-right, bottom-right, bottom-left.
     Works even if clicked in random order.
@@ -55,7 +57,7 @@ def compute_homography_matrix(calib: HomographyCalibration) -> np.ndarray:
     Note: rotation is applied after warp (not included in the matrix).
     """
     dst_w, dst_h = calib.dst_size
-    src = _order_points_clockwise(np.array(calib.src_points, dtype=np.float32))
+    src = order_points_clockwise(np.array(calib.src_points, dtype=np.float32))
     dst = np.array(
         [(0, 0), (dst_w - 1, 0), (dst_w - 1, dst_h - 1), (0, dst_h - 1)],
         dtype=np.float32,
@@ -63,7 +65,8 @@ def compute_homography_matrix(calib: HomographyCalibration) -> np.ndarray:
     return cv2.getPerspectiveTransform(src, dst)
 
 
-def _apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
+def apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
+    """Rotate an image by 0, 90, 180 or 270 degrees."""
     rotate = rotate % 360
     if rotate == 0:
         return img
@@ -76,6 +79,79 @@ def _apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
     raise ValueError("rotate must be one of {0, 90, 180, 270}.")
 
 
+def rotate_point(x: int, y: int, width: int, height: int, rotate: int) -> tuple[int, int]:
+    """Rotate one point inside an image."""
+    rotate = rotate % 360
+    if rotate == 0:
+        return x, y
+    if rotate == 90:
+        return height - 1 - y, x
+    if rotate == 180:
+        return width - 1 - x, height - 1 - y
+    if rotate == 270:
+        return y, width - 1 - x
+    raise ValueError("rotate must be one of {0, 90, 180, 270}.")
+
+
+def rotate_roi(
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    width: int,
+    height: int,
+    rotate: int,
+) -> tuple[int, int, int, int]:
+    """Rotate a rectangular ROI and return its new bounding box.
+    
+    Args:
+        - x, y, w, h: input ROI (top-left corner and size).
+        - width, height: dimensions of the image containing the ROI.
+        - rotate: rotation in degrees (0, 90, 180, 270).
+    Returns:
+        - new_x, new_y, new_w, new_h: bounding box of the rotated ROI.
+    """
+    corners = [
+        (x, y),
+        (x + w - 1, y),
+        (x + w - 1, y + h - 1),
+        (x, y + h - 1),
+    ]
+    rotated = [rotate_point(px, py, width, height, rotate) for px, py in corners]
+    xs = [p[0] for p in rotated]
+    ys = [p[1] for p in rotated]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    return min_x, min_y, max_x - min_x + 1, max_y - min_y + 1
+
+
+def build_padded_homography(
+    calib: HomographyCalibration,
+    padding_ratio: float,
+) -> tuple[np.ndarray, tuple[int, int], tuple[int, int, int, int]]:
+    """Build a warp that keeps extra padding around the board."""
+    
+    board_w, board_h = calib.dst_size
+    pad_x = int(round(board_w * padding_ratio))
+    pad_y = int(round(board_h * padding_ratio))
+    out_w = board_w + 2 * pad_x
+    out_h = board_h + 2 * pad_y
+
+    src = order_points_clockwise(np.array(calib.src_points, dtype=np.float32))
+    dst = np.array(
+        [
+            (pad_x, pad_y),
+            (pad_x + board_w - 1, pad_y),
+            (pad_x + board_w - 1, pad_y + board_h - 1),
+            (pad_x, pad_y + board_h - 1),
+        ],
+        dtype=np.float32,
+    )
+    matrix = cv2.getPerspectiveTransform(src, dst)
+    board_roi = (pad_x, pad_y, board_w, board_h)
+    return matrix, (out_w, out_h), board_roi
+
+
 def warp_board(frame: np.ndarray, calib: HomographyCalibration, M: np.ndarray | None = None) -> np.ndarray:
     """
     Warp a camera frame into a canonical top-down board view.
@@ -85,7 +161,7 @@ def warp_board(frame: np.ndarray, calib: HomographyCalibration, M: np.ndarray | 
     if M is None:
         M = compute_homography_matrix(calib)
     warped = cv2.warpPerspective(frame, M, (dst_w, dst_h))
-    warped = _apply_rotation(warped, calib.rotate)
+    warped = apply_rotation(warped, calib.rotate)
     return warped
 
 
@@ -106,7 +182,9 @@ def draw_grid(img: np.ndarray, cells: int = 5) -> np.ndarray:
 def xy_to_cell(x: float, y: float, board_size: int = 5, dst_size: tuple[int, int] = (500, 500)) -> tuple[int, int]:
     """
     Map a point (x,y) in warped board coordinates to a (row, col) cell index.
-    Assumes 0<=x<w and 0<=y<h. Returns (row, col) in [0..board_size-1].
+    Assumes 0<=x<w and 0<=y<h. 
+    
+    Returns (row, col) in [0..board_size-1].
     """
     w, h = dst_size
     cell_w = w / board_size
@@ -115,7 +193,7 @@ def xy_to_cell(x: float, y: float, board_size: int = 5, dst_size: tuple[int, int
     col = int(x // cell_w)
     row = int(y // cell_h)
 
-    # Clamp (safety for boundary points)
+    # Clamp boundary points to the board.
     col = max(0, min(board_size - 1, col))
     row = max(0, min(board_size - 1, row))
 

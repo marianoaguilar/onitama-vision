@@ -1,105 +1,24 @@
 from __future__ import annotations
-
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 import cv2
 import numpy as np
 
 from onitama.vision.board import BOARD_SIZE, VisionBoard, VisionPiece
-from onitama.vision.homography import HomographyCalibration, xy_to_cell
-
-
-def _order_points_clockwise(pts: np.ndarray) -> np.ndarray:
-    pts = pts.astype(np.float32)
-    sums = pts.sum(axis=1)
-    diffs = np.diff(pts, axis=1).reshape(-1)
-
-    top_left = pts[np.argmin(sums)]
-    bottom_right = pts[np.argmax(sums)]
-    top_right = pts[np.argmin(diffs)]
-    bottom_left = pts[np.argmax(diffs)]
-    return np.array([top_left, top_right, bottom_right, bottom_left], dtype=np.float32)
-
-
-def _apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
-    rotate = rotate % 360
-    if rotate == 0:
-        return img
-    if rotate == 90:
-        return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-    if rotate == 180:
-        return cv2.rotate(img, cv2.ROTATE_180)
-    if rotate == 270:
-        return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    raise ValueError("rotate must be one of {0, 90, 180, 270}.")
-
-
-def _rotate_point(x: int, y: int, width: int, height: int, rotate: int) -> Tuple[int, int]:
-    rotate = rotate % 360
-    if rotate == 0:
-        return x, y
-    if rotate == 90:
-        return height - 1 - y, x
-    if rotate == 180:
-        return width - 1 - x, height - 1 - y
-    if rotate == 270:
-        return y, width - 1 - x
-    raise ValueError("rotate must be one of {0, 90, 180, 270}.")
-
-
-def _rotate_roi(
-    x: int,
-    y: int,
-    w: int,
-    h: int,
-    width: int,
-    height: int,
-    rotate: int,
-) -> Tuple[int, int, int, int]:
-    corners = [
-        (x, y),
-        (x + w - 1, y),
-        (x + w - 1, y + h - 1),
-        (x, y + h - 1),
-    ]
-    rotated_corners = [_rotate_point(px, py, width, height, rotate) for px, py in corners]
-    xs = [pt[0] for pt in rotated_corners]
-    ys = [pt[1] for pt in rotated_corners]
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
-    return min_x, min_y, max_x - min_x + 1, max_y - min_y + 1
-
-
-def _build_padded_homography(
-    calib: HomographyCalibration,
-    padding_ratio: float,
-) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int, int, int]]:
-    board_w, board_h = calib.dst_size
-    pad_x = int(round(board_w * padding_ratio))
-    pad_y = int(round(board_h * padding_ratio))
-    out_w = board_w + 2 * pad_x
-    out_h = board_h + 2 * pad_y
-
-    src = _order_points_clockwise(np.array(calib.src_points, dtype=np.float32))
-    dst = np.array(
-        [
-            (pad_x, pad_y),
-            (pad_x + board_w - 1, pad_y),
-            (pad_x + board_w - 1, pad_y + board_h - 1),
-            (pad_x, pad_y + board_h - 1),
-        ],
-        dtype=np.float32,
-    )
-    matrix = cv2.getPerspectiveTransform(src, dst)
-    board_roi = (pad_x, pad_y, board_w, board_h)
-    return matrix, (out_w, out_h), board_roi
+from onitama.vision.homography import (
+    HomographyCalibration,
+    apply_rotation,
+    build_padded_homography,
+    rotate_roi,
+    xy_to_cell,
+)
 
 
 @dataclass(frozen=True)
 class PieceDetection:
+    """One YOLO piece detection mapped to board coordinates when possible."""
+
     class_index: int
     class_name: str
     confidence: float
@@ -111,6 +30,8 @@ class PieceDetection:
 
 
 class YoloPieceDetector:
+    """Run piece detection on the warped board view."""
+
     def __init__(
         self,
         *,
@@ -150,9 +71,9 @@ class YoloPieceDetector:
         self.anchor_x_ratio = float(anchor_x_ratio)
 
         self.calib = HomographyCalibration.load(calibration_path)
-        self.matrix, self.output_size, self.board_roi = _build_padded_homography(self.calib, self.padding_ratio)
+        self.matrix, self.output_size, self.board_roi = build_padded_homography(self.calib, self.padding_ratio)
         raw_w, raw_h = self.output_size
-        self.rotated_roi = _rotate_roi(
+        self.rotated_roi = rotate_roi(
             x=self.board_roi[0],
             y=self.board_roi[1],
             w=self.board_roi[2],
@@ -175,11 +96,12 @@ class YoloPieceDetector:
         self.class_names = {int(idx): str(name) for idx, name in names.items()}
 
     def warp_frame(self, frame: np.ndarray) -> np.ndarray:
+        """Warp the camera frame to the canonical board view."""
         raw_warp = cv2.warpPerspective(frame, self.matrix, self.output_size)
-        return _apply_rotation(raw_warp, self.calib.rotate)
+        return apply_rotation(raw_warp, self.calib.rotate)
 
-    def detect_on_warped(self, warped: np.ndarray) -> tuple[list[PieceDetection], float]:
-        t0 = time.perf_counter()
+    def detect_on_warped(self, warped: np.ndarray) -> list[PieceDetection]:
+        """Run YOLO on an already warped board image."""
         results = self._model.predict(
             source=warped,
             imgsz=self.imgsz,
@@ -189,12 +111,11 @@ class YoloPieceDetector:
             device=self.yolo_device,
             verbose=False,
         )
-        infer_ms = (time.perf_counter() - t0) * 1000.0
         result = results[0]
 
         detections: list[PieceDetection] = []
         if result.boxes is None:
-            return detections, infer_ms
+            return detections
 
         roi_x, roi_y, roi_w, roi_h = self.rotated_roi
         xyxy = result.boxes.xyxy.cpu().numpy()
@@ -207,6 +128,7 @@ class YoloPieceDetector:
             class_name = self.class_names.get(class_index, str(class_index))
             confidence = float(confs[i])
 
+            # This anchor works better than the box center for deciding the board cell.
             anchor_x = float(x1 + self.anchor_x_ratio * (x2 - x1))
             anchor_y = float((y1 + y2) * 0.5)
             local_x = anchor_x - float(roi_x)
@@ -236,14 +158,14 @@ class YoloPieceDetector:
                     vision_piece=vision_piece,
                 )
             )
-        return detections, infer_ms
+        return detections
 
-    def detect_from_frame(self, frame: np.ndarray) -> tuple[np.ndarray, list[PieceDetection], float]:
-        warped = self.warp_frame(frame)
-        detections, infer_ms = self.detect_on_warped(warped)
-        return warped, detections, infer_ms
+    def detect_from_frame(self, frame: np.ndarray) -> list[PieceDetection]:
+        """Warp a frame and run piece detection on it."""
+        return self.detect_on_warped(self.warp_frame(frame))
 
     def detections_to_board(self, detections: list[PieceDetection]) -> VisionBoard:
+        """Convert raw detections into a discrete 5x5 board."""
         best_conf = [[-1.0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
         tokens: list[list[str | None]] = [[None for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
@@ -251,6 +173,7 @@ class YoloPieceDetector:
             if detection.cell is None or detection.vision_piece is None:
                 continue
             row, col = detection.cell
+            # Keep only the strongest detection for each cell.
             if detection.confidence <= best_conf[row][col]:
                 continue
             best_conf[row][col] = detection.confidence
