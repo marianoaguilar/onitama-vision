@@ -5,7 +5,7 @@ from typing import Tuple
 import cv2
 import numpy as np
 
-from onitama.vision.homography import HomographyCalibration
+from onitama.vision.homography import HomographyCalibration, apply_rotation, build_padded_homography, rotate_roi
 
 
 def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30) -> cv2.VideoCapture:
@@ -18,84 +18,6 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     cap.set(cv2.CAP_PROP_FPS, fps)
     return cap
-
-
-def order_points_clockwise(pts: np.ndarray) -> np.ndarray:
-    pts = pts.astype(np.float32)
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1).reshape(-1)
-
-    tl = pts[np.argmin(s)]
-    br = pts[np.argmax(s)]
-    tr = pts[np.argmin(diff)]
-    bl = pts[np.argmax(diff)]
-    return np.array([tl, tr, br, bl], dtype=np.float32)
-
-
-def apply_rotation(img: np.ndarray, rotate: int) -> np.ndarray:
-    rotate = rotate % 360
-    if rotate == 0:
-        return img
-    if rotate == 90:
-        return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-    if rotate == 180:
-        return cv2.rotate(img, cv2.ROTATE_180)
-    if rotate == 270:
-        return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    raise ValueError("rotate must be one of {0, 90, 180, 270}.")
-
-
-def rotate_point(x: int, y: int, width: int, height: int, rotate: int) -> Tuple[int, int]:
-    rotate = rotate % 360
-    if rotate == 0:
-        return x, y
-    if rotate == 90:
-        return height - 1 - y, x
-    if rotate == 180:
-        return width - 1 - x, height - 1 - y
-    if rotate == 270:
-        return y, width - 1 - x
-    raise ValueError("rotate must be one of {0, 90, 180, 270}.")
-
-
-def rotate_roi(x: int, y: int, w: int, h: int, width: int, height: int, rotate: int) -> Tuple[int, int, int, int]:
-    corners = [
-        (x, y),
-        (x + w - 1, y),
-        (x + w - 1, y + h - 1),
-        (x, y + h - 1),
-    ]
-    rotated = [rotate_point(px, py, width, height, rotate) for px, py in corners]
-    xs = [p[0] for p in rotated]
-    ys = [p[1] for p in rotated]
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
-    return min_x, min_y, max_x - min_x + 1, max_y - min_y + 1
-
-
-def build_padded_homography(
-    calib: HomographyCalibration, padding_ratio: float
-) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int, int, int]]:
-    board_w, board_h = calib.dst_size
-    pad_x = int(round(board_w * padding_ratio))
-    pad_y = int(round(board_h * padding_ratio))
-    out_w = board_w + 2 * pad_x
-    out_h = board_h + 2 * pad_y
-
-    src = order_points_clockwise(np.array(calib.src_points, dtype=np.float32))
-    dst = np.array(
-        [
-            (pad_x, pad_y),
-            (pad_x + board_w - 1, pad_y),
-            (pad_x + board_w - 1, pad_y + board_h - 1),
-            (pad_x, pad_y + board_h - 1),
-        ],
-        dtype=np.float32,
-    )
-    m = cv2.getPerspectiveTransform(src, dst)
-    board_roi = (pad_x, pad_y, board_w, board_h)
-    return m, (out_w, out_h), board_roi
-
 
 def draw_roi_grid(img: np.ndarray, roi: Tuple[int, int, int, int], cells: int = 5) -> np.ndarray:
     x, y, w, h = roi

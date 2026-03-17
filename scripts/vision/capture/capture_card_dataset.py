@@ -3,31 +3,17 @@ import json
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import cv2
-import numpy as np
 
-
-SlotName = str
-Point = Tuple[float, float]
-Quad = List[Point]
-
-SLOT_ORDER: Tuple[SlotName, ...] = ("red_0", "red_1", "side", "blue_0", "blue_1")
-SLOT_LABEL: Dict[SlotName, str] = {
-    "red_0": "RED 0",
-    "red_1": "RED 1",
-    "side": "SIDE",
-    "blue_0": "BLUE 0",
-    "blue_1": "BLUE 1",
-}
-SLOT_COLOR: Dict[SlotName, Tuple[int, int, int]] = {
-    "red_0": (0, 0, 255),
-    "red_1": (0, 0, 255),
-    "side": (0, 255, 255),
-    "blue_0": (255, 0, 0),
-    "blue_1": (255, 0, 0),
-}
+from onitama.vision.card_rois import (
+    SLOT_ORDER,
+    SlotName,
+    draw_card_rois_overlay,
+    extract_polygon_crop,
+    load_card_rois,
+)
 
 
 def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30) -> cv2.VideoCapture:
@@ -42,94 +28,8 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
     return cap
 
 
-def _order_points_clockwise(pts: np.ndarray) -> np.ndarray:
-    pts = pts.astype(np.float32)
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1).reshape(-1)
-    tl = pts[np.argmin(s)]
-    br = pts[np.argmax(s)]
-    tr = pts[np.argmin(diff)]
-    bl = pts[np.argmax(diff)]
-    return np.array([tl, tr, br, bl], dtype=np.float32)
-
-
-def load_card_rois(path: Path) -> Dict[SlotName, Quad]:
-    if not path.exists():
-        raise FileNotFoundError(f"Card ROI file not found: {path}")
-
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise ValueError("Invalid card ROI file: root must be an object.")
-
-    rois: Dict[SlotName, Quad] = {}
-    for slot in SLOT_ORDER:
-        entry = raw.get(slot)
-        if not isinstance(entry, dict):
-            raise ValueError(f"Invalid card ROI for {slot}: expected object with 'src_points'.")
-        src_points = entry.get("src_points")
-        if not isinstance(src_points, list) or len(src_points) != 4:
-            raise ValueError(f"Invalid card ROI for {slot}: 'src_points' must have exactly 4 points.")
-
-        points: Quad = []
-        for p in src_points:
-            if not isinstance(p, (list, tuple)) or len(p) != 2:
-                raise ValueError(f"Invalid point in {slot}.")
-            points.append((float(p[0]), float(p[1])))
-
-        ordered = _order_points_clockwise(np.array(points, dtype=np.float32))
-        rois[slot] = [(float(x), float(y)) for x, y in ordered.tolist()]
-
-    return rois
-
-
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def extract_polygon_crop(frame: np.ndarray, points: Quad, mask_polygon: bool) -> np.ndarray:
-    pts = np.array(points, dtype=np.float32)
-
-    min_x = int(np.floor(float(np.min(pts[:, 0]))))
-    max_x = int(np.ceil(float(np.max(pts[:, 0]))))
-    min_y = int(np.floor(float(np.min(pts[:, 1]))))
-    max_y = int(np.ceil(float(np.max(pts[:, 1]))))
-
-    frame_h, frame_w = frame.shape[:2]
-
-    # Clip the polygon bbox to visible frame to avoid synthetic black bands
-    # when ROI points are outside camera bounds.
-    src_x0 = max(0, min_x)
-    src_y0 = max(0, min_y)
-    src_x1 = min(frame_w - 1, max_x)
-    src_y1 = min(frame_h - 1, max_y)
-    if src_x0 > src_x1 or src_y0 > src_y1:
-        raise ValueError("ROI polygon falls completely outside frame.")
-
-    out = frame[src_y0:src_y1 + 1, src_x0:src_x1 + 1].copy()
-
-    if mask_polygon:
-        shifted = np.array(
-            [[int(round(x - src_x0)), int(round(y - src_y0))] for x, y in points],
-            dtype=np.int32,
-        ).reshape((-1, 1, 2))
-        mask = np.zeros((out.shape[0], out.shape[1]), dtype=np.uint8)
-        cv2.fillPoly(mask, [shifted], 255)
-        out = cv2.bitwise_and(out, out, mask=mask)
-
-    return out
-
-
-def draw_rois_overlay(frame: np.ndarray, rois: Dict[SlotName, Quad]) -> np.ndarray:
-    out = frame.copy()
-    for slot in SLOT_ORDER:
-        color = SLOT_COLOR[slot]
-        points = rois[slot]
-        pts_i = np.array([[int(round(x)), int(round(y))] for x, y in points], dtype=np.int32).reshape((-1, 1, 2))
-        cv2.polylines(out, [pts_i], isClosed=True, color=color, thickness=2)
-        cx = int(round(sum(x for x, _ in points) / 4.0))
-        cy = int(round(sum(y for _, y in points) / 4.0))
-        cv2.putText(out, SLOT_LABEL[slot], (cx - 42, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-    return out
 
 
 def parse_args() -> argparse.Namespace:
@@ -258,7 +158,7 @@ def main() -> None:
             if not args.no_preview:
                 preview = frame
                 if show_rois:
-                    preview = draw_rois_overlay(preview, rois)
+                    preview = draw_card_rois_overlay(preview, rois)
                 status = "AUTO" if auto_capture else "PAUSED"
                 cv2.putText(
                     preview,

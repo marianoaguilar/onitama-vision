@@ -1,11 +1,12 @@
 import argparse
 import json
 from pathlib import Path
+import time
 
 import cv2
 
 from onitama.vision.board import VisionBoard, VisionPiece
-from onitama.vision.yolo_detector import PieceDetection, YoloPieceDetector
+from onitama.vision.piece_detector import PieceDetection, YoloPieceDetector
 
 
 def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30) -> cv2.VideoCapture:
@@ -146,7 +147,10 @@ def main() -> None:
             print("Could not read frame from camera.")
             break
 
-        warped, detections, infer_ms = detector.detect_from_frame(frame)
+        warped = detector.warp_frame(frame)
+        t0 = time.perf_counter()
+        detections = detector.detect_on_warped(warped)
+        infer_ms = (time.perf_counter() - t0) * 1000.0
         board = detector.detections_to_board(detections)
 
         preview = draw_board_overlay(warped, board, detector.rotated_roi)

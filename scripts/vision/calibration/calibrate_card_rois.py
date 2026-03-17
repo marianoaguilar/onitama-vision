@@ -1,31 +1,11 @@
 import argparse
-import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 import cv2
 import numpy as np
 
-
-SlotName = str
-Point = Tuple[float, float]
-Quad = List[Point]
-
-SLOT_ORDER: Tuple[SlotName, ...] = ("red_0", "red_1", "side", "blue_0", "blue_1")
-SLOT_LABEL: Dict[SlotName, str] = {
-    "red_0": "RED 0",
-    "red_1": "RED 1",
-    "side": "SIDE",
-    "blue_0": "BLUE 0",
-    "blue_1": "BLUE 1",
-}
-SLOT_COLOR: Dict[SlotName, Tuple[int, int, int]] = {
-    "red_0": (0, 0, 255),
-    "red_1": (0, 0, 255),
-    "side": (0, 255, 255),
-    "blue_0": (255, 0, 0),
-    "blue_1": (255, 0, 0),
-}
+from onitama.vision.card_rois import SLOT_COLOR, SLOT_LABEL, SLOT_ORDER, Quad, SlotName, load_card_rois, save_card_rois
 
 
 def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30) -> cv2.VideoCapture:
@@ -38,61 +18,6 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     cap.set(cv2.CAP_PROP_FPS, fps)
     return cap
-
-
-def _order_points_clockwise(pts: np.ndarray) -> np.ndarray:
-    pts = pts.astype(np.float32)
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1).reshape(-1)
-
-    tl = pts[np.argmin(s)]
-    br = pts[np.argmax(s)]
-    tr = pts[np.argmin(diff)]
-    bl = pts[np.argmax(diff)]
-    return np.array([tl, tr, br, bl], dtype=np.float32)
-
-
-def load_card_rois(path: Path) -> Dict[SlotName, Quad]:
-    rois: Dict[SlotName, Quad] = {slot: [] for slot in SLOT_ORDER}
-    if not path.exists():
-        return rois
-
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise ValueError("Invalid card ROI file: root must be an object.")
-
-    for slot in SLOT_ORDER:
-        entry = raw.get(slot)
-        if entry is None:
-            continue
-        if not isinstance(entry, dict):
-            raise ValueError(f"Invalid card ROI for {slot}: must be an object with 'src_points'.")
-        src_points = entry.get("src_points")
-        if not isinstance(src_points, list) or len(src_points) != 4:
-            raise ValueError(f"Invalid card ROI for {slot}: 'src_points' must have exactly 4 points.")
-        parsed: Quad = []
-        for p in src_points:
-            if not isinstance(p, (list, tuple)) or len(p) != 2:
-                raise ValueError(f"Invalid point in {slot}.")
-            parsed.append((float(p[0]), float(p[1])))
-        rois[slot] = parsed
-    return rois
-
-
-def save_card_rois(path: Path, rois: Dict[SlotName, Quad]) -> None:
-    payload: Dict[str, Dict[str, List[List[float]]]] = {}
-    for slot in SLOT_ORDER:
-        points = rois.get(slot)
-        if points is None or len(points) != 4:
-            raise ValueError(f"Cannot save: slot '{slot}' does not have 4 points.")
-
-        ordered = _order_points_clockwise(np.array(points, dtype=np.float32))
-        payload[slot] = {
-            "src_points": [[float(x), float(y)] for x, y in ordered.tolist()]
-        }
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def nearest_vertex(points: Quad, x: float, y: float, max_dist_px: float) -> int | None:
@@ -124,7 +49,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    rois = load_card_rois(args.out)
+    rois = load_card_rois(args.out, allow_missing=True)
 
     cap = open_camera(device=args.camera_id, width=args.width, height=args.height, fps=args.fps)
     active_slot_idx = 0
