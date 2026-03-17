@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from onitama.engine.pieces import Player
-from onitama.vision.board import VisionBoard
+from onitama.engine.cards import CARD_BY_NAME, Card
+from onitama.engine.pieces import Piece, PieceType, Player
+from onitama.engine.state import Board, GameState
+from onitama.vision.board import VisionBoard, VisionPiece
+from onitama.vision.card_classifier import CardClassificationResult
 
 
 def _parse_player(value: Player | str) -> Player:
+    """Normalize a player value coming from code or JSON."""
     if isinstance(value, Player):
         return value
     if isinstance(value, str):
@@ -21,6 +26,7 @@ def _parse_player(value: Player | str) -> Player:
 
 
 def _parse_card_pair(value: tuple[str, str] | list[str], field_name: str) -> tuple[str, str]:
+    """Validate a pair of card names."""
     if len(value) != 2:
         raise ValueError(f"{field_name} must contain exactly 2 card names.")
     first = str(value[0]).strip()
@@ -30,20 +36,77 @@ def _parse_card_pair(value: tuple[str, str] | list[str], field_name: str) -> tup
     return (first, second)
 
 
+def _vision_piece_to_engine_piece(piece: VisionPiece | None) -> Piece | None:
+    """Convert one visual piece to the engine piece type."""
+    if piece is None:
+        return None
+
+    if piece is VisionPiece.RED_MASTER:
+        return Piece(owner=Player.RED, kind=PieceType.MASTER)
+    if piece is VisionPiece.RED_STUDENT:
+        return Piece(owner=Player.RED, kind=PieceType.STUDENT)
+    if piece is VisionPiece.BLUE_MASTER:
+        return Piece(owner=Player.BLUE, kind=PieceType.MASTER)
+    return Piece(owner=Player.BLUE, kind=PieceType.STUDENT)
+
+
+def _vision_board_to_engine_board(board: VisionBoard) -> Board:
+    """Convert the visual board into the engine board."""
+    return tuple(
+        tuple(_vision_piece_to_engine_piece(cell) for cell in row)
+        for row in board.board
+    )
+
+
+def _resolve_card(card_name: str) -> Card:
+    """Resolve a card name to the engine Card object."""
+    resolved = CARD_BY_NAME.get(card_name)
+    if resolved is None:
+        raise ValueError(f"Unknown card name: {card_name!r}")
+    return resolved
+
+
+def _resolve_card_pair(cards: Sequence[str], field_name: str) -> tuple[Card, Card]:
+    """Resolve a pair of card names to engine cards."""
+    if len(cards) != 2:
+        raise ValueError(f"{field_name} must contain exactly 2 cards.")
+    first = _resolve_card(cards[0])
+    second = _resolve_card(cards[1])
+    return (first, second)
+
+
+def _validate_master_count(board: Board) -> None:
+    """Reject boards with more than one master per player."""
+    red_masters = 0
+    blue_masters = 0
+    for row in board:
+        for piece in row:
+            if piece is None or piece.kind is not PieceType.MASTER:
+                continue
+            if piece.owner is Player.RED:
+                red_masters += 1
+            else:
+                blue_masters += 1
+
+    if red_masters > 1:
+        raise ValueError("Invalid board: more than one RED master detected.")
+    if blue_masters > 1:
+        raise ValueError("Invalid board: more than one BLUE master detected.")
+
+
 @dataclass(frozen=True)
 class VisionSnapshot:
     """
-    Minimal vision payload to reconstruct an engine GameState.
+    Minimal visual observation of the board and cards.
     """
 
     board: VisionBoard
-    to_move: Player
     red_cards: tuple[str, str]
     blue_cards: tuple[str, str]
     side_card: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "to_move", _parse_player(self.to_move))
+        """Normalize card fields after construction."""
         object.__setattr__(self, "red_cards", _parse_card_pair(self.red_cards, "red_cards"))
         object.__setattr__(self, "blue_cards", _parse_card_pair(self.blue_cards, "blue_cards"))
 
@@ -52,8 +115,8 @@ class VisionSnapshot:
             raise ValueError("side_card cannot be empty.")
         object.__setattr__(self, "side_card", side)
 
-    @staticmethod
-    def from_dict(data: dict[str, object]) -> "VisionSnapshot":
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> "VisionSnapshot":
         board = data.get("board")
         if isinstance(board, list):
             parsed_board = VisionBoard.from_board_tokens(board=board)
@@ -62,7 +125,6 @@ class VisionSnapshot:
         else:
             raise ValueError("Invalid snapshot: 'board' must be a 5x5 list or a board object.")
 
-        to_move = data.get("to_move")
         red_cards = data.get("red_cards")
         blue_cards = data.get("blue_cards")
         side_card = data.get("side_card")
@@ -74,26 +136,39 @@ class VisionSnapshot:
         if not isinstance(side_card, str):
             raise ValueError("Invalid snapshot: 'side_card' must be a string.")
 
-        return VisionSnapshot(
+        return cls(
             board=parsed_board,
-            to_move=_parse_player(to_move),
             red_cards=_parse_card_pair(red_cards, "red_cards"),
             blue_cards=_parse_card_pair(blue_cards, "blue_cards"),
             side_card=side_card,
         )
 
-    @staticmethod
-    def load_json(path: str | Path) -> "VisionSnapshot":
+    @classmethod
+    def load_json(cls, path: str | Path) -> "VisionSnapshot":
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError("Invalid snapshot JSON: root must be an object.")
-        return VisionSnapshot.from_dict(data)
+        return cls.from_dict(data)
 
+    @classmethod
+    def from_board_and_cards(
+        cls,
+        *,
+        board: VisionBoard,
+        card_result: CardClassificationResult,
+    ) -> "VisionSnapshot":
+        """Build a snapshot from an inferred board and inferred cards."""
+        red_cards, blue_cards, side_card = card_result.cards_layout()
+        return cls(
+            board=board,
+            red_cards=red_cards,
+            blue_cards=blue_cards,
+            side_card=side_card,
+        )
 
     def to_dict(self) -> dict[str, object]:
         return {
             "board": self.board.to_board_tokens(),
-            "to_move": self.to_move.value,
             "red_cards": [self.red_cards[0], self.red_cards[1]],
             "blue_cards": [self.blue_cards[0], self.blue_cards[1]],
             "side_card": self.side_card,
@@ -103,3 +178,29 @@ class VisionSnapshot:
         out = Path(path)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
+
+    # Main conversion method
+    def to_game_state(self, to_move: Player | str) -> GameState:
+        """Convert the visual snapshot into an engine GameState."""
+        
+        engine_board = _vision_board_to_engine_board(self.board)
+
+        # Validate the board has at most one master per player
+        _validate_master_count(engine_board)
+
+        red_pair = _resolve_card_pair(self.red_cards, "red_cards")
+        blue_pair = _resolve_card_pair(self.blue_cards, "blue_cards")
+        side = _resolve_card(self.side_card)
+
+        # Enforced unique cards
+        used = [red_pair[0].name, red_pair[1].name, blue_pair[0].name, blue_pair[1].name, side.name]
+        if len(set(used)) != 5:
+            raise ValueError("Cards must be 5 unique cards across red, blue and side.")
+
+        return GameState(
+            board=engine_board,
+            to_move=_parse_player(to_move),
+            red_cards=red_pair,
+            blue_cards=blue_pair,
+            side_card=side,
+        )
