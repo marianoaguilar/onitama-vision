@@ -75,23 +75,41 @@ def _resolve_card_pair(cards: Sequence[str], field_name: str) -> tuple[Card, Car
     return (first, second)
 
 
-def _validate_master_count(board: Board) -> None:
-    """Reject boards with more than one master per player."""
+def _validate_piece_counts(board: Board) -> None:
+    """Reject boards that exceed Onitama piece limits for either player."""
     red_masters = 0
+    red_students = 0
     blue_masters = 0
+    blue_students = 0
+
     for row in board:
         for piece in row:
-            if piece is None or piece.kind is not PieceType.MASTER:
+            if piece is None:
                 continue
+
             if piece.owner is Player.RED:
-                red_masters += 1
+                if piece.kind is PieceType.MASTER:
+                    red_masters += 1
+                else:
+                    red_students += 1
             else:
-                blue_masters += 1
+                if piece.kind is PieceType.MASTER:
+                    blue_masters += 1
+                else:
+                    blue_students += 1
 
     if red_masters > 1:
         raise ValueError("Invalid board: more than one RED master detected.")
     if blue_masters > 1:
         raise ValueError("Invalid board: more than one BLUE master detected.")
+    if red_students > 4:
+        raise ValueError("Invalid board: more than four RED students detected.")
+    if blue_students > 4:
+        raise ValueError("Invalid board: more than four BLUE students detected.")
+    if red_masters + red_students > 5:
+        raise ValueError("Invalid board: more than five RED pieces detected.")
+    if blue_masters + blue_students > 5:
+        raise ValueError("Invalid board: more than five BLUE pieces detected.")
 
 
 @dataclass(frozen=True)
@@ -185,8 +203,8 @@ class VisionSnapshot:
         
         engine_board = _vision_board_to_engine_board(self.board)
 
-        # Validate the board has at most one master per player
-        _validate_master_count(engine_board)
+        # Validate the board does not exceed Onitama piece limits.
+        _validate_piece_counts(engine_board)
 
         red_pair = _resolve_card_pair(self.red_cards, "red_cards")
         blue_pair = _resolve_card_pair(self.blue_cards, "blue_cards")

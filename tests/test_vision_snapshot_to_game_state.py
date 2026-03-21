@@ -52,3 +52,34 @@ def test_snapshot_to_game_state_rejects_multiple_red_masters() -> None:
 
     with pytest.raises(ValueError, match="more than one RED master"):
         snapshot.to_game_state(to_move=Player.RED)
+
+
+def test_snapshot_to_game_state_rejects_too_many_red_students() -> None:
+    board = VisionBoard.empty()
+    for col in range(5):
+        board = board.with_cell(4, col, VisionPiece.RED_STUDENT)
+    snapshot = VisionSnapshot(
+        board=board,
+        red_cards=("Tiger", "Horse"),
+        blue_cards=("Crab", "Boar"),
+        side_card="Rabbit",
+    )
+
+    with pytest.raises(ValueError, match="more than four RED students"):
+        snapshot.to_game_state(to_move=Player.RED)
+
+
+def test_snapshot_to_game_state_rejects_too_many_red_pieces() -> None:
+    board = VisionBoard.empty()
+    board = board.with_cell(4, 2, VisionPiece.RED_MASTER)
+    for row, col in ((4, 0), (4, 1), (4, 3), (4, 4), (3, 2)):
+        board = board.with_cell(row, col, VisionPiece.RED_STUDENT)
+    snapshot = VisionSnapshot(
+        board=board,
+        red_cards=("Tiger", "Horse"),
+        blue_cards=("Crab", "Boar"),
+        side_card="Rabbit",
+    )
+
+    with pytest.raises(ValueError, match="more than four RED students|more than five RED pieces"):
+        snapshot.to_game_state(to_move=Player.RED)
