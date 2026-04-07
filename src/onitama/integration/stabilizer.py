@@ -9,7 +9,6 @@ from onitama.engine.state import GameState
 class StabilizerResult:
     """Current stabilization status after consuming one observation."""
 
-    status: str
     stable: bool
     state: GameState
     repeat_count: int
@@ -42,10 +41,7 @@ class StateStabilizer:
             self.repeat_count += 1
 
         stable = self.repeat_count >= self.required_repeats
-        status = "stable" if stable else "collecting"
-
         return StabilizerResult(
-            status=status,
             stable=stable,
             state=self.candidate_state,
             repeat_count=self.repeat_count,
