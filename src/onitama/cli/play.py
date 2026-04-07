@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from onitama.ai.controllers import AIController
 from onitama.ai.evaluate import EVALUATORS
 from onitama.cli.controllers import HumanCLIController
+from onitama.cli.prompts import prompt_choice, prompt_int
 from onitama.cli.render import render_state, format_action
 from onitama.engine.controllers import Controller
 from onitama.engine.pieces import Player
@@ -18,52 +19,11 @@ class GameConfig:
     blue_controller: Controller
 
 
-def _prompt_int(prompt: str, default: int, lo: int, hi: int) -> int:
-    while True:
-        raw = input(f"\n{prompt} [{default}]: ").strip()
-        if raw == "":
-            return default
-        try:
-            n = int(raw)
-        except ValueError:
-            print("Please enter a valid integer.")
-            continue
-        if n < lo or n > hi:
-            print(f"Please enter a number between {lo} and {hi}.")
-            continue
-        return n
-
-
-def _prompt_choice(prompt: str, options: list[str], default_index: int = 0) -> str:
-    assert options, "Options must not be empty."
-    while True:
-        print(prompt)
-        for i, opt in enumerate(options, start=1):
-            mark = " (default)" if (i - 1) == default_index else ""
-            print(f"  {i}) {opt}{mark}")
-
-        raw = input("Select an option: ").strip()
-        if raw == "":
-            return options[default_index]
-
-        try:
-            idx = int(raw)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-
-        if idx < 1 or idx > len(options):
-            print(f"Please enter a number between 1 and {len(options)}.")
-            continue
-
-        return options[idx - 1]
-
-
 def _prompt_ai_settings(player_name: str) -> AIController:
-    depth = _prompt_int(f"{player_name} AI depth", default=5, lo=1, hi=8)
+    depth = prompt_int(f"{player_name} AI depth", default=5, lo=1, hi=8)
 
     eval_names = sorted(EVALUATORS.keys())
-    eval_name = _prompt_choice(
+    eval_name = prompt_choice(
         f"{player_name} evaluator:",
         options=eval_names,
         default_index=2,
@@ -74,7 +34,7 @@ def _prompt_ai_settings(player_name: str) -> AIController:
 
 def prompt_game_config() -> GameConfig:
     print("\n=== Onitama CLI ===\n")
-    mode = _prompt_choice(
+    mode = prompt_choice(
         "Game mode:",
         options=[
             "Human vs Human",
