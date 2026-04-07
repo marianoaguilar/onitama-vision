@@ -2,7 +2,7 @@ from onitama.engine.cards import ALL_CARDS
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.synchronizer import infer_action, match_observed_state
+from onitama.integration.synchronizer import SyncStatus, infer_action, match_observed_state
 
 
 def test_synchronizer_accepts_unique_legal_successor():
@@ -12,7 +12,7 @@ def test_synchronizer_accepts_unique_legal_successor():
 
     result = match_observed_state(previous_state, observed_state)
 
-    assert result.status == "accepted"
+    assert result.status is SyncStatus.ACCEPTED
     assert result.accepted is True
     assert result.match_count == 1
     assert result.matched_action == action
@@ -25,7 +25,7 @@ def test_synchronizer_marks_identical_state_as_unchanged():
 
     result = match_observed_state(previous_state, previous_state)
 
-    assert result.status == "unchanged"
+    assert result.status is SyncStatus.UNCHANGED
     assert result.accepted is False
     assert result.match_count == 0
     assert result.matched_action is None
@@ -44,7 +44,7 @@ def test_synchronizer_rejects_non_successor_state():
 
     result = match_observed_state(previous_state, observed_state)
 
-    assert result.status == "rejected"
+    assert result.status is SyncStatus.REJECTED
     assert result.accepted is False
     assert result.match_count == 0
     assert result.matched_action is None
@@ -67,7 +67,7 @@ def test_synchronizer_rejects_when_previous_state_is_terminal():
 
     result = match_observed_state(previous_state, observed_state)
 
-    assert result.status == "terminal_previous"
+    assert result.status is SyncStatus.TERMINAL_PREVIOUS
     assert result.accepted is False
     assert result.match_count == 0
     assert "terminal" in (result.reason or "")
