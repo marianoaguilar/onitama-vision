@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 from onitama.engine.rules import Action, apply_action, generate_legal_actions, is_terminal
 from onitama.engine.state import GameState
+
+
+class SyncStatus(str, Enum):
+    ACCEPTED = "accepted"
+    UNCHANGED = "unchanged"
+    REJECTED = "rejected"
+    AMBIGUOUS = "ambiguous"
+    TERMINAL_PREVIOUS = "terminal_previous"
 
 
 @dataclass(frozen=True)
@@ -18,7 +27,7 @@ class MatchedSuccessor:
 class SyncResult:
     """Result of checking an observed state against legal successors."""
 
-    status: str
+    status: SyncStatus
     accepted: bool
     previous_state: GameState
     observed_state: GameState
@@ -52,7 +61,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
     """
     if is_terminal(previous_state):
         return SyncResult(
-            status="terminal_previous",
+            status=SyncStatus.TERMINAL_PREVIOUS,
             accepted=False,
             previous_state=previous_state,
             observed_state=observed_state,
@@ -62,7 +71,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
 
     if previous_state == observed_state:
         return SyncResult(
-            status="unchanged",
+            status=SyncStatus.UNCHANGED,
             accepted=False,
             previous_state=previous_state,
             observed_state=observed_state,
@@ -79,7 +88,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
     if len(matches) == 1:
         match = matches[0]
         return SyncResult(
-            status="accepted",
+            status=SyncStatus.ACCEPTED,
             accepted=True,
             previous_state=previous_state,
             observed_state=observed_state,
@@ -90,7 +99,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
 
     if len(matches) == 0:
         return SyncResult(
-            status="rejected",
+            status=SyncStatus.REJECTED,
             accepted=False,
             previous_state=previous_state,
             observed_state=observed_state,
@@ -99,7 +108,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
         )
 
     return SyncResult(
-        status="ambiguous",
+        status=SyncStatus.AMBIGUOUS,
         accepted=False,
         previous_state=previous_state,
         observed_state=observed_state,
