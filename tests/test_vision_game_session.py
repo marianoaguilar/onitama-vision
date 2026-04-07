@@ -4,7 +4,7 @@ from onitama.engine.moves import Move
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import Action, apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.session import SessionPhase, VisionGameSession
+from onitama.integration.session import SessionOutcome, SessionPhase, VisionGameSession
 from onitama.integration.stabilizer import StateStabilizer
 
 
@@ -49,7 +49,7 @@ def test_session_bootstrap_waits_until_state_is_stable():
     result = session.process_observation(initial_state)
 
     assert result.phase is SessionPhase.BOOTSTRAP
-    assert result.status == "collecting"
+    assert result.outcome is SessionOutcome.COLLECTING
     assert result.current_state is None
     assert result.stable_state is None
 
@@ -65,7 +65,7 @@ def test_session_bootstrap_routes_to_human_turn_when_human_starts():
     result = _stabilize(session, initial_state)
 
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
-    assert result.status == "bootstrapped_human_to_move"
+    assert result.outcome is SessionOutcome.BOOTSTRAPPED
     assert result.current_state == initial_state
     assert session.current_state == initial_state
 
@@ -81,7 +81,7 @@ def test_session_bootstrap_routes_to_ai_turn_when_ai_starts():
     result = _stabilize(session, initial_state)
 
     assert result.phase is SessionPhase.READY_FOR_AI
-    assert result.status == "bootstrapped_ai_to_move"
+    assert result.outcome is SessionOutcome.BOOTSTRAPPED
     assert result.current_state == initial_state
 
 
@@ -97,7 +97,7 @@ def test_session_reports_unchanged_stable_observation_during_human_turn():
     result = _stabilize(session, initial_state)
 
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
-    assert result.status == "unchanged_observation"
+    assert result.outcome is SessionOutcome.UNCHANGED_OBSERVATION
     assert result.current_state == initial_state
     assert result.stable_state == initial_state
 
@@ -115,7 +115,7 @@ def test_session_accepts_stable_legal_human_move_and_switches_to_ai_turn():
     result = _stabilize(session, next_state)
 
     assert result.phase is SessionPhase.READY_FOR_AI
-    assert result.status == "human_move_accepted_ai_turn"
+    assert result.outcome is SessionOutcome.HUMAN_MOVE_ACCEPTED
     assert result.current_state == next_state
     assert result.sync_result is not None
     assert result.sync_result.accepted is True
@@ -141,7 +141,7 @@ def test_session_rejects_stable_illegal_human_move():
     result = _stabilize(session, illegal_state)
 
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
-    assert result.status == "human_move_rejected"
+    assert result.outcome is SessionOutcome.HUMAN_MOVE_REJECTED
     assert result.current_state == initial_state
     assert result.sync_result is not None
     assert result.sync_result.accepted is False
@@ -171,7 +171,7 @@ def test_session_moves_to_finished_when_accepted_human_move_is_terminal():
     result = _stabilize(session, terminal_state)
 
     assert result.phase is SessionPhase.FINISHED
-    assert result.status == "human_move_accepted_terminal"
+    assert result.outcome is SessionOutcome.HUMAN_MOVE_ACCEPTED
     assert result.current_state == terminal_state
 
 
@@ -187,7 +187,7 @@ def test_run_ai_turn_selects_action_and_waits_for_expected_state():
     result = session.run_ai_turn()
 
     assert result.phase is SessionPhase.WAITING_AI_EXECUTION
-    assert result.status == "ai_action_selected"
+    assert result.outcome is SessionOutcome.AI_ACTION_SELECTED
     assert result.current_state == initial_state
     assert result.expected_state is not None
     assert result.ai_action is not None
@@ -208,7 +208,7 @@ def test_session_waits_for_physical_ai_execution_after_action_selection():
     result = _stabilize(session, initial_state)
 
     assert result.phase is SessionPhase.WAITING_AI_EXECUTION
-    assert result.status == "awaiting_ai_execution"
+    assert result.outcome is SessionOutcome.AWAITING_AI_EXECUTION
     assert result.current_state == initial_state
     assert result.expected_state == session.expected_state
 
@@ -227,7 +227,7 @@ def test_session_confirms_expected_ai_state_and_returns_to_human_turn():
     result = _stabilize(session, ai_step.expected_state)
 
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
-    assert result.status == "ai_execution_confirmed_human_turn"
+    assert result.outcome is SessionOutcome.AI_EXECUTION_CONFIRMED
     assert result.current_state == ai_step.expected_state
     assert result.ai_action == ai_step.ai_action
     assert session.expected_state is None
@@ -261,4 +261,4 @@ def test_session_moves_to_finished_when_confirmed_ai_state_is_terminal():
     result = _stabilize(session, ai_step.expected_state)
 
     assert result.phase is SessionPhase.FINISHED
-    assert result.status == "ai_execution_confirmed_terminal"
+    assert result.outcome is SessionOutcome.AI_EXECUTION_CONFIRMED
