@@ -7,7 +7,7 @@ from onitama.ai.controllers import AIController
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action, apply_action, winner
 from onitama.engine.state import GameState
-from onitama.integration.stabilizer import StabilizerResult, StateStabilizer
+from onitama.integration.stabilizer import StateStabilizer
 from onitama.integration.synchronizer import SyncResult, match_observed_state
 
 
@@ -42,10 +42,8 @@ class SessionStepResult:
     phase: SessionPhase
     outcome: SessionOutcome
     current_state: GameState | None
-    stable_state: GameState | None = None
     expected_state: GameState | None = None
     ai_action: Action | None = None
-    stabilizer_result: StabilizerResult | None = None
     sync_result: SyncResult | None = None
     message: str | None = None
 
@@ -65,7 +63,6 @@ class VisionGameSession:
     stabilizer: StateStabilizer = field(default_factory=StateStabilizer)
     current_state: GameState | None = field(init=False, default=None)
     phase: SessionPhase = field(init=False, default=SessionPhase.BOOTSTRAP)
-    last_sync_result: SyncResult | None = field(init=False, default=None)
     expected_state: GameState | None = field(init=False, default=None)
     last_ai_action: Action | None = field(init=False, default=None)
 
@@ -96,28 +93,25 @@ class VisionGameSession:
                 message="It is the AI turn; call run_ai_turn() before processing more observations.",
             )
 
-        stabilizer_result = self.stabilizer.push(observed_state)
-        if not stabilizer_result.stable:
+        stable_state = self.stabilizer.push(observed_state)
+        if stable_state is None:
             return SessionStepResult(
                 phase=self.phase,
                 outcome=SessionOutcome.COLLECTING,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                stabilizer_result=stabilizer_result,
                 message="Observation not stable yet.",
             )
 
-        stable_state = stabilizer_result.state
-
         if self.phase is SessionPhase.BOOTSTRAP:
-            return self._bootstrap_from_stable_state(stable_state, stabilizer_result)
+            return self._bootstrap_from_stable_state(stable_state)
 
         if self.phase is SessionPhase.WAITING_HUMAN_MOVE:
-            return self._process_stable_human_observation(stable_state, stabilizer_result)
+            return self._process_stable_human_observation(stable_state)
 
         if self.phase is SessionPhase.WAITING_AI_EXECUTION:
-            return self._process_stable_ai_execution(stable_state, stabilizer_result)
+            return self._process_stable_ai_execution(stable_state)
 
         raise ValueError(f"Unknown session phase: {self.phase!r}")
 
@@ -185,13 +179,11 @@ class VisionGameSession:
     def _bootstrap_from_stable_state(
         self,
         stable_state: GameState,
-        stabilizer_result: StabilizerResult,
     ) -> SessionStepResult:
         """Adopt the first stable observation as the confirmed current state."""
         self.current_state = stable_state
         self.expected_state = None
         self.last_ai_action = None
-        self.last_sync_result = None
         self.phase = self._phase_for_confirmed_state(stable_state)
 
         if self.phase is SessionPhase.FINISHED:
@@ -205,8 +197,6 @@ class VisionGameSession:
             phase=self.phase,
             outcome=SessionOutcome.BOOTSTRAPPED,
             current_state=self.current_state,
-            stable_state=stable_state,
-            stabilizer_result=stabilizer_result,
             message=message,
         )
 
@@ -214,7 +204,6 @@ class VisionGameSession:
     def _process_stable_human_observation(
         self,
         stable_state: GameState,
-        stabilizer_result: StabilizerResult,
     ) -> SessionStepResult:
         """Validate one stable human observation against the confirmed state."""
         assert self.current_state is not None, "WAITING_HUMAN_MOVE requires a confirmed current_state."
@@ -224,21 +213,16 @@ class VisionGameSession:
                 phase=self.phase,
                 outcome=SessionOutcome.UNCHANGED_OBSERVATION,
                 current_state=self.current_state,
-                stable_state=stable_state,
-                stabilizer_result=stabilizer_result,
                 message="Stable observation matches the current confirmed state.",
             )
 
         sync_result = match_observed_state(self.current_state, stable_state)
-        self.last_sync_result = sync_result
 
         if not sync_result.accepted:
             return SessionStepResult(
                 phase=self.phase,
                 outcome=SessionOutcome.HUMAN_MOVE_REJECTED,
                 current_state=self.current_state,
-                stable_state=stable_state,
-                stabilizer_result=stabilizer_result,
                 sync_result=sync_result,
                 message="Stable observation was rejected by the legal-state synchronizer.",
             )
@@ -259,8 +243,6 @@ class VisionGameSession:
             phase=self.phase,
             outcome=SessionOutcome.HUMAN_MOVE_ACCEPTED,
             current_state=self.current_state,
-            stable_state=stable_state,
-            stabilizer_result=stabilizer_result,
             sync_result=sync_result,
             message=message,
         )
@@ -269,7 +251,6 @@ class VisionGameSession:
     def _process_stable_ai_execution(
         self,
         stable_state: GameState,
-        stabilizer_result: StabilizerResult,
     ) -> SessionStepResult:
         """Check whether the physical board now matches the expected AI state."""
         assert self.current_state is not None, "WAITING_AI_EXECUTION requires a confirmed current_state."
@@ -294,10 +275,8 @@ class VisionGameSession:
                 phase=self.phase,
                 outcome=SessionOutcome.AI_EXECUTION_CONFIRMED,
                 current_state=self.current_state,
-                stable_state=stable_state,
                 expected_state=None,
                 ai_action=ai_action,
-                stabilizer_result=stabilizer_result,
                 message=message,
             )
 
@@ -306,10 +285,8 @@ class VisionGameSession:
                 phase=self.phase,
                 outcome=SessionOutcome.AWAITING_AI_EXECUTION,
                 current_state=self.current_state,
-                stable_state=stable_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                stabilizer_result=stabilizer_result,
                 message="Stable observation still matches the pre-AI state; waiting for the board to change.",
             )
 
@@ -317,9 +294,7 @@ class VisionGameSession:
             phase=self.phase,
             outcome=SessionOutcome.AI_EXECUTION_MISMATCH,
             current_state=self.current_state,
-            stable_state=stable_state,
             expected_state=self.expected_state,
             ai_action=self.last_ai_action,
-            stabilizer_result=stabilizer_result,
             message="Stable observation does not match the expected AI result.",
         )
