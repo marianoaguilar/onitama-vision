@@ -19,12 +19,28 @@ class SessionPhase(str, Enum):
     FINISHED = "FINISHED"
 
 
+class SessionOutcome(str, Enum):
+    FINISHED_ALREADY = "finished_already"
+    AWAITING_AI = "awaiting_ai"
+    COLLECTING = "collecting"
+    AI_NOT_READY = "ai_not_ready"
+    AI_UNAVAILABLE = "ai_unavailable"
+    BOOTSTRAPPED = "bootstrapped"
+    UNCHANGED_OBSERVATION = "unchanged_observation"
+    HUMAN_MOVE_REJECTED = "human_move_rejected"
+    HUMAN_MOVE_ACCEPTED = "human_move_accepted"
+    AI_ACTION_SELECTED = "ai_action_selected"
+    AWAITING_AI_EXECUTION = "awaiting_ai_execution"
+    AI_EXECUTION_MISMATCH = "ai_execution_mismatch"
+    AI_EXECUTION_CONFIRMED = "ai_execution_confirmed"
+
+
 @dataclass(frozen=True)
 class SessionStepResult:
     """Outcome of processing one step inside the session."""
 
     phase: SessionPhase
-    status: str
+    outcome: SessionOutcome
     current_state: GameState | None
     stable_state: GameState | None = None
     expected_state: GameState | None = None
@@ -63,7 +79,7 @@ class VisionGameSession:
         if self.phase is SessionPhase.FINISHED:
             return SessionStepResult(
                 phase=self.phase,
-                status="finished",
+                outcome=SessionOutcome.FINISHED_ALREADY,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
@@ -73,7 +89,7 @@ class VisionGameSession:
         if self.phase is SessionPhase.READY_FOR_AI:
             return SessionStepResult(
                 phase=self.phase,
-                status="awaiting_ai",
+                outcome=SessionOutcome.AWAITING_AI,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
@@ -84,7 +100,7 @@ class VisionGameSession:
         if not stabilizer_result.stable:
             return SessionStepResult(
                 phase=self.phase,
-                status="collecting",
+                outcome=SessionOutcome.COLLECTING,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
@@ -111,7 +127,7 @@ class VisionGameSession:
         if self.phase is SessionPhase.FINISHED:
             return SessionStepResult(
                 phase=self.phase,
-                status="finished",
+                outcome=SessionOutcome.FINISHED_ALREADY,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
@@ -121,7 +137,7 @@ class VisionGameSession:
         if self.phase is not SessionPhase.READY_FOR_AI:
             return SessionStepResult(
                 phase=self.phase,
-                status="ai_not_ready",
+                outcome=SessionOutcome.AI_NOT_READY,
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
@@ -131,7 +147,7 @@ class VisionGameSession:
         if self.ai_controller is None:
             return SessionStepResult(
                 phase=self.phase,
-                status="ai_unavailable",
+                outcome=SessionOutcome.AI_UNAVAILABLE,
                 current_state=self.current_state,
                 message="No AI controller has been configured.",
             )
@@ -147,7 +163,7 @@ class VisionGameSession:
 
         return SessionStepResult(
             phase=self.phase,
-            status="ai_action_selected",
+            outcome=SessionOutcome.AI_ACTION_SELECTED,
             current_state=self.current_state,
             expected_state=self.expected_state,
             ai_action=self.last_ai_action,
@@ -179,18 +195,15 @@ class VisionGameSession:
         self.phase = self._phase_for_confirmed_state(stable_state)
 
         if self.phase is SessionPhase.FINISHED:
-            status = "bootstrapped_terminal"
             message = "Stable initial observation adopted and the game is already terminal."
         elif self.phase is SessionPhase.READY_FOR_AI:
-            status = "bootstrapped_ai_to_move"
             message = "Stable initial observation adopted; AI has the first turn."
         else:
-            status = "bootstrapped_human_to_move"
             message = "Stable initial observation adopted; human has the first turn."
 
         return SessionStepResult(
             phase=self.phase,
-            status=status,
+            outcome=SessionOutcome.BOOTSTRAPPED,
             current_state=self.current_state,
             stable_state=stable_state,
             stabilizer_result=stabilizer_result,
@@ -209,7 +222,7 @@ class VisionGameSession:
         if stable_state == self.current_state:
             return SessionStepResult(
                 phase=self.phase,
-                status="unchanged_observation",
+                outcome=SessionOutcome.UNCHANGED_OBSERVATION,
                 current_state=self.current_state,
                 stable_state=stable_state,
                 stabilizer_result=stabilizer_result,
@@ -222,7 +235,7 @@ class VisionGameSession:
         if not sync_result.accepted:
             return SessionStepResult(
                 phase=self.phase,
-                status="human_move_rejected",
+                outcome=SessionOutcome.HUMAN_MOVE_REJECTED,
                 current_state=self.current_state,
                 stable_state=stable_state,
                 stabilizer_result=stabilizer_result,
@@ -236,17 +249,15 @@ class VisionGameSession:
         self.phase = self._phase_for_confirmed_state(stable_state)
 
         if self.phase is SessionPhase.FINISHED:
-            status = "human_move_accepted_terminal"
             message = "Stable human move accepted and the game is now terminal."
         elif self.phase is SessionPhase.READY_FOR_AI:
-            status = "human_move_accepted_ai_turn"
             message = "Stable human move accepted; session is ready for the AI step."
         else:
             raise ValueError("Invalid session state: a confirmed human move must hand control to the AI or finish the game.")
 
         return SessionStepResult(
             phase=self.phase,
-            status=status,
+            outcome=SessionOutcome.HUMAN_MOVE_ACCEPTED,
             current_state=self.current_state,
             stable_state=stable_state,
             stabilizer_result=stabilizer_result,
@@ -273,17 +284,15 @@ class VisionGameSession:
             self.phase = self._phase_for_confirmed_state(stable_state)
 
             if self.phase is SessionPhase.FINISHED:
-                status = "ai_execution_confirmed_terminal"
                 message = "AI move confirmed on the physical board and the game is now terminal."
             elif self.phase is SessionPhase.WAITING_HUMAN_MOVE:
-                status = "ai_execution_confirmed_human_turn"
                 message = "AI move confirmed on the physical board; waiting for the human turn."
             else:
                 raise ValueError("Invalid session state: a confirmed AI move must hand control to the human player or finish the game.")
 
             return SessionStepResult(
                 phase=self.phase,
-                status=status,
+                outcome=SessionOutcome.AI_EXECUTION_CONFIRMED,
                 current_state=self.current_state,
                 stable_state=stable_state,
                 expected_state=None,
@@ -295,7 +304,7 @@ class VisionGameSession:
         if stable_state == self.current_state:
             return SessionStepResult(
                 phase=self.phase,
-                status="awaiting_ai_execution",
+                outcome=SessionOutcome.AWAITING_AI_EXECUTION,
                 current_state=self.current_state,
                 stable_state=stable_state,
                 expected_state=self.expected_state,
@@ -306,7 +315,7 @@ class VisionGameSession:
 
         return SessionStepResult(
             phase=self.phase,
-            status="ai_execution_mismatch",
+            outcome=SessionOutcome.AI_EXECUTION_MISMATCH,
             current_state=self.current_state,
             stable_state=stable_state,
             expected_state=self.expected_state,
