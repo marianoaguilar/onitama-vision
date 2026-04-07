@@ -10,14 +10,10 @@ def test_stabilizer_does_not_confirm_before_threshold():
     first = stabilizer.push(state)
     second = stabilizer.push(state)
 
-    assert first.stable is False
-    assert first.state == state
-    assert first.repeat_count == 1
-    assert first.required_count == 3
-
-    assert second.stable is False
-    assert second.state == state
-    assert second.repeat_count == 2
+    assert first is None
+    assert second is None
+    assert stabilizer.candidate_state == state
+    assert stabilizer.repeat_count == 2
 
 
 def test_stabilizer_confirms_when_threshold_is_reached():
@@ -28,10 +24,8 @@ def test_stabilizer_confirms_when_threshold_is_reached():
     stabilizer.push(state)
     third = stabilizer.push(state)
 
-    assert third.stable is True
-    assert third.state == state
-    assert third.repeat_count == 3
-    assert third.required_count == 3
+    assert third == state
+    assert stabilizer.repeat_count == 3
 
 
 def test_stabilizer_resets_counter_when_state_changes():
@@ -43,10 +37,9 @@ def test_stabilizer_resets_counter_when_state_changes():
     stabilizer.push(first_state)
     changed = stabilizer.push(second_state)
 
-    assert changed.stable is False
-    assert changed.state == second_state
-    assert changed.repeat_count == 1
+    assert changed is None
     assert stabilizer.candidate_state == second_state
+    assert stabilizer.repeat_count == 1
 
 
 def test_stabilizer_reset_clears_internal_state():
@@ -62,8 +55,8 @@ def test_stabilizer_reset_clears_internal_state():
 
     after_reset = stabilizer.push(state)
 
-    assert after_reset.stable is False
-    assert after_reset.repeat_count == 1
+    assert after_reset is None
+    assert stabilizer.repeat_count == 1
 
 
 def test_stabilizer_keeps_reporting_stable_for_same_state():
@@ -75,6 +68,5 @@ def test_stabilizer_keeps_reporting_stable_for_same_state():
     stabilizer.push(state)
     fourth = stabilizer.push(state)
 
-    assert fourth.stable is True
-    assert fourth.state == state
-    assert fourth.repeat_count == 4
+    assert fourth == state
+    assert stabilizer.repeat_count == 4

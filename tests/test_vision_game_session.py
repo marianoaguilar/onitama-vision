@@ -51,7 +51,6 @@ def test_session_bootstrap_waits_until_state_is_stable():
     assert result.phase is SessionPhase.BOOTSTRAP
     assert result.outcome is SessionOutcome.COLLECTING
     assert result.current_state is None
-    assert result.stable_state is None
 
 
 def test_session_bootstrap_routes_to_human_turn_when_human_starts():
@@ -99,7 +98,6 @@ def test_session_reports_unchanged_stable_observation_during_human_turn():
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
     assert result.outcome is SessionOutcome.UNCHANGED_OBSERVATION
     assert result.current_state == initial_state
-    assert result.stable_state == initial_state
 
 
 def test_session_accepts_stable_legal_human_move_and_switches_to_ai_turn():

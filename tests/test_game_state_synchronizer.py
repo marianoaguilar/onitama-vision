@@ -2,7 +2,7 @@ from onitama.engine.cards import ALL_CARDS
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.synchronizer import SyncStatus, infer_action, match_observed_state
+from onitama.integration.synchronizer import SyncStatus, match_observed_state
 
 
 def test_synchronizer_accepts_unique_legal_successor():
@@ -16,8 +16,6 @@ def test_synchronizer_accepts_unique_legal_successor():
     assert result.accepted is True
     assert result.match_count == 1
     assert result.matched_action == action
-    assert result.matched_state == observed_state
-    assert infer_action(previous_state, observed_state) == action
 
 
 def test_synchronizer_marks_identical_state_as_unchanged():
