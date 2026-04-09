@@ -14,3 +14,4 @@ AGENTS.md
 data/vision/*
 !data/vision/calibration.json
 !data/vision/card_rois.json
+.codex
