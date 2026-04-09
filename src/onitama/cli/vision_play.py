@@ -15,6 +15,22 @@ from onitama.integration.stabilizer import StateStabilizer
 from onitama.vision.snapshot import VisionSnapshot
 from onitama.vision.vision_pipeline import VisionPipeline
 
+VISIBLE_OUTCOMES = {
+    SessionOutcome.BOOTSTRAPPED,
+    SessionOutcome.HUMAN_MOVE_ACCEPTED,
+    SessionOutcome.AI_ACTION_SELECTED,
+    SessionOutcome.AI_EXECUTION_CONFIRMED,
+    SessionOutcome.HUMAN_MOVE_REJECTED,
+    SessionOutcome.AI_EXECUTION_MISMATCH,
+    SessionOutcome.AI_UNAVAILABLE,
+}
+FILTERED_WARNING_OUTCOMES = {
+    SessionOutcome.HUMAN_MOVE_REJECTED,
+    SessionOutcome.AI_EXECUTION_MISMATCH,
+}
+WARNING_REPORT_THRESHOLD = 2
+VISION_ERROR_REPORT_THRESHOLD = 3
+
 
 @dataclass(frozen=True)
 class VisionPlayConfig:
@@ -27,10 +43,10 @@ class VisionPlayConfig:
 def prompt_vision_config() -> VisionPlayConfig:
     print("\n=== Onitama Vision Play ===\n")
 
-    required_repeats = prompt_int("Stable repeats required", default=3, lo=1, hi=10)
+    required_repeats = prompt_int("Stable repeats required", default=4, lo=1, hi=10)
 
     human_choice = prompt_choice(
-        "Human side:",
+        "\nHuman side:",
         options=["RED", "BLUE"],
         default_index=0,
     )
@@ -46,7 +62,6 @@ def prompt_vision_config() -> VisionPlayConfig:
     )
 
     print("\nConfiguration:")
-    print("  Camera       : 0")
     print(f"  Human player : {human_player.value}")
     print(f"  AI player    : {human_player.opponent().value}")
     print(f"  Stable reps  : {required_repeats}")
@@ -106,14 +121,15 @@ def _state_from_snapshot_for_session(snapshot: VisionSnapshot, session: VisionGa
 
 def _print_step(step: SessionStepResult) -> None:
     """Print only high-signal session transitions."""
-    if step.outcome is SessionOutcome.COLLECTING:
+    if step.outcome not in VISIBLE_OUTCOMES:
         return
 
     print("")
-    print(f"[{step.phase.value}] {step.outcome.value}")
-    if step.message:
-        print(step.message)
+    print("-" * 40)
+    print(f"[{step.phase.value}]")
+    print(f"-> {step.outcome.value}")
 
+    # Also print the current board
     if step.outcome in {
         SessionOutcome.BOOTSTRAPPED,
         SessionOutcome.HUMAN_MOVE_ACCEPTED,
@@ -122,12 +138,18 @@ def _print_step(step: SessionStepResult) -> None:
         print(render_state(step.current_state))
         return
 
+    # Also print the reason 
     if step.outcome is SessionOutcome.HUMAN_MOVE_REJECTED and step.sync_result is not None and step.sync_result.reason:
         print(f"Reason: {step.sync_result.reason}")
         return
 
+    # Also print the AI action when selected.
     if step.outcome is SessionOutcome.AI_ACTION_SELECTED and step.current_state is not None and step.ai_action is not None:
         print(f"[AI {step.current_state.to_move.value}] {format_action(step.current_state, step.ai_action)}")
+
+
+def _reset_warning_tracking() -> tuple[None, int, bool]:
+    return None, 0, False
 
 
 def _build_session(config: VisionPlayConfig) -> VisionGameSession:
@@ -161,24 +183,34 @@ def run() -> None:
     pipeline = VisionPipeline()
     session = _build_session(config)
 
-    # Use the same default camera settings.
+    # Use default camera settings.
     cap = _open_camera()
 
     print("\nVision play started.")
     print("Keep the board still while the system stabilizes observations.")
     print("Press Ctrl+C to quit.\n")
 
-    # Variables for tracking last logs and avoiding redundant prints.
+    # Track the last printed session phase/outcome.
     last_printed_key: tuple[SessionPhase, SessionOutcome] | None = None
-    last_error: str | None = None
+
+    # Track repeated vision errors
+    current_error: str | None = None
+    current_error_count = 0
+    current_error_reported = False
+
+    # Track repeated warnings
+    current_warning_key: tuple[SessionPhase, SessionOutcome] | None = None
+    current_warning_count = 0
+    current_warning_reported = False
 
     try:
         while True:
             if session.phase is SessionPhase.READY_FOR_AI:
-                # The session is ready: ask the AI and start waiting for board confirmation.
+                # Move on without reading a new frame.
                 ai_step = session.run_ai_turn()
                 step_key = (ai_step.phase, ai_step.outcome)
-                if step_key != last_printed_key:
+                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
+                if ai_step.outcome in VISIBLE_OUTCOMES and step_key != last_printed_key:
                     _print_step(ai_step)
                     last_printed_key = step_key
                 continue
@@ -189,24 +221,61 @@ def run() -> None:
                 raise RuntimeError("Could not read a frame from the camera.")
 
             try:
-                # Vision reconstructs the board/cards snapshot from the frame.
+                # 1. Vision reconstructs the board/cards snapshot from the frame.
                 snapshot = pipeline.snapshot_from_frame(frame)
-                # Inject the most plausible `to_move` for this phase.
+                # 2. Inject the most plausible "to_move" for this phase.
                 observed_state = _state_from_snapshot_for_session(snapshot, session)
+                
             except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
-                if message != last_error:
-                    print(f"\n[vision error] {message}")
-                    last_error = message
-                continue
+                if message != current_error:
+                    current_error = message
+                    current_error_count = 1
+                    current_error_reported = False
+                else:
+                    current_error_count += 1
 
-            last_error = None
+                # Only report vision errors if they repeat several times.
+                if not current_error_reported and current_error_count >= VISION_ERROR_REPORT_THRESHOLD:
+                    print(f"\n[vision error] {message}")
+                    current_error_reported = True
+                continue
+            
+            # Reset error tracking on successful observation.
+            current_error = None
+            current_error_count = 0
+            current_error_reported = False
+
             # Integration decides whether the observation is stable, legal and actionable.
             step = session.process_observation(observed_state)
             step_key = (step.phase, step.outcome)
-            if step_key != last_printed_key:
-                _print_step(step)
-                last_printed_key = step_key
+
+            if step.outcome in FILTERED_WARNING_OUTCOMES:
+                if step_key != current_warning_key:
+                    current_warning_key = step_key
+                    current_warning_count = 1
+                    current_warning_reported = False
+                else:
+                    current_warning_count += 1
+
+                # Only show warnings if they repeat several.
+                if (not current_warning_reported
+                    and current_warning_count >= WARNING_REPORT_THRESHOLD
+                    and step_key != last_printed_key):
+                    _print_step(step)
+                    last_printed_key = step_key
+                    current_warning_reported = True
+
+            elif step.outcome in VISIBLE_OUTCOMES:
+                # Show important non-warning events right away.
+                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
+                if step_key != last_printed_key:
+                    _print_step(step)
+                    last_printed_key = step_key
+
+            else:
+                # Hidden/internal outcomes still reset warning tracking.
+                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
 
             # Once the session reaches a terminal state, announce the winner and stop.
             if step.phase is SessionPhase.FINISHED and step.current_state is not None:
