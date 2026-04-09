@@ -13,26 +13,26 @@ from onitama.integration.synchronizer import SyncResult, match_observed_state
 
 class SessionPhase(str, Enum):
     BOOTSTRAP = "BOOTSTRAP"
-    WAITING_HUMAN_MOVE = "WAITING_HUMAN_MOVE"
-    READY_FOR_AI = "READY_FOR_AI"
-    WAITING_AI_EXECUTION = "WAITING_AI_EXECUTION"
+    WAITING_HUMAN_MOVE = "WAITING HUMAN MOVE"
+    READY_FOR_AI = "READY FOR AI"
+    WAITING_AI_EXECUTION = "WAITING AI EXECUTION"
     FINISHED = "FINISHED"
 
 
 class SessionOutcome(str, Enum):
-    FINISHED_ALREADY = "finished_already"
-    AWAITING_AI = "awaiting_ai"
+    FINISHED_ALREADY = "finished already"
+    AWAITING_AI = "awaiting ai"
     COLLECTING = "collecting"
-    AI_NOT_READY = "ai_not_ready"
-    AI_UNAVAILABLE = "ai_unavailable"
+    AI_NOT_READY = "ai not ready"
+    AI_UNAVAILABLE = "ai unavailable"
     BOOTSTRAPPED = "bootstrapped"
-    UNCHANGED_OBSERVATION = "unchanged_observation"
-    HUMAN_MOVE_REJECTED = "human_move_rejected"
-    HUMAN_MOVE_ACCEPTED = "human_move_accepted"
-    AI_ACTION_SELECTED = "ai_action_selected"
-    AWAITING_AI_EXECUTION = "awaiting_ai_execution"
-    AI_EXECUTION_MISMATCH = "ai_execution_mismatch"
-    AI_EXECUTION_CONFIRMED = "ai_execution_confirmed"
+    UNCHANGED_OBSERVATION = "unchanged observation"
+    HUMAN_MOVE_REJECTED = "human move rejected"
+    HUMAN_MOVE_ACCEPTED = "human move accepted"
+    AI_ACTION_SELECTED = "ai action selected"
+    AWAITING_AI_EXECUTION = "awaiting ai execution"
+    AI_EXECUTION_MISMATCH = "ai execution mismatch"
+    AI_EXECUTION_CONFIRMED = "ai execution confirmed"
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,6 @@ class SessionStepResult:
     expected_state: GameState | None = None
     ai_action: Action | None = None
     sync_result: SyncResult | None = None
-    message: str | None = None
 
 
 @dataclass
@@ -80,7 +79,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="Game already finished.",
             )
 
         if self.phase is SessionPhase.READY_FOR_AI:
@@ -90,7 +88,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="It is the AI turn; call run_ai_turn() before processing more observations.",
             )
 
         stable_state = self.stabilizer.push(observed_state)
@@ -101,7 +98,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="Observation not stable yet.",
             )
 
         if self.phase is SessionPhase.BOOTSTRAP:
@@ -125,7 +121,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="Game already finished.",
             )
 
         if self.phase is not SessionPhase.READY_FOR_AI:
@@ -135,7 +130,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="AI turn requested while session is not ready for it.",
             )
 
         if self.ai_controller is None:
@@ -143,7 +137,6 @@ class VisionGameSession:
                 phase=self.phase,
                 outcome=SessionOutcome.AI_UNAVAILABLE,
                 current_state=self.current_state,
-                message="No AI controller has been configured.",
             )
 
         assert self.current_state is not None, "READY_FOR_AI requires a confirmed current_state."
@@ -161,7 +154,6 @@ class VisionGameSession:
             current_state=self.current_state,
             expected_state=self.expected_state,
             ai_action=self.last_ai_action,
-            message="AI action selected; waiting for the physical board to match the expected state.",
         )
 
 
@@ -186,18 +178,10 @@ class VisionGameSession:
         self.last_ai_action = None
         self.phase = self._phase_for_confirmed_state(stable_state)
 
-        if self.phase is SessionPhase.FINISHED:
-            message = "Stable initial observation adopted and the game is already terminal."
-        elif self.phase is SessionPhase.READY_FOR_AI:
-            message = "Stable initial observation adopted; AI has the first turn."
-        else:
-            message = "Stable initial observation adopted; human has the first turn."
-
         return SessionStepResult(
             phase=self.phase,
             outcome=SessionOutcome.BOOTSTRAPPED,
             current_state=self.current_state,
-            message=message,
         )
 
 
@@ -213,7 +197,6 @@ class VisionGameSession:
                 phase=self.phase,
                 outcome=SessionOutcome.UNCHANGED_OBSERVATION,
                 current_state=self.current_state,
-                message="Stable observation matches the current confirmed state.",
             )
 
         sync_result = match_observed_state(self.current_state, stable_state)
@@ -224,7 +207,6 @@ class VisionGameSession:
                 outcome=SessionOutcome.HUMAN_MOVE_REJECTED,
                 current_state=self.current_state,
                 sync_result=sync_result,
-                message="Stable observation was rejected by the legal-state synchronizer.",
             )
 
         self.current_state = stable_state
@@ -232,11 +214,7 @@ class VisionGameSession:
         self.last_ai_action = None
         self.phase = self._phase_for_confirmed_state(stable_state)
 
-        if self.phase is SessionPhase.FINISHED:
-            message = "Stable human move accepted and the game is now terminal."
-        elif self.phase is SessionPhase.READY_FOR_AI:
-            message = "Stable human move accepted; session is ready for the AI step."
-        else:
+        if self.phase not in {SessionPhase.FINISHED, SessionPhase.READY_FOR_AI}:
             raise ValueError("Invalid session state: a confirmed human move must hand control to the AI or finish the game.")
 
         return SessionStepResult(
@@ -244,7 +222,6 @@ class VisionGameSession:
             outcome=SessionOutcome.HUMAN_MOVE_ACCEPTED,
             current_state=self.current_state,
             sync_result=sync_result,
-            message=message,
         )
 
 
@@ -264,11 +241,7 @@ class VisionGameSession:
             self.last_ai_action = None
             self.phase = self._phase_for_confirmed_state(stable_state)
 
-            if self.phase is SessionPhase.FINISHED:
-                message = "AI move confirmed on the physical board and the game is now terminal."
-            elif self.phase is SessionPhase.WAITING_HUMAN_MOVE:
-                message = "AI move confirmed on the physical board; waiting for the human turn."
-            else:
+            if self.phase is not SessionPhase.FINISHED and self.phase is not SessionPhase.WAITING_HUMAN_MOVE:
                 raise ValueError("Invalid session state: a confirmed AI move must hand control to the human player or finish the game.")
 
             return SessionStepResult(
@@ -277,7 +250,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=None,
                 ai_action=ai_action,
-                message=message,
             )
 
         if stable_state == self.current_state:
@@ -287,7 +259,6 @@ class VisionGameSession:
                 current_state=self.current_state,
                 expected_state=self.expected_state,
                 ai_action=self.last_ai_action,
-                message="Stable observation still matches the pre-AI state; waiting for the board to change.",
             )
 
         return SessionStepResult(
@@ -296,5 +267,4 @@ class VisionGameSession:
             current_state=self.current_state,
             expected_state=self.expected_state,
             ai_action=self.last_ai_action,
-            message="Stable observation does not match the expected AI result.",
         )
