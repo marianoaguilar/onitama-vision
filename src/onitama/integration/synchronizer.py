@@ -11,7 +11,6 @@ class SyncStatus(str, Enum):
     ACCEPTED = "accepted"
     UNCHANGED = "unchanged"
     REJECTED = "rejected"
-    AMBIGUOUS = "ambiguous"
     TERMINAL_PREVIOUS = "terminal_previous"
 
 
@@ -82,17 +81,9 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
             matched_action=match.action,
         )
 
-    if len(matches) == 0:
-        return SyncResult(
-            status=SyncStatus.REJECTED,
-            accepted=False,
-            match_count=0,
-            reason="Observed state does not match any legal successor.",
-        )
-
     return SyncResult(
-        status=SyncStatus.AMBIGUOUS,
+        status=SyncStatus.REJECTED,
         accepted=False,
         match_count=len(matches),
-        reason="Observed state matches more than one legal successor.",
+        reason="Observed state does not match any legal successor.",
     )
