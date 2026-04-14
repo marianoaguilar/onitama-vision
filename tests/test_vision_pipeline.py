@@ -70,7 +70,8 @@ def test_pipeline_game_state_from_frame_converts_to_engine_state() -> None:
     )
     frame = np.zeros((32, 32, 3), dtype=np.uint8)
 
-    game_state = pipeline.game_state_from_frame(frame, to_move="BLUE")
+    snapshot = pipeline.snapshot_from_frame(frame)
+    game_state = snapshot.to_game_state(to_move="BLUE")
 
     assert game_state.to_move is Player.BLUE
     assert game_state.red_cards[0].name == "Tiger"

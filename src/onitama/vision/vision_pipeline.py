@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from onitama.engine.pieces import Player
-from onitama.engine.state import GameState
 from onitama.vision.card_classifier import YoloCardClassifier
 from onitama.vision.piece_detector import YoloPieceDetector
 from onitama.vision.snapshot import VisionSnapshot
@@ -42,9 +40,3 @@ class VisionPipeline:
             board=board,
             card_result=card_result,
         )
-
-    def game_state_from_frame(self, frame: "np.ndarray", to_move: Player | str) -> GameState:
-        """Run the full pipeline and return the engine GameState.
-        """
-        snapshot = self.snapshot_from_frame(frame)
-        return snapshot.to_game_state(to_move)
