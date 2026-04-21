@@ -22,7 +22,6 @@ VISIBLE_OUTCOMES = {
     SessionOutcome.AI_EXECUTION_CONFIRMED,
     SessionOutcome.HUMAN_MOVE_REJECTED,
     SessionOutcome.AI_EXECUTION_MISMATCH,
-    SessionOutcome.AI_UNAVAILABLE,
 }
 FILTERED_WARNING_OUTCOMES = {
     SessionOutcome.HUMAN_MOVE_REJECTED,
@@ -139,8 +138,8 @@ def _print_step(step: SessionStepResult) -> None:
         return
 
     # Also print the reason 
-    if step.outcome is SessionOutcome.HUMAN_MOVE_REJECTED and step.sync_result is not None and step.sync_result.reason:
-        print(f"Reason: {step.sync_result.reason}")
+    if step.outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
+        print("Reason: Observed state does not match any legal successor.")
         return
 
     # Also print the AI action when selected.
