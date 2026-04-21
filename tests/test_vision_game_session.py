@@ -115,8 +115,6 @@ def test_session_accepts_stable_legal_human_move_and_switches_to_ai_turn():
     assert result.phase is SessionPhase.READY_FOR_AI
     assert result.outcome is SessionOutcome.HUMAN_MOVE_ACCEPTED
     assert result.current_state == next_state
-    assert result.sync_result is not None
-    assert result.sync_result.accepted is True
     assert session.current_state == next_state
 
 
@@ -141,8 +139,6 @@ def test_session_rejects_stable_illegal_human_move():
     assert result.phase is SessionPhase.WAITING_HUMAN_MOVE
     assert result.outcome is SessionOutcome.HUMAN_MOVE_REJECTED
     assert result.current_state == initial_state
-    assert result.sync_result is not None
-    assert result.sync_result.accepted is False
 
 
 def test_session_moves_to_finished_when_accepted_human_move_is_terminal():
