@@ -10,7 +10,7 @@ from onitama.engine.cards import CARD_BY_NAME
 from onitama.engine.pieces import Player
 from onitama.engine.rules import winner
 from onitama.engine.state import GameState
-from onitama.integration.session import SessionOutcome, SessionPhase, SessionStepResult, VisionGameSession
+from onitama.integration.session import SessionOutcome, SessionPhase, VisionGameSession
 from onitama.integration.stabilizer import StateStabilizer
 from onitama.vision.snapshot import VisionSnapshot
 from onitama.vision.vision_pipeline import VisionPipeline
@@ -118,33 +118,33 @@ def _state_from_snapshot_for_session(snapshot: VisionSnapshot, session: VisionGa
     return current_candidate
 
 
-def _print_step(step: SessionStepResult) -> None:
+def _print_step(session: VisionGameSession, outcome: SessionOutcome) -> None:
     """Print only high-signal session transitions."""
-    if step.outcome not in VISIBLE_OUTCOMES:
+    if outcome not in VISIBLE_OUTCOMES:
         return
 
     print("")
     print("-" * 40)
-    print(f"[{step.phase.value}]")
-    print(f"-> {step.outcome.value}")
+    print(f"[{session.phase.value}]")
+    print(f"-> {outcome.value}")
 
     # Also print the current board
-    if step.outcome in {
+    if outcome in {
         SessionOutcome.BOOTSTRAPPED,
         SessionOutcome.HUMAN_MOVE_ACCEPTED,
         SessionOutcome.AI_EXECUTION_CONFIRMED,
-    } and step.current_state is not None:
-        print(render_state(step.current_state))
+    } and session.current_state is not None:
+        print(render_state(session.current_state))
         return
 
     # Also print the reason 
-    if step.outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
+    if outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
         print("Reason: Observed state does not match any legal successor.")
         return
 
     # Also print the AI action when selected.
-    if step.outcome is SessionOutcome.AI_ACTION_SELECTED and step.current_state is not None and step.ai_action is not None:
-        print(f"[AI {step.current_state.to_move.value}] {format_action(step.current_state, step.ai_action)}")
+    if outcome is SessionOutcome.AI_ACTION_SELECTED and session.current_state is not None and session.last_ai_action is not None:
+        print(f"[AI {session.current_state.to_move.value}] {format_action(session.current_state, session.last_ai_action)}")
 
 
 def _reset_warning_tracking() -> tuple[None, int, bool]:
@@ -206,11 +206,11 @@ def run() -> None:
         while True:
             if session.phase is SessionPhase.READY_FOR_AI:
                 # Move on without reading a new frame.
-                ai_step = session.run_ai_turn()
-                step_key = (ai_step.phase, ai_step.outcome)
+                outcome = session.run_ai_turn()
+                step_key = (session.phase, outcome)
                 current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
-                if ai_step.outcome in VISIBLE_OUTCOMES and step_key != last_printed_key:
-                    _print_step(ai_step)
+                if outcome in VISIBLE_OUTCOMES and step_key != last_printed_key:
+                    _print_step(session, outcome)
                     last_printed_key = step_key
                 continue
 
@@ -246,10 +246,10 @@ def run() -> None:
             current_error_reported = False
 
             # Integration decides whether the observation is stable, legal and actionable.
-            step = session.process_observation(observed_state)
-            step_key = (step.phase, step.outcome)
+            outcome = session.process_observation(observed_state)
+            step_key = (session.phase, outcome)
 
-            if step.outcome in FILTERED_WARNING_OUTCOMES:
+            if outcome in FILTERED_WARNING_OUTCOMES:
                 if step_key != current_warning_key:
                     current_warning_key = step_key
                     current_warning_count = 1
@@ -261,15 +261,15 @@ def run() -> None:
                 if (not current_warning_reported
                     and current_warning_count >= WARNING_REPORT_THRESHOLD
                     and step_key != last_printed_key):
-                    _print_step(step)
+                    _print_step(session, outcome)
                     last_printed_key = step_key
                     current_warning_reported = True
 
-            elif step.outcome in VISIBLE_OUTCOMES:
+            elif outcome in VISIBLE_OUTCOMES:
                 # Show important non-warning events right away.
                 current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
                 if step_key != last_printed_key:
-                    _print_step(step)
+                    _print_step(session, outcome)
                     last_printed_key = step_key
 
             else:
@@ -277,12 +277,12 @@ def run() -> None:
                 current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
 
             # Once the session reaches a terminal state, announce the winner and stop.
-            if step.phase is SessionPhase.FINISHED and step.current_state is not None:
-                outcome = winner(step.current_state)
-                if outcome is not None:
+            if session.phase is SessionPhase.FINISHED and session.current_state is not None:
+                winner_outcome = winner(session.current_state)
+                if winner_outcome is not None:
                     print("")
-                    print(f"*** WINNER: {outcome[0].value} ***")
-                    print(f"*** REASON: {outcome[1]} ***")
+                    print(f"*** WINNER: {winner_outcome[0].value} ***")
+                    print(f"*** REASON: {winner_outcome[1]} ***")
                 break
     except KeyboardInterrupt:
         print("\nStopping vision play.")
