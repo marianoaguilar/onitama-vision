@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import QLabel, QMainWindow
+
+
+class CameraWindow(QMainWindow):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setWindowTitle("Camara de Onitama")
+        self.resize(900, 520)
+
+        self._label = QLabel("Todavia no hay imagen de la camara")
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._label.setStyleSheet("background: #111827; color: white;")
+        self.setCentralWidget(self._label)
+
+    def set_frame(self, image: QImage) -> None:
+        if image.isNull():
+            return
+        pixmap = QPixmap.fromImage(image)
+        scaled = pixmap.scaled(
+            self._label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self._label.setPixmap(scaled)
