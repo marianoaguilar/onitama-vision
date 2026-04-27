@@ -270,7 +270,7 @@ class CardWidget(QFrame):
 
         painter.setBrush(QColor("#f8d36a"))
         player = self._owner or Player.RED
-        for dr, dc in self._card.deltas_for(player):
+        for dr, dc in self._card.deltas:
             r = 2 + dr
             c = 2 + dc
             if 0 <= r < 5 and 0 <= c < 5:
