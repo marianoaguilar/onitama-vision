@@ -45,7 +45,7 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         winner = player_label(state.winner_player)
         reason = state.winner_reason or "partida terminada"
         return StatusView(
-            title=f"Partida terminada: gana {winner}",
+            title=f"¡Partida terminada: gana {winner}!",
             detail=reason,
             tone="success",
         )

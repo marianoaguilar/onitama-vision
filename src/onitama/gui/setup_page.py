@@ -2,81 +2,45 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from onitama.ai.evaluate import EVALUATORS
 from onitama.engine.pieces import Player
 
 
 _DIFFICULTIES = (
-    ("Facil - Heuristica 1", "v1"),
-    ("Media - Heuristica 2", "v2"),
-    ("Dificil - Heuristica 3", "v3"),
+    ("Facil", "v1"),
+    ("Media", "v2"),
+    ("Dificil", "v3"),
 )
 
+_STATUS_BASE_STYLE = """
+font-size: 18px;
+font-weight: 900;
+padding: 8px 14px;
+border-radius: 14px;
+"""
 
-class SetupPreview(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setMinimumSize(340, 360)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-    def sizeHint(self) -> QSize:
-        return QSize(430, 430)
-
-    def paintEvent(self, event) -> None:  # noqa: N802 - Qt API
-        del event
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        bounds = QRectF(self.rect()).adjusted(18, 18, -18, -18)
-        side = min(bounds.width(), bounds.height()) * 0.76
-        board = QRectF(
-            bounds.center().x() - side / 2,
-            bounds.center().y() - side / 2,
-            side,
-            side,
-        )
-        cell = side / 5
-
-        painter.setPen(QPen(QColor("#6f4e2c"), 2))
-        for row in range(5):
-            for col in range(5):
-                fill = QColor("#f2dfb3") if (row + col) % 2 == 0 else QColor("#d6b479")
-                painter.setBrush(fill)
-                painter.drawRect(QRectF(board.left() + col * cell, board.top() + row * cell, cell, cell))
-
-        painter.setPen(QPen(QColor("#8a6b3f"), 2))
-        painter.setBrush(QColor("#fff7df"))
-        card_w = side * 0.34
-        card_h = side * 0.20
-        painter.drawRoundedRect(QRectF(board.left() - card_w * 0.70, board.top() + cell * 0.6, card_w, card_h), 8, 8)
-        painter.drawRoundedRect(QRectF(board.right() - card_w * 0.30, board.bottom() - cell * 1.5, card_w, card_h), 8, 8)
-        painter.drawRoundedRect(QRectF(board.center().x() - card_w / 2, board.top() - card_h * 0.65, card_w, card_h), 8, 8)
-
-        pieces = (
-            (0, 0, QColor("#c2413b"), QColor("#7f1d1d")),
-            (2, 0, QColor("#c2413b"), QColor("#7f1d1d")),
-            (4, 0, QColor("#c2413b"), QColor("#7f1d1d")),
-            (0, 4, QColor("#2563eb"), QColor("#1e3a8a")),
-            (2, 4, QColor("#2563eb"), QColor("#1e3a8a")),
-            (4, 4, QColor("#2563eb"), QColor("#1e3a8a")),
-        )
-        for row, col, color, outline in pieces:
-            cx = board.left() + col * cell + cell / 2
-            cy = board.top() + row * cell + cell / 2
-            painter.setPen(QPen(outline, 3))
-            painter.setBrush(color)
-            painter.drawEllipse(QPointF(cx, cy), cell * 0.25, cell * 0.25)
-
-        font = QFont(self.font())
-        font.setPointSize(13)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QPen(QColor("#4b3621")))
-        painter.drawText(QRectF(bounds.left(), bounds.bottom() - 28, bounds.width(), 24), Qt.AlignmentFlag.AlignCenter, "Camara + tablero fisico")
+_DETAIL_STYLE = """
+font-size: 16px;
+font-weight: 700;
+color: #8a6b3f;
+background: transparent;
+border: 0;
+padding: 6px 0;
+"""
 
 
 class SetupPage(QWidget):
@@ -88,23 +52,22 @@ class SetupPage(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("setupPage")
 
-        self._human_combo = QComboBox()
-        self._human_combo.addItem("Rojo", Player.RED)
-        self._human_combo.addItem("Azul", Player.BLUE)
-        self._human_combo.setMinimumWidth(280)
+        self._human_player = Player.RED
+        self._evaluator_options = [(label, name) for label, name in _DIFFICULTIES if name in EVALUATORS]
+        if not self._evaluator_options:
+            self._evaluator_options = [(name, name) for name in sorted(EVALUATORS.keys())]
+        self._ai_evaluator = self._evaluator_options[-1][1]
 
-        self._evaluator_combo = QComboBox()
-        for label, evaluator_name in _DIFFICULTIES:
-            if evaluator_name in EVALUATORS:
-                self._evaluator_combo.addItem(label, evaluator_name)
-        if self._evaluator_combo.count() == 0:
-            for evaluator_name in sorted(EVALUATORS.keys()):
-                self._evaluator_combo.addItem(evaluator_name, evaluator_name)
-        self._evaluator_combo.setCurrentIndex(self._evaluator_combo.count() - 1)
-        self._evaluator_combo.setMinimumWidth(320)
+        self._color_group = QButtonGroup(self)
+        self._color_group.setExclusive(True)
+        self._difficulty_group = QButtonGroup(self)
+        self._difficulty_group.setExclusive(True)
+        self._color_buttons: list[QPushButton] = []
+        self._difficulty_buttons: list[QPushButton] = []
 
-        self._start_button = QPushButton("Empezar partida")
+        self._start_button = QPushButton("Iniciar partida")
         self._quit_button = QPushButton("Salir")
         self._calibrate_board_button = QPushButton("Calibrar tablero")
         self._calibrate_cards_button = QPushButton("Calibrar cartas")
@@ -112,54 +75,27 @@ class SetupPage(QWidget):
         self._calibration_status = QLabel()
         self._calibration_detail = QLabel()
 
-        self._start_button.setMinimumHeight(48)
+        self._start_button.setObjectName("primaryAction")
+        self._quit_button.setObjectName("quietAction")
+        self._refresh_calibration_button.setObjectName("refreshAction")
+        self._start_button.setMinimumHeight(64)
         self._quit_button.setMinimumHeight(48)
-        self._start_button.setStyleSheet(
-            """
-            QPushButton {
-                background: #1f2933;
-                color: white;
-                border: 0;
-                border-radius: 8px;
-                padding: 12px 28px;
-                font-size: 17px;
-                font-weight: 900;
-            }
-            QPushButton:disabled {
-                background: #9ca3af;
-            }
-            """
-        )
-        self._quit_button.setStyleSheet(
-            """
-            QPushButton {
-                background: #6b7280;
-                color: white;
-                border: 0;
-                border-radius: 8px;
-                padding: 12px 22px;
-                font-size: 16px;
-                font-weight: 800;
-            }
-            """
-        )
+        self._calibrate_board_button.setMinimumHeight(50)
+        self._calibrate_cards_button.setMinimumHeight(50)
+        self._refresh_calibration_button.setMinimumHeight(50)
 
         self._build_layout()
         self._connect_signals()
 
     def human_player(self) -> Player:
-        player = self._human_combo.currentData()
-        return player if player in {Player.RED, Player.BLUE} else Player.RED
+        return self._human_player
 
     def ai_evaluator(self) -> str:
-        evaluator_name = self._evaluator_combo.currentData()
-        if isinstance(evaluator_name, str):
-            return evaluator_name
-        return "v3" if "v3" in EVALUATORS else next(iter(EVALUATORS))
+        return self._ai_evaluator
 
     def set_controls_enabled(self, enabled: bool) -> None:
-        self._human_combo.setEnabled(enabled)
-        self._evaluator_combo.setEnabled(enabled)
+        for button in self._color_buttons + self._difficulty_buttons:
+            button.setEnabled(enabled)
 
     def set_calibration_buttons_enabled(self, enabled: bool) -> None:
         self._calibrate_board_button.setEnabled(enabled)
@@ -176,24 +112,33 @@ class SetupPage(QWidget):
     ) -> None:
         self._calibration_status.setText("Listo para jugar" if ready else "Hace falta calibrar")
         self._calibration_status.setStyleSheet(
-            "font-size: 18px; font-weight: 800; "
-            f"color: {'#059669' if ready else '#dc2626'};"
+            _STATUS_BASE_STYLE
+            + (
+                "color: #24513a; background: #dcefe2; border: 1px solid #9cc8ad;"
+                if ready
+                else "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+            )
         )
         self._calibration_detail.setText(
-            f"Tablero: {board_message}\nCartas: {cards_message}"
+            f"{self._format_calibration_detail('Tablero', board_message)}\n"
+            f"{self._format_calibration_detail('Cartas', cards_message)}"
         )
         self._start_button.setEnabled(start_enabled)
 
     def set_calibration_running(self, script: Path) -> None:
         self._calibration_status.setText("Calibracion en curso")
-        self._calibration_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #2563eb;")
-        self._calibration_detail.setText(f"Ejecutando {script}. Usa los controles de la ventana de OpenCV y cierrala al terminar.")
+        self._calibration_status.setStyleSheet(
+            _STATUS_BASE_STYLE + "color: #17385e; background: #dbeafe; border: 1px solid #93c5fd;"
+        )
+        self._calibration_detail.setText(f"Ejecutando {script.name}. Cierra la ventana de OpenCV al terminar.")
         self._start_button.setEnabled(False)
 
     def set_calibration_script_missing(self, script: Path) -> None:
         self._calibration_status.setText("No se encontro el script de calibracion")
-        self._calibration_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #dc2626;")
-        self._calibration_detail.setText(str(script))
+        self._calibration_status.setStyleSheet(
+            _STATUS_BASE_STYLE + "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+        )
+        self._calibration_detail.setText(f"No se encuentra {script.name}")
         self._start_button.setEnabled(False)
 
     def set_calibration_exit_error(self, exit_code: int, stderr: str) -> None:
@@ -201,95 +146,236 @@ class SetupPage(QWidget):
 
     def set_calibration_error(self, message: str) -> None:
         self._calibration_status.setText("La calibracion fallo")
-        self._calibration_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #dc2626;")
+        self._calibration_status.setStyleSheet(
+            _STATUS_BASE_STYLE + "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+        )
         self._calibration_detail.setText(message)
 
     def _build_layout(self) -> None:
-        page_layout = QHBoxLayout(self)
-        page_layout.setContentsMargins(64, 46, 64, 46)
-        page_layout.setSpacing(34)
-
-        intro = QFrame()
-        intro.setObjectName("introPanel")
-        intro.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        intro.setStyleSheet(
+        self.setStyleSheet(
             """
-            QFrame#introPanel {
-                background: #fff7df;
+            QWidget#setupPage {
+                background: #f6f0e4;
+            }
+            QFrame#pageHeader {
+                background: transparent;
+            }
+            QFrame#setupPanel {
+                background: #f2ead8;
+                border: 2px solid #8a6b3f;
+                border-radius: 18px;
+            }
+            QLabel#headerKicker {
+                color: #8b1f18;
+                font-size: 24px;
+                font-weight: 900;
+            }
+            QLabel#headerTitle {
+                color: #1f2933;
+                font-size: 76px;
+                font-weight: 900;
+            }
+            QLabel#stepBadge {
+                background: #a7251d;
+                color: #fffaf0;
+                border-radius: 17px;
+                font-size: 18px;
+                font-weight: 900;
+                min-width: 34px;
+                min-height: 34px;
+            }
+            QLabel#fieldLabel {
+                color: #1f2933;
+                font-size: 22px;
+                font-weight: 900;
+            }
+            QFrame#line {
+                background: #b08a4d;
+                max-height: 1px;
+            }
+            QPushButton#redChoice,
+            QPushButton#blueChoice {
+                background: #fffaf0;
+                color: #1f2933;
                 border: 2px solid #b08a4d;
+                border-radius: 12px;
+                padding: 14px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                text-align: center;
+                min-height: 52px;
+            }
+            QPushButton#redChoice:checked {
+                color: #a7251d;
+                border-color: #d32920;
+                background: #fffaf0;
+            }
+            QPushButton#blueChoice:checked {
+                color: #17385e;
+                border-color: #17385e;
+                background: #eef5fb;
+            }
+            QPushButton#choiceButton {
+                background: transparent;
+                color: #1f2933;
+                border: 0;
+                border-radius: 21px;
+                padding: 12px 20px;
+                font-size: 20px;
+                font-weight: 900;
+                min-height: 42px;
+            }
+            QPushButton#choiceButton:checked {
+                background: #2b5d8a;
+                color: #fffaf0;
+                border-radius: 21px;
+            }
+            QFrame#segmentedControl {
+                background: #fffaf0;
+                border: 1px solid #8a6b3f;
+                border-radius: 23px;
+            }
+            QPushButton {
+                background: #fffaf0;
+                color: #1f2933;
+                border: 1px solid #8a6b3f;
+                border-radius: 7px;
+                padding: 12px 16px;
+                font-weight: 900;
+                font-size: 18px;
+            }
+            QPushButton:disabled {
+                background: #f2ead8;
+                color: #8a6b3f;
+                border-color: #b08a4d;
+            }
+            QPushButton:hover,
+            QPushButton#primaryAction:hover,
+            QPushButton#quietAction:hover,
+            QPushButton#refreshAction:hover {
+                background: #b08a4d;
+                color: #fffaf0;
+            }
+            QPushButton#redChoice:hover {
+                background: #fffaf0;
+                color: #1f2933;
+            }
+            QPushButton#redChoice:checked:hover {
+                color: #a7251d;
+            }
+            QPushButton#blueChoice:hover {
+                background: #fffaf0;
+                color: #1f2933;
+            }
+            QPushButton#blueChoice:checked:hover {
+                color: #17385e;
+                background: #eef5fb;
+            }
+            QPushButton#choiceButton:hover {
+                background: transparent;
+                color: #1f2933;
+            }
+            QPushButton#choiceButton:checked:hover {
+                background: #2b5d8a;
+                color: #fffaf0;
+            }
+            QPushButton#primaryAction {
+                background: #c72920;
+                color: #fffaf0;
+                border: 2px solid #8b1f18;
                 border-radius: 14px;
+                font-size: 22px;
+                padding: 16px 24px;
+            }
+            QPushButton#primaryAction:hover {
+                background: #a7251d;
+                color: #fffaf0;
+            }
+            QPushButton#quietAction {
+                background: #fffaf0;
+                color: #8a6b3f;
+                border: 1px solid #8a6b3f;
+            }
+            QPushButton#refreshAction {
+                background: #fffaf0;
+                color: #8a6b3f;
             }
             """
         )
-        intro_layout = QVBoxLayout(intro)
-        intro_layout.setContentsMargins(34, 30, 34, 28)
-        intro_layout.setSpacing(18)
+
+        page_layout = QVBoxLayout(self)
+        page_layout.setContentsMargins(28, 22, 28, 28)
+        page_layout.setSpacing(12)
+
+        header = QFrame()
+        header.setObjectName("pageHeader")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(34, 6, 34, 4)
+        header_layout.setSpacing(0)
 
         title = QLabel("Onitama")
+        title.setObjectName("headerTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 54px; font-weight: 900; color: #1f2933;")
-        intro_layout.addWidget(title)
+        header_layout.addWidget(title)
 
-        subtitle = QLabel("Vision asistida para jugar contra la IA")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("font-size: 20px; font-weight: 700; color: #4b5563;")
-        intro_layout.addWidget(subtitle)
-        intro_layout.addWidget(SetupPreview(), stretch=1)
+        kicker = QLabel("Configuracion de partida")
+        kicker.setObjectName("headerKicker")
+        kicker.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_layout.addWidget(kicker)
+
+        page_layout.addWidget(header)
 
         controls = QFrame()
-        controls.setObjectName("controlsPanel")
+        controls.setObjectName("setupPanel")
+        controls.setMinimumWidth(800)
+        controls.setMaximumWidth(1000)
         controls.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        controls.setStyleSheet(
-            """
-            QFrame#controlsPanel {
-                background: white;
-                border: 2px solid #d1b17a;
-                border-radius: 14px;
-            }
-            """
-        )
+        shadow = QGraphicsDropShadowEffect(controls)
+        shadow.setBlurRadius(26)
+        shadow.setColor(QColor(75, 54, 33, 70))
+        shadow.setOffset(0, 8)
+        controls.setGraphicsEffect(shadow)
+
         controls_layout = QVBoxLayout(controls)
-        controls_layout.setContentsMargins(34, 30, 34, 30)
-        controls_layout.setSpacing(22)
+        controls_layout.setContentsMargins(38, 28, 38, 28)
+        controls_layout.setSpacing(14)
 
-        settings_title = QLabel("Configura la partida")
-        settings_title.setStyleSheet("font-size: 30px; font-weight: 900; color: #1f2933;")
-        controls_layout.addWidget(settings_title)
+        controls_layout.addWidget(
+            self._build_setup_card(
+                "1",
+                "Elige tu color",
+                self._build_color_options(),
+            )
+        )
+        controls_layout.addWidget(self._separator())
+        controls_layout.addWidget(
+            self._build_setup_card(
+                "2",
+                "Dificultad de la IA",
+                self._build_difficulty_options(),
+            )
+        )
+        controls_layout.addWidget(self._separator())
 
-        controls_layout.addWidget(self._build_field("Tu color", self._human_combo))
-        controls_layout.addWidget(self._build_field("Dificultad de la IA", self._evaluator_combo))
+        calibration_card = self._build_calibration_card()
+        calibration_card.setContentsMargins(0, 8, 0, 0)
+        controls_layout.addWidget(calibration_card)
+        controls_layout.addWidget(self._separator())
 
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("color: #d1b17a;")
-        controls_layout.addWidget(separator)
-
-        calibration_title = QLabel("Calibracion")
-        calibration_title.setStyleSheet("font-size: 24px; font-weight: 800;")
-        controls_layout.addWidget(calibration_title)
-
-        self._calibration_status.setStyleSheet("font-size: 18px; font-weight: 800;")
-        self._calibration_detail.setWordWrap(True)
-        self._calibration_detail.setStyleSheet("font-size: 15px; color: #4b5563;")
-        controls_layout.addWidget(self._calibration_status)
-        controls_layout.addWidget(self._calibration_detail)
-
-        calibration_buttons = QHBoxLayout()
-        calibration_buttons.setSpacing(10)
-        calibration_buttons.addWidget(self._calibrate_board_button)
-        calibration_buttons.addWidget(self._calibrate_cards_button)
-        calibration_buttons.addWidget(self._refresh_calibration_button)
-        calibration_buttons.addStretch(1)
-        controls_layout.addLayout(calibration_buttons)
-
-        controls_layout.addStretch(1)
         actions = QHBoxLayout()
+        actions.setSpacing(18)
+        actions.setContentsMargins(0, 20, 0, 0)
         actions.addWidget(self._start_button)
+        actions.addStretch(1)
         actions.addWidget(self._quit_button)
         controls_layout.addLayout(actions)
 
-        page_layout.addWidget(intro, stretch=5)
-        page_layout.addWidget(controls, stretch=4)
+        centered_controls = QHBoxLayout()
+        centered_controls.setContentsMargins(0, 0, 0, 0)
+        centered_controls.addStretch(1)
+        centered_controls.addWidget(controls, stretch=8)
+        centered_controls.addStretch(1)
+        page_layout.addLayout(centered_controls, stretch=1)
 
     def _connect_signals(self) -> None:
         self._start_button.clicked.connect(self.start_requested.emit)
@@ -298,13 +384,115 @@ class SetupPage(QWidget):
         self._refresh_calibration_button.clicked.connect(self.refresh_calibration_requested.emit)
         self._quit_button.clicked.connect(self.quit_requested.emit)
 
-    def _build_field(self, label: str, widget: QWidget) -> QWidget:
+    def _build_setup_card(self, step: str, label: str, widget: QWidget) -> QWidget:
         field = QWidget()
         layout = QVBoxLayout(field)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(7)
-        text = QLabel(label)
-        text.setStyleSheet("font-size: 18px; font-weight: 800;")
-        layout.addWidget(text)
+        layout.setSpacing(12)
+        layout.addLayout(self._build_step_header(step, label))
         layout.addWidget(widget)
         return field
+
+    def _build_color_options(self) -> QWidget:
+        wrapper = QWidget()
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(16)
+
+        red_button = self._build_choice_button("Rojo", "redChoice")
+        blue_button = self._build_choice_button("Azul", "blueChoice")
+        self._color_group.addButton(red_button, 0)
+        self._color_group.addButton(blue_button, 1)
+        self._color_buttons = [red_button, blue_button]
+        red_button.setChecked(True)
+
+        red_button.clicked.connect(lambda _checked=False: self._set_human_player(Player.RED))
+        blue_button.clicked.connect(lambda _checked=False: self._set_human_player(Player.BLUE))
+        layout.addWidget(red_button)
+        layout.addWidget(blue_button)
+        return wrapper
+
+    def _build_difficulty_options(self) -> QWidget:
+        frame = QFrame()
+        frame.setObjectName("segmentedControl")
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(0)
+
+        self._difficulty_buttons = []
+        for index, (label, evaluator_name) in enumerate(self._evaluator_options):
+            button = self._build_choice_button(label, "choiceButton")
+            self._difficulty_group.addButton(button, index)
+            button.clicked.connect(lambda _checked=False, name=evaluator_name: self._set_ai_evaluator(name))
+            self._difficulty_buttons.append(button)
+            layout.addWidget(button)
+
+        if self._difficulty_buttons:
+            self._difficulty_buttons[-1].setChecked(True)
+        return frame
+
+    def _build_calibration_card(self) -> QWidget:
+        frame = QWidget()
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        header = self._build_step_header("3", "Calibracion")
+        header.addStretch(1)
+        self._calibration_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._calibration_status.setStyleSheet(_STATUS_BASE_STYLE)
+        header.addWidget(self._calibration_status)
+        layout.addLayout(header)
+
+        self._calibration_detail.setWordWrap(True)
+        self._calibration_detail.setStyleSheet(_DETAIL_STYLE)
+        layout.addWidget(self._calibration_detail)
+
+        calibration_buttons = QHBoxLayout()
+        calibration_buttons.setSpacing(16)
+        calibration_buttons.addWidget(self._calibrate_board_button)
+        calibration_buttons.addWidget(self._calibrate_cards_button)
+        calibration_buttons.addWidget(self._refresh_calibration_button)
+        layout.addLayout(calibration_buttons)
+        return frame
+
+    def _build_step_header(self, step: str, label: str) -> QHBoxLayout:
+        header = QHBoxLayout()
+        header.setSpacing(12)
+
+        badge = QLabel(step)
+        badge.setObjectName("stepBadge")
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setFixedSize(34, 34)
+        header.addWidget(badge)
+
+        title = QLabel(label)
+        title.setObjectName("fieldLabel")
+        header.addWidget(title)
+        return header
+
+    def _build_choice_button(self, text: str, object_name: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setObjectName(object_name)
+        button.setCheckable(True)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        return button
+
+    def _set_human_player(self, player: Player) -> None:
+        self._human_player = player
+
+    def _set_ai_evaluator(self, evaluator_name: str) -> None:
+        self._ai_evaluator = evaluator_name
+
+    def _separator(self) -> QFrame:
+        line = QFrame()
+        line.setObjectName("line")
+        line.setFixedHeight(1)
+        return line
+
+    def _format_calibration_detail(self, label: str, message: str) -> str:
+        if message.startswith("cargado "):
+            return f"{label}: calibrado"
+        if message.startswith("falta "):
+            return f"{label}: pendiente"
+        return f"{label}: {message}"
