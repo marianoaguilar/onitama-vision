@@ -67,6 +67,8 @@ class MainWindow(QMainWindow):
         self._board = BoardWidget()
         self._red_cards = [CardWidget("Carta roja 2"), CardWidget("Carta roja 1")]
         self._blue_cards = [CardWidget("Carta azul 2"), CardWidget("Carta azul 1")]
+        self._red_cards_label: QLabel | None = None
+        self._blue_cards_label: QLabel | None = None
         self._side_card = CardWidget("Carta lateral")
         self._message = MessageBanner()
         self._stack = QStackedWidget()
@@ -100,21 +102,6 @@ class MainWindow(QMainWindow):
             }
             QPushButton:disabled {
                 background: #9ca3af;
-            }
-            QComboBox {
-                background: white;
-                color: #111827;
-                border: 1px solid #b08a4d;
-                border-radius: 6px;
-                padding: 10px 12px;
-                font-size: 18px;
-                min-height: 34px;
-            }
-            QComboBox QAbstractItemView {
-                background: white;
-                color: #111827;
-                selection-background-color: #eff6ff;
-                selection-color: #111827;
             }
             """
         )
@@ -166,14 +153,14 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        left_cards = self._build_card_column("ROJO", self._red_cards)
-        right_cards = self._build_card_column("AZUL", self._blue_cards)
+        left_cards, self._red_cards_label = self._build_card_column(self._red_cards)
+        right_cards, self._blue_cards_label = self._build_card_column(self._blue_cards)
         layout.addWidget(left_cards, stretch=1)
         layout.addWidget(self._board, stretch=2)
         layout.addWidget(right_cards, stretch=1)
         return area
 
-    def _build_card_column(self, title: str, cards: list[CardWidget]) -> QWidget:
+    def _build_card_column(self, cards: list[CardWidget]) -> tuple[QWidget, QLabel]:
         frame = QFrame()
         frame.setMinimumWidth(220)
         frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -181,7 +168,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 16, 0, 16)
         layout.setSpacing(12)
 
-        label = QLabel(title)
+        label = QLabel()
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 18px; font-weight: 800;")
         layout.addWidget(label)
@@ -189,7 +176,7 @@ class MainWindow(QMainWindow):
         for card in cards:
             layout.addWidget(card, stretch=3)
         layout.addStretch(1)
-        return frame
+        return frame, label
 
     def _connect_signals(self) -> None:
         self._setup_page.start_requested.connect(self._start_runtime_from_setup)
@@ -216,6 +203,7 @@ class MainWindow(QMainWindow):
             return
         self._latest_state = None
         self._apply_state(None)
+        self._update_card_column_labels()
         self._stack.setCurrentIndex(1)
         self._start_runtime()
 
@@ -241,6 +229,13 @@ class MainWindow(QMainWindow):
             ai_depth=_DEFAULT_AI_DEPTH,
             ai_evaluator=self._setup_page.ai_evaluator(),
         )
+
+    def _update_card_column_labels(self) -> None:
+        human_player = self._setup_page.human_player()
+        if self._red_cards_label is not None:
+            self._red_cards_label.setText("HUMANO" if human_player is Player.RED else "IA")
+        if self._blue_cards_label is not None:
+            self._blue_cards_label.setText("HUMANO" if human_player is Player.BLUE else "IA")
 
     @Slot()
     def _reset_runtime(self) -> None:
@@ -419,7 +414,7 @@ class MainWindow(QMainWindow):
         process.finished.connect(self._on_calibration_finished)
         process.errorOccurred.connect(self._on_calibration_error)
         self._calibration_process = process
-        self._set_calibration_buttons_enabled(False)
+        self._setup_page.set_calibration_buttons_enabled(False)
         self._setup_page.set_calibration_running(script)
         process.start()
 
@@ -430,7 +425,7 @@ class MainWindow(QMainWindow):
             stderr = bytes(process.readAllStandardError()).decode("utf-8", errors="replace").strip()
             process.deleteLater()
         self._calibration_process = None
-        self._set_calibration_buttons_enabled(True)
+        self._setup_page.set_calibration_buttons_enabled(True)
         self._refresh_calibration_status()
         if exit_code != 0 and stderr:
             self._setup_page.set_calibration_exit_error(exit_code, stderr)
@@ -441,12 +436,9 @@ class MainWindow(QMainWindow):
         if process is not None:
             process.deleteLater()
         self._calibration_process = None
-        self._set_calibration_buttons_enabled(True)
+        self._setup_page.set_calibration_buttons_enabled(True)
         self._refresh_calibration_status()
         self._setup_page.set_calibration_error(message)
-
-    def _set_calibration_buttons_enabled(self, enabled: bool) -> None:
-        self._setup_page.set_calibration_buttons_enabled(enabled)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt API
         self._stop_runtime()
