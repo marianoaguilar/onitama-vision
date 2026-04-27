@@ -36,6 +36,20 @@ def main() -> None:
     dst_w, dst_h = 500, 500
     rotate = 90   # it depends on how your camera is mounted. Adjust if the output looks rotated.
 
+    # Load existing calibration if available
+    calib = None
+    try:
+        with open(out_path, "r") as f:
+            data = json.load(f)
+            calib = HomographyCalibration(
+                src_points=tuple(tuple(p) for p in data["src_points"]),
+                dst_size=tuple(data["dst_size"]),
+                rotate=data["rotate"],
+            )
+            print(f"Loaded existing calibration from: {out_path}")
+    except FileNotFoundError:
+        print("No existing calibration found. Press 'c' to calibrate.")
+
     cap = open_camera()
 
     clicked: List[Tuple[float, float]] = []
@@ -59,6 +73,18 @@ def main() -> None:
                 break
 
             display = frame.copy()
+            if calib is not None:
+                points = calib.src_points
+                for i, (px, py) in enumerate(points, start=1):
+                    cv2.circle(display, (int(px), int(py)), 8, (0, 255, 255), -1)
+                    cv2.putText(display, str(i), (int(px) + 10, int(py) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+                # Draw lines connecting the points
+                if len(points) == 4:
+                    for i in range(4):
+                        pt1 = (int(points[i][0]), int(points[i][1]))
+                        pt2 = (int(points[(i+1) % 4][0]), int(points[(i+1) % 4][1]))
+                        cv2.line(display, pt1, pt2, (0, 255, 255), 2)
             cv2.putText(display, "Press 'c' to freeze. 'q' quit.",
                         (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
             cv2.imshow("camera", display)
