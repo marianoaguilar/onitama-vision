@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from onitama.ai.controllers import AIController
 from onitama.ai.evaluate import EVALUATORS
+from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.app.vision_runtime import VisionGameRuntime
 from onitama.cli.prompts import prompt_choice, prompt_int
 from onitama.cli.render import format_action, render_state
-from onitama.engine.cards import CARD_BY_NAME
 from onitama.engine.pieces import Player
-from onitama.engine.rules import winner
-from onitama.engine.state import GameState
-from onitama.integration.session import SessionOutcome, SessionPhase, VisionGameSession
-from onitama.integration.stabilizer import StateStabilizer
-from onitama.vision.snapshot import VisionSnapshot
-from onitama.vision.vision_pipeline import VisionPipeline
+from onitama.integration.session import SessionOutcome, SessionPhase
 
 VISIBLE_OUTCOMES = {
     SessionOutcome.BOOTSTRAPPED,
@@ -31,15 +24,7 @@ WARNING_REPORT_THRESHOLD = 2
 VISION_ERROR_REPORT_THRESHOLD = 3
 
 
-@dataclass(frozen=True)
-class VisionPlayConfig:
-    human_player: Player
-    required_repeats: int
-    ai_depth: int
-    ai_evaluator: str
-
-
-def prompt_vision_config() -> VisionPlayConfig:
+def prompt_vision_config() -> VisionRuntimeConfig:
     print("\n=== Onitama Vision Play ===\n")
 
     required_repeats = prompt_int("Stable repeats required", default=4, lo=1, hi=10)
@@ -68,7 +53,7 @@ def prompt_vision_config() -> VisionPlayConfig:
     print(f"  AI evaluator : {ai_evaluator}")
     input("\nPress Enter to start vision play...")
 
-    return VisionPlayConfig(
+    return VisionRuntimeConfig(
         human_player=human_player,
         required_repeats=required_repeats,
         ai_depth=ai_depth,
@@ -76,56 +61,15 @@ def prompt_vision_config() -> VisionPlayConfig:
     )
 
 
-def _initial_player_from_snapshot(snapshot: VisionSnapshot) -> Player:
-    """Infer the initial player to move from the observed side card."""
-    side_card = CARD_BY_NAME.get(snapshot.side_card)
-    if side_card is None:
-        raise ValueError(f"Unknown side card from snapshot: {snapshot.side_card!r}")
-    return side_card.stamp
-
-
-def _state_from_snapshot_for_session(snapshot: VisionSnapshot, session: VisionGameSession) -> GameState:
-    """
-    Convert a snapshot into the most plausible GameState for the current session phase.
-
-    The vision layer does not observe `to_move` directly, so we infer it from:
-    - the side card during bootstrap,
-    - the current confirmed state while waiting for a human move,
-    - the current/expected states while waiting for AI execution.
-    """
-    if session.current_state is None or session.phase is SessionPhase.BOOTSTRAP:
-        # At startup, the side card is the only reliable source for to_move.
-        return snapshot.to_game_state(_initial_player_from_snapshot(snapshot))
-
-    # First assume the board still reflects the currently confirmed turn.
-    current_candidate = snapshot.to_game_state(session.current_state.to_move)
-
-    if session.phase is SessionPhase.WAITING_HUMAN_MOVE:
-        if current_candidate == session.current_state:
-            return current_candidate
-        # If the board changed, the human move likely consumed the turn.
-        return snapshot.to_game_state(session.current_state.to_move.opponent())
-
-    if session.phase is SessionPhase.WAITING_AI_EXECUTION:
-        if current_candidate == session.current_state:
-            return current_candidate
-
-        if session.expected_state is None:
-            raise ValueError("WAITING_AI_EXECUTION requires an expected_state.")
-        # After the AI move, interpret the snapshot with the expected next player.
-        return snapshot.to_game_state(session.expected_state.to_move)
-
-    return current_candidate
-
-
-def _print_step(session: VisionGameSession, outcome: SessionOutcome) -> None:
+def _print_step(state: VisionRuntimeState) -> None:
     """Print only high-signal session transitions."""
-    if outcome not in VISIBLE_OUTCOMES:
+    outcome = state.last_outcome
+    if outcome is None or outcome not in VISIBLE_OUTCOMES:
         return
 
     print("")
     print("-" * 40)
-    print(f"[{session.phase.value}]")
+    print(f"[{state.phase.value}]")
     print(f"-> {outcome.value}")
 
     # Also print the current board
@@ -133,57 +77,28 @@ def _print_step(session: VisionGameSession, outcome: SessionOutcome) -> None:
         SessionOutcome.BOOTSTRAPPED,
         SessionOutcome.HUMAN_MOVE_ACCEPTED,
         SessionOutcome.AI_EXECUTION_CONFIRMED,
-    } and session.current_state is not None:
-        print(render_state(session.current_state))
+    } and state.current_state is not None:
+        print(render_state(state.current_state))
         return
 
-    # Also print the reason 
+    # Also print the reason
     if outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
         print("Reason: Observed state does not match any legal successor.")
         return
 
     # Also print the AI action when selected.
-    if outcome is SessionOutcome.AI_ACTION_SELECTED and session.current_state is not None and session.last_ai_action is not None:
-        print(f"[AI {session.current_state.to_move.value}] {format_action(session.current_state, session.last_ai_action)}")
+    if outcome is SessionOutcome.AI_ACTION_SELECTED and state.current_state is not None and state.ai_action is not None:
+        print(f"[AI {state.current_state.to_move.value}] {format_action(state.current_state, state.ai_action)}")
 
 
 def _reset_warning_tracking() -> tuple[None, int, bool]:
     return None, 0, False
 
 
-def _build_session(config: VisionPlayConfig) -> VisionGameSession:
-    """Construct the game session with the appropriate AI controller and stabilizer based on the config."""
-    ai_controller = AIController(depth=config.ai_depth, evaluator_name=config.ai_evaluator)
-    return VisionGameSession(
-        human_player=config.human_player,
-        ai_player=config.human_player.opponent(),
-        ai_controller=ai_controller,
-        stabilizer=StateStabilizer(required_repeats=config.required_repeats),
-    )
-
-
-def _open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int = 30):
-    """Open the camera using the same settings as the working live debug scripts."""
-    import cv2
-
-    cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not open camera index {device}.")
-
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    cap.set(cv2.CAP_PROP_FPS, fps)
-    return cap
-
-
 def run() -> None:
     config = prompt_vision_config()
-    pipeline = VisionPipeline()
-    session = _build_session(config)
-
-    # Use default camera settings.
-    cap = _open_camera()
+    runtime = VisionGameRuntime(config)
+    runtime.start()
 
     print("\nVision play started.")
     print("Keep the board still while the system stabilizes observations.")
@@ -204,29 +119,11 @@ def run() -> None:
 
     try:
         while True:
-            if session.phase is SessionPhase.READY_FOR_AI:
-                # Move on without reading a new frame.
-                outcome = session.run_ai_turn()
-                step_key = (session.phase, outcome)
-                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
-                if outcome in VISIBLE_OUTCOMES and step_key != last_printed_key:
-                    _print_step(session, outcome)
-                    last_printed_key = step_key
-                continue
+            state = runtime.step()
 
-            # Read one live frame from the camera.
-            ok, frame = cap.read()
-            if not ok:
-                raise RuntimeError("Could not read a frame from the camera.")
-
-            try:
-                # 1. Vision reconstructs the board/cards snapshot from the frame.
-                snapshot = pipeline.snapshot_from_frame(frame)
-                # 2. Inject the most plausible "to_move" for this phase.
-                observed_state = _state_from_snapshot_for_session(snapshot, session)
-                
-            except Exception as exc:
-                message = f"{type(exc).__name__}: {exc}"
+            # --- Handle vision / runtime errors ---
+            if state.error_message is not None:
+                message = state.error_message
                 if message != current_error:
                     current_error = message
                     current_error_count = 1
@@ -239,15 +136,17 @@ def run() -> None:
                     print(f"\n[vision error] {message}")
                     current_error_reported = True
                 continue
-            
+
             # Reset error tracking on successful observation.
             current_error = None
             current_error_count = 0
             current_error_reported = False
 
-            # Integration decides whether the observation is stable, legal and actionable.
-            outcome = session.process_observation(observed_state)
-            step_key = (session.phase, outcome)
+            outcome = state.last_outcome
+            if outcome is None:
+                continue
+
+            step_key = (state.phase, outcome)
 
             if outcome in FILTERED_WARNING_OUTCOMES:
                 if step_key != current_warning_key:
@@ -261,7 +160,7 @@ def run() -> None:
                 if (not current_warning_reported
                     and current_warning_count >= WARNING_REPORT_THRESHOLD
                     and step_key != last_printed_key):
-                    _print_step(session, outcome)
+                    _print_step(state)
                     last_printed_key = step_key
                     current_warning_reported = True
 
@@ -269,7 +168,7 @@ def run() -> None:
                 # Show important non-warning events right away.
                 current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
                 if step_key != last_printed_key:
-                    _print_step(session, outcome)
+                    _print_step(state)
                     last_printed_key = step_key
 
             else:
@@ -277,17 +176,16 @@ def run() -> None:
                 current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
 
             # Once the session reaches a terminal state, announce the winner and stop.
-            if session.phase is SessionPhase.FINISHED and session.current_state is not None:
-                winner_outcome = winner(session.current_state)
-                if winner_outcome is not None:
+            if state.phase is SessionPhase.FINISHED and state.current_state is not None:
+                if state.winner_player is not None:
                     print("")
-                    print(f"*** WINNER: {winner_outcome[0].value} ***")
-                    print(f"*** REASON: {winner_outcome[1]} ***")
+                    print(f"*** WINNER: {state.winner_player.value} ***")
+                    print(f"*** REASON: {state.winner_reason} ***")
                 break
     except KeyboardInterrupt:
         print("\nStopping vision play.")
     finally:
-        cap.release()
+        runtime.stop()
 
 
 if __name__ == "__main__":
