@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from onitama.app.errors import VisionConfigurationError
 from onitama.engine.state import GameState
 
 
@@ -20,7 +21,7 @@ class StateStabilizer:
 
     def __post_init__(self) -> None:
         if self.required_repeats < 1:
-            raise ValueError("required_repeats must be >= 1")
+            raise VisionConfigurationError("required_repeats must be >= 1")
 
     def push(self, observed_state: GameState) -> GameState | None:
         """Consume one observation and return the stable state when the threshold is reached."""

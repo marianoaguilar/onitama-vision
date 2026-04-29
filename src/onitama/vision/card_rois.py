@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 
+from onitama.app.errors import VisionConfigurationError
 from onitama.vision.homography import order_points_clockwise
 
 
@@ -42,12 +43,12 @@ def _parse_quad(value: object, *, slot: SlotName) -> Quad:
     """
     
     if not isinstance(value, list) or len(value) != 4:
-        raise ValueError(f"Invalid card ROI for {slot}: 'src_points' must have exactly 4 points.")
+        raise VisionConfigurationError(f"Invalid card ROI for {slot}: 'src_points' must have exactly 4 points.")
 
     points: Quad = []
     for point in value:
         if not isinstance(point, (list, tuple)) or len(point) != 2:
-            raise ValueError(f"Invalid point in {slot}.")
+            raise VisionConfigurationError(f"Invalid point in {slot}.")
         points.append((float(point[0]), float(point[1])))
 
     ordered = order_points_clockwise(np.array(points, dtype=np.float32))
@@ -61,11 +62,11 @@ def load_card_rois(path: str | Path, *, allow_missing: bool = False) -> Dict[Slo
     if not roi_path.exists():
         if allow_missing:
             return {slot: [] for slot in SLOT_ORDER}
-        raise FileNotFoundError(f"Card ROI file not found: {roi_path}")
+        raise VisionConfigurationError(f"Card ROI file not found: {roi_path}")
 
     raw = json.loads(roi_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError("Invalid card ROI file: root must be an object.")
+        raise VisionConfigurationError("Invalid card ROI file: root must be an object.")
 
     rois: Dict[SlotName, Quad] = {}
     for slot in SLOT_ORDER:
@@ -74,9 +75,9 @@ def load_card_rois(path: str | Path, *, allow_missing: bool = False) -> Dict[Slo
             if allow_missing:
                 rois[slot] = []
                 continue
-            raise ValueError(f"Invalid card ROI for {slot}: expected object with 'src_points'.")
+            raise VisionConfigurationError(f"Invalid card ROI for {slot}: expected object with 'src_points'.")
         if not isinstance(entry, dict):
-            raise ValueError(f"Invalid card ROI for {slot}: expected object with 'src_points'.")
+            raise VisionConfigurationError(f"Invalid card ROI for {slot}: expected object with 'src_points'.")
         rois[slot] = _parse_quad(entry.get("src_points"), slot=slot)
     return rois
 
@@ -115,7 +116,7 @@ def extract_polygon_crop(frame: np.ndarray, points: Quad, *, mask_polygon: bool 
     
     pts = np.array(points, dtype=np.float32)
     if pts.shape != (4, 2):
-        raise ValueError("points must contain exactly 4 (x, y) vertices.")
+        raise VisionConfigurationError("points must contain exactly 4 (x, y) vertices.")
 
     min_x = int(np.floor(float(np.min(pts[:, 0]))))
     max_x = int(np.ceil(float(np.max(pts[:, 0]))))
@@ -128,7 +129,7 @@ def extract_polygon_crop(frame: np.ndarray, points: Quad, *, mask_polygon: bool 
     src_x1 = min(frame_w - 1, max_x)
     src_y1 = min(frame_h - 1, max_y)
     if src_x0 > src_x1 or src_y0 > src_y1:
-        raise ValueError("ROI polygon falls completely outside frame.")
+        raise VisionConfigurationError("ROI polygon falls completely outside frame.")
 
     # Clip the ROI to the visible frame.
     out = frame[src_y0:src_y1 + 1, src_x0:src_x1 + 1].copy()
@@ -157,7 +158,7 @@ def extract_card_crops(
     for slot in SLOT_ORDER:
         points = rois.get(slot)
         if points is None or len(points) != 4:
-            raise ValueError(f"Slot '{slot}' does not contain a valid 4-point ROI.")
+            raise VisionConfigurationError(f"Slot '{slot}' does not contain a valid 4-point ROI.")
         crops[slot] = extract_polygon_crop(frame, points, mask_polygon=mask_polygon)
     return crops
 

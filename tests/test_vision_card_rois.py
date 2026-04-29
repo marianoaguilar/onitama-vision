@@ -3,6 +3,7 @@ import json
 import numpy as np
 import pytest
 
+from onitama.app.errors import VisionConfigurationError
 from onitama.vision.card_rois import SLOT_ORDER, extract_polygon_crop, load_card_rois
 
 
@@ -53,5 +54,5 @@ def test_extract_polygon_crop_applies_polygon_mask() -> None:
 
 def test_extract_polygon_crop_rejects_invalid_vertices() -> None:
     frame = np.zeros((4, 4, 3), dtype=np.uint8)
-    with pytest.raises(ValueError, match="exactly 4"):
+    with pytest.raises(VisionConfigurationError, match="exactly 4"):
         extract_polygon_crop(frame, [(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)], mask_polygon=True)

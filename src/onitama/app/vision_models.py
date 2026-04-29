@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from onitama.app.errors import VisionConfigurationError
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action
 from onitama.engine.state import GameState
@@ -31,17 +32,17 @@ class VisionRuntimeConfig:
 
     def __post_init__(self) -> None:
         if self.required_repeats < 1:
-            raise ValueError("required_repeats must be >= 1.")
+            raise VisionConfigurationError("required_repeats must be >= 1.")
         if self.ai_depth < 1:
-            raise ValueError("ai_depth must be >= 1.")
+            raise VisionConfigurationError("ai_depth must be >= 1.")
         if self.camera_width < 1:
-            raise ValueError("camera_width must be >= 1.")
+            raise VisionConfigurationError("camera_width must be >= 1.")
         if self.camera_height < 1:
-            raise ValueError("camera_height must be >= 1.")
+            raise VisionConfigurationError("camera_height must be >= 1.")
         if self.camera_fps < 1:
-            raise ValueError("camera_fps must be >= 1.")
+            raise VisionConfigurationError("camera_fps must be >= 1.")
         if not self.ai_evaluator.strip():
-            raise ValueError("ai_evaluator cannot be empty.")
+            raise VisionConfigurationError("ai_evaluator cannot be empty.")
 
 
 @dataclass(frozen=True)

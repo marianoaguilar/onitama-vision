@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from onitama.ai.controllers import AIController
+from onitama.app.errors import VisionConfigurationError, VisionInternalError
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action, apply_action, winner
 from onitama.engine.state import GameState
@@ -50,18 +51,18 @@ class VisionGameSession:
 
     def __post_init__(self) -> None:
         if self.human_player is self.ai_player:
-            raise ValueError("human_player and ai_player must be different players.")
+            raise VisionConfigurationError("human_player and ai_player must be different players.")
         if self.ai_controller is None:
-            raise ValueError("ai_controller cannot be None.")
+            raise VisionConfigurationError("ai_controller cannot be None.")
 
 
     def process_observation(self, observed_state: GameState) -> SessionOutcome:
         """Consume one observed state and advance the session when possible."""
         if self.phase is SessionPhase.FINISHED:
-            raise ValueError("Cannot process observations after the session has finished.")
+            raise VisionInternalError("Cannot process observations after the session has finished.")
 
         if self.phase is SessionPhase.READY_FOR_AI:
-            raise ValueError("Cannot process observations while the session is ready for the AI turn.")
+            raise VisionInternalError("Cannot process observations while the session is ready for the AI turn.")
 
         stable_state = self.stabilizer.push(observed_state)
         if stable_state is None:
@@ -76,18 +77,19 @@ class VisionGameSession:
         if self.phase is SessionPhase.WAITING_AI_EXECUTION:
             return self._process_stable_ai_execution(stable_state)
 
-        raise ValueError(f"Unknown session phase: {self.phase!r}")
+        raise VisionInternalError(f"Unknown session phase: {self.phase!r}")
 
 
     def run_ai_turn(self) -> SessionOutcome:
         """Select the AI action and start waiting for the expected physical state."""
         if self.phase is SessionPhase.FINISHED:
-            raise ValueError("Cannot run an AI turn after the session has finished.")
+            raise VisionInternalError("Cannot run an AI turn after the session has finished.")
 
         if self.phase is not SessionPhase.READY_FOR_AI:
-            raise ValueError("Cannot run an AI turn unless the session is READY_FOR_AI.")
+            raise VisionInternalError("Cannot run an AI turn unless the session is READY_FOR_AI.")
 
-        assert self.current_state is not None, "READY_FOR_AI requires a confirmed current_state."
+        if self.current_state is None:
+            raise VisionInternalError("READY_FOR_AI requires a confirmed current_state.")
 
         ai_action = self.ai_controller.select_action(self.current_state)
         expected_state = apply_action(self.current_state, ai_action)
@@ -107,7 +109,7 @@ class VisionGameSession:
             return SessionPhase.WAITING_HUMAN_MOVE
         if state.to_move is self.ai_player:
             return SessionPhase.READY_FOR_AI
-        raise ValueError(f"Unexpected player to move: {state.to_move!r}")
+        raise VisionInternalError(f"Unexpected player to move: {state.to_move!r}")
 
 
     def _bootstrap_from_stable_state(
@@ -129,7 +131,8 @@ class VisionGameSession:
         stable_state: GameState,
     ) -> SessionOutcome:
         """Validate one stable human observation against the confirmed state."""
-        assert self.current_state is not None, "WAITING_HUMAN_MOVE requires a confirmed current_state."
+        if self.current_state is None:
+            raise VisionInternalError("WAITING_HUMAN_MOVE requires a confirmed current_state.")
 
         sync_status = match_observed_state(self.current_state, stable_state)
 
@@ -146,7 +149,9 @@ class VisionGameSession:
         self.phase = self._phase_for_confirmed_state(stable_state)
 
         if self.phase not in {SessionPhase.FINISHED, SessionPhase.READY_FOR_AI}:
-            raise ValueError("Invalid session state: a confirmed human move must hand control to the AI or finish the game.")
+            raise VisionInternalError(
+                "Invalid session state: a confirmed human move must hand control to the AI or finish the game."
+            )
 
         return SessionOutcome.HUMAN_MOVE_ACCEPTED
 
@@ -156,9 +161,12 @@ class VisionGameSession:
         stable_state: GameState,
     ) -> SessionOutcome:
         """Check whether the physical board now matches the expected AI state."""
-        assert self.current_state is not None, "WAITING_AI_EXECUTION requires a confirmed current_state."
-        assert self.expected_state is not None, "WAITING_AI_EXECUTION requires an expected_state."
-        assert self.last_ai_action is not None, "WAITING_AI_EXECUTION requires a last_ai_action."
+        if self.current_state is None:
+            raise VisionInternalError("WAITING_AI_EXECUTION requires a confirmed current_state.")
+        if self.expected_state is None:
+            raise VisionInternalError("WAITING_AI_EXECUTION requires an expected_state.")
+        if self.last_ai_action is None:
+            raise VisionInternalError("WAITING_AI_EXECUTION requires a last_ai_action.")
 
         if stable_state == self.expected_state:
             self.current_state = stable_state
@@ -168,7 +176,9 @@ class VisionGameSession:
             self.phase = self._phase_for_confirmed_state(stable_state)
 
             if self.phase is not SessionPhase.FINISHED and self.phase is not SessionPhase.WAITING_HUMAN_MOVE:
-                raise ValueError("Invalid session state: a confirmed AI move must hand control to the human player or finish the game.")
+                raise VisionInternalError(
+                    "Invalid session state: a confirmed AI move must hand control to the human player or finish the game."
+                )
 
             return SessionOutcome.AI_EXECUTION_CONFIRMED
 

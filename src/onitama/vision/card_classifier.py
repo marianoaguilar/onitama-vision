@@ -8,6 +8,11 @@ from typing import Any
 import cv2
 import numpy as np
 
+from onitama.app.errors import (
+    VisionConfigurationError,
+    VisionDependencyError,
+    VisionPipelineError,
+)
 from onitama.vision.card_rois import SLOT_ORDER, SlotName, extract_card_crops, load_card_rois
 
 
@@ -67,7 +72,7 @@ class CardClassificationResult:
         by_slot = self.by_slot()
         missing = [slot for slot in SLOT_ORDER if slot not in by_slot]
         if missing:
-            raise ValueError(f"Missing predictions for slots: {missing}")
+            raise VisionPipelineError(f"Missing predictions for slots: {missing}")
 
         red_cards = (by_slot["red_0"].class_name, by_slot["red_1"].class_name)
         blue_cards = (by_slot["blue_0"].class_name, by_slot["blue_1"].class_name)
@@ -101,11 +106,11 @@ class YoloCardClassifier:
         model_path = Path(model_path)
         rois_path = Path(rois_path)
         if not model_path.exists():
-            raise FileNotFoundError(f"YOLO card model not found: {model_path}")
+            raise VisionConfigurationError(f"YOLO card model not found: {model_path}")
         if not rois_path.exists():
-            raise FileNotFoundError(f"Card ROI file not found: {rois_path}")
+            raise VisionConfigurationError(f"Card ROI file not found: {rois_path}")
         if imgsz <= 0:
-            raise ValueError("imgsz must be > 0.")
+            raise VisionConfigurationError("imgsz must be > 0.")
 
         self.model_path = model_path
         self.rois_path = rois_path
@@ -117,7 +122,7 @@ class YoloCardClassifier:
         try:
             from ultralytics import YOLO
         except Exception as exc:
-            raise RuntimeError(
+            raise VisionDependencyError(
                 "Could not import ultralytics. Install it in your .venv with: "
                 ".venv/bin/python -m pip install ultralytics"
             ) from exc
@@ -136,9 +141,9 @@ class YoloCardClassifier:
     def prepare_crop(self, crop: np.ndarray) -> np.ndarray:
         """Resize one crop to the model input size with black padding."""
         if crop.size == 0:
-            raise ValueError("crop must be non-empty.")
+            raise VisionPipelineError("crop must be non-empty.")
         if crop.ndim != 3:
-            raise ValueError("crop must be a color image with shape (H, W, C).")
+            raise VisionPipelineError("crop must be a color image with shape (H, W, C).")
 
         target_size = self.imgsz
         target_w = target_h = int(target_size)
@@ -174,7 +179,7 @@ class YoloCardClassifier:
         # Run the model and check we got a result for each slot.
         results = self.predict_prepared_crops(prepared_crops)
         if len(results) != len(SLOT_ORDER):
-            raise RuntimeError(
+            raise VisionPipelineError(
                 f"Expected {len(SLOT_ORDER)} classification results, got {len(results)}."
             )
 
@@ -183,7 +188,9 @@ class YoloCardClassifier:
         for slot, result in zip(SLOT_ORDER, results):
             probs = result.probs
             if probs is None:
-                raise RuntimeError(f"Classification result for slot '{slot}' does not contain probabilities.")
+                raise VisionPipelineError(
+                    f"Classification result for slot '{slot}' does not contain probabilities."
+                )
 
             top1_conf = float(probs.top1conf.item() if hasattr(probs.top1conf, "item") else probs.top1conf)
             top1_index = int(probs.top1)

@@ -44,6 +44,9 @@ class RuntimeWorker(QThread):
                     self.frame_changed.emit(_qimage_from_bgr_frame(frame))
 
                 self.msleep(120)
+        except Exception as exc:
+            if not self._stop_requested:
+                self.failed.emit(f"{type(exc).__name__}: {exc}")
         finally:
             with self._lock:
                 runtime.stop()
@@ -72,4 +75,3 @@ def _qimage_from_bgr_frame(frame) -> QImage:
     height, width, channels = rgb.shape
     bytes_per_line = channels * width
     return QImage(rgb.data, width, height, bytes_per_line, QImage.Format.Format_RGB888).copy()
-

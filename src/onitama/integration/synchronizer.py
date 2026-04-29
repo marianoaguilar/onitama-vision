@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
+from onitama.app.errors import VisionInternalError
 from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal
 from onitama.engine.state import GameState
 
@@ -30,7 +31,7 @@ def match_observed_state(previous_state: GameState, observed_state: GameState) -
     Possible outcomes are represented by `SyncStatus`.
     """
     if is_terminal(previous_state):
-        raise ValueError("previous_state must be non-terminal.")
+        raise VisionInternalError("previous_state must be non-terminal.")
 
     if previous_state == observed_state:
         return SyncStatus.UNCHANGED

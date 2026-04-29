@@ -1,4 +1,7 @@
+import numpy as np
+
 from onitama.ai.controllers import AIController
+from onitama.app.errors import VisionObservationError
 from onitama.app.vision_models import VisionRuntimeConfig
 from onitama.app.vision_runtime import VisionGameRuntime
 from onitama.engine.moves import Move
@@ -128,3 +131,29 @@ def test_state_from_snapshot_uses_expected_turn_while_waiting_for_ai_execution()
     observed = runtime._state_from_snapshot_for_session(_snapshot_from_state(expected_state))
 
     assert observed == expected_state
+
+
+def test_step_ignores_transient_observation_errors() -> None:
+    class _FakePipeline:
+        def snapshot_from_frame(self, frame):
+            raise VisionObservationError("transient invalid observation")
+
+    class _FakeCamera:
+        def read(self):
+            return True, np.zeros((4, 4, 3), dtype=np.uint8)
+
+    runtime = VisionGameRuntime(
+        VisionRuntimeConfig(
+            human_player=Player.RED,
+            required_repeats=2,
+            ai_depth=1,
+            ai_evaluator="v1",
+        ),
+        pipeline=_FakePipeline(),
+    )
+    runtime.running = True
+    runtime._camera = _FakeCamera()
+
+    state = runtime.step()
+
+    assert state.error_message is None

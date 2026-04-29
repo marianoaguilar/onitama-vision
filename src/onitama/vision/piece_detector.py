@@ -5,6 +5,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from onitama.app.errors import (
+    VisionConfigurationError,
+    VisionDependencyError,
+)
 from onitama.vision.board import BOARD_SIZE, VisionBoard, VisionPiece
 from onitama.vision.homography import (
     HomographyCalibration,
@@ -48,17 +52,17 @@ class YoloPieceDetector:
         model_path = Path(model_path)
         calibration_path = Path(calibration_path)
         if not model_path.exists():
-            raise FileNotFoundError(f"YOLO model not found: {model_path}")
+            raise VisionConfigurationError(f"YOLO model not found: {model_path}")
         if not calibration_path.exists():
-            raise FileNotFoundError(f"Calibration file not found: {calibration_path}")
+            raise VisionConfigurationError(f"Calibration file not found: {calibration_path}")
         if padding_ratio < 0.0:
-            raise ValueError("padding_ratio must be >= 0.0")
+            raise VisionConfigurationError("padding_ratio must be >= 0.0")
         if not (0.0 <= conf <= 1.0):
-            raise ValueError("conf must be in [0.0, 1.0]")
+            raise VisionConfigurationError("conf must be in [0.0, 1.0]")
         if not (0.0 <= iou <= 1.0):
-            raise ValueError("iou must be in [0.0, 1.0]")
+            raise VisionConfigurationError("iou must be in [0.0, 1.0]")
         if not (0.0 <= anchor_x_ratio <= 1.0):
-            raise ValueError("anchor_x_ratio must be in [0.0, 1.0]")
+            raise VisionConfigurationError("anchor_x_ratio must be in [0.0, 1.0]")
 
         self.model_path = model_path
         self.calibration_path = calibration_path
@@ -86,7 +90,7 @@ class YoloPieceDetector:
         try:
             from ultralytics import YOLO
         except Exception as exc:
-            raise RuntimeError(
+            raise VisionDependencyError(
                 "Could not import ultralytics. Install it in your .venv with: "
                 ".venv/bin/python -m pip install ultralytics"
             ) from exc

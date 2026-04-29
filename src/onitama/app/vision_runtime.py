@@ -3,6 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from onitama.ai.controllers import AIController
+from onitama.app.errors import (
+    VisionCameraError,
+    VisionFatalError,
+    VisionInternalError,
+    VisionObservationError,
+)
 from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.engine.cards import CARD_BY_NAME
 from onitama.engine.pieces import Player
@@ -100,11 +106,11 @@ class VisionGameRuntime:
 
         # Otherwise the runtime advances from one observed camera frame.
         if self._camera is None:
-            raise RuntimeError("Runtime is running without an initialized camera.")
+            raise VisionInternalError("Runtime is running without an initialized camera.")
 
         ok, frame = self._camera.read()
         if not ok:
-            self._record_error(RuntimeError("Could not read a frame from the camera."))
+            self._record_error(VisionCameraError("Could not read a frame from the camera."))
             return self._build_state()
 
         self._latest_frame = frame
@@ -114,7 +120,9 @@ class VisionGameRuntime:
             # 2) Infer the correct player-to-move for the current session phase.
             snapshot = self.pipeline.snapshot_from_frame(frame)
             observed_state = self._state_from_snapshot_for_session(snapshot)
-        except Exception as exc:
+        except VisionObservationError:
+            return self._build_state()
+        except VisionFatalError as exc:
             self._record_error(exc)
             return self._build_state()
 
@@ -164,7 +172,7 @@ class VisionGameRuntime:
                 return current_candidate
 
             if self.session.expected_state is None:
-                raise RuntimeError("WAITING_AI_EXECUTION requires an expected_state.")
+                raise VisionInternalError("WAITING_AI_EXECUTION requires an expected_state.")
 
             # After the AI move, interpret the snapshot with the expected next player.
             return snapshot.to_game_state(self.session.expected_state.to_move)
@@ -175,7 +183,7 @@ class VisionGameRuntime:
         """Infer the initial player to move from the observed side card."""
         side_card = CARD_BY_NAME.get(snapshot.side_card)
         if side_card is None:
-            raise ValueError(f"Unknown side card from snapshot: {snapshot.side_card!r}")
+            raise VisionObservationError(f"Unknown side card from snapshot: {snapshot.side_card!r}")
         return side_card.stamp
 
     def _record_error(self, exc: Exception) -> None:
@@ -208,7 +216,7 @@ class VisionGameRuntime:
 
         cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
         if not cap.isOpened():
-            raise RuntimeError(f"Could not open camera index {device}.")
+            raise VisionCameraError(f"Could not open camera index {device}.")
 
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)

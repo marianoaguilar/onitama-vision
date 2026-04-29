@@ -8,6 +8,7 @@ from pathlib import Path
 from onitama.engine.cards import CARD_BY_NAME, Card
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.state import Board, GameState
+from onitama.app.errors import VisionObservationError
 from onitama.vision.board import VisionBoard, VisionPiece
 from onitama.vision.card_classifier import CardClassificationResult
 
@@ -28,11 +29,11 @@ def _parse_player(value: Player | str) -> Player:
 def _parse_card_pair(value: tuple[str, str] | list[str], field_name: str) -> tuple[str, str]:
     """Validate a pair of card names."""
     if len(value) != 2:
-        raise ValueError(f"{field_name} must contain exactly 2 card names.")
+        raise VisionObservationError(f"{field_name} must contain exactly 2 card names.")
     first = str(value[0]).strip()
     second = str(value[1]).strip()
     if not first or not second:
-        raise ValueError(f"{field_name} contains empty card names.")
+        raise VisionObservationError(f"{field_name} contains empty card names.")
     return (first, second)
 
 
@@ -62,7 +63,7 @@ def _resolve_card(card_name: str) -> Card:
     """Resolve a card name to the engine Card object."""
     resolved = CARD_BY_NAME.get(card_name)
     if resolved is None:
-        raise ValueError(f"Unknown card name: {card_name!r}")
+        raise VisionObservationError(f"Unknown card name: {card_name!r}")
     return resolved
 
 
@@ -99,17 +100,17 @@ def _validate_piece_counts(board: Board) -> None:
                     blue_students += 1
 
     if red_masters > 1:
-        raise ValueError("Invalid board: more than one RED master detected.")
+        raise VisionObservationError("Invalid board: more than one RED master detected.")
     if blue_masters > 1:
-        raise ValueError("Invalid board: more than one BLUE master detected.")
+        raise VisionObservationError("Invalid board: more than one BLUE master detected.")
     if red_students > 4:
-        raise ValueError("Invalid board: more than four RED students detected.")
+        raise VisionObservationError("Invalid board: more than four RED students detected.")
     if blue_students > 4:
-        raise ValueError("Invalid board: more than four BLUE students detected.")
+        raise VisionObservationError("Invalid board: more than four BLUE students detected.")
     if red_masters + red_students > 5:
-        raise ValueError("Invalid board: more than five RED pieces detected.")
+        raise VisionObservationError("Invalid board: more than five RED pieces detected.")
     if blue_masters + blue_students > 5:
-        raise ValueError("Invalid board: more than five BLUE pieces detected.")
+        raise VisionObservationError("Invalid board: more than five BLUE pieces detected.")
 
 
 @dataclass(frozen=True)
@@ -130,7 +131,7 @@ class VisionSnapshot:
 
         side = str(self.side_card).strip()
         if not side:
-            raise ValueError("side_card cannot be empty.")
+            raise VisionObservationError("side_card cannot be empty.")
         object.__setattr__(self, "side_card", side)
 
     @classmethod
@@ -213,7 +214,7 @@ class VisionSnapshot:
         # Enforced unique cards
         used = [red_pair[0].name, red_pair[1].name, blue_pair[0].name, blue_pair[1].name, side.name]
         if len(set(used)) != 5:
-            raise ValueError("Cards must be 5 unique cards across red, blue and side.")
+            raise VisionObservationError("Cards must be 5 unique cards across red, blue and side.")
 
         return GameState(
             board=engine_board,

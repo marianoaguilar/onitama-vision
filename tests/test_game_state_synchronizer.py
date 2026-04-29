@@ -5,6 +5,7 @@ from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
 from onitama.integration.synchronizer import SyncStatus, match_observed_state
+from onitama.app.errors import VisionInternalError
 
 
 def test_synchronizer_accepts_unique_legal_successor():
@@ -54,5 +55,5 @@ def test_synchronizer_raises_when_previous_state_is_terminal():
     )
     observed_state = previous_state
 
-    with pytest.raises(ValueError, match="previous_state must be non-terminal"):
+    with pytest.raises(VisionInternalError, match="previous_state must be non-terminal"):
         match_observed_state(previous_state, observed_state)

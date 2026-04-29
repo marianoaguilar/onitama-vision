@@ -6,6 +6,8 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
+from onitama.app.errors import VisionConfigurationError
+
 
 @dataclass(frozen=True)
 class HomographyCalibration:
@@ -27,9 +29,9 @@ class HomographyCalibration:
         rotate = int(data.get("rotate", 0))
         
         if len(src_points) != 4:
-            raise ValueError("src_points must have exactly 4 points.")
+            raise VisionConfigurationError("src_points must have exactly 4 points.")
         if rotate not in (0, 90, 180, 270):
-            raise ValueError("rotate must be one of {0, 90, 180, 270}.")
+            raise VisionConfigurationError("rotate must be one of {0, 90, 180, 270}.")
         
         return HomographyCalibration(src_points=src_points, dst_size=dst_size, rotate=rotate)
 
