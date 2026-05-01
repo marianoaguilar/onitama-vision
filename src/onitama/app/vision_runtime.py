@@ -38,6 +38,7 @@ class VisionGameRuntime:
 
     _BOOTSTRAP_OBSERVATION_WARNING_THRESHOLD = 2
     _IN_GAME_OBSERVATION_WARNING_THRESHOLD = 10
+    _RESET_FRAME_DISCARD_COUNT = 4
 
     def __init__(
         self,
@@ -65,6 +66,7 @@ class VisionGameRuntime:
         self.running = False
         self._camera = None
         self._latest_frame: np.ndarray | None = None
+        self._pending_reset_frame_discards = 0
 
     def start(self) -> None:
         """Open the camera and start the runtime."""
@@ -94,6 +96,7 @@ class VisionGameRuntime:
         self._clear_error()
         self._clear_observation_warning()
         self._last_outcome = None
+        self._pending_reset_frame_discards = self._RESET_FRAME_DISCARD_COUNT
 
     def step(self) -> VisionRuntimeState:
         """
@@ -125,6 +128,12 @@ class VisionGameRuntime:
             return self._build_state()
 
         self._latest_frame = frame
+
+        # After a reset, drop a short burst of buffered frames before trusting
+        # new observations again.
+        if self._pending_reset_frame_discards > 0:
+            self._pending_reset_frame_discards -= 1
+            return self._build_state()
 
         try:
             # 1) Rebuild the visual snapshot.

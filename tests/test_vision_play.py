@@ -225,15 +225,15 @@ def test_step_reports_repeated_in_game_observation_errors_after_higher_threshold
     runtime.running = True
     runtime._camera = _FakeCamera()
 
-    first_state = runtime.step()
-    second_state = runtime.step()
-    third_state = runtime.step()
+    states = [runtime.step() for _ in range(runtime._IN_GAME_OBSERVATION_WARNING_THRESHOLD)]
 
-    assert first_state.observation_kind is None
-    assert second_state.observation_kind is None
-    assert third_state.observation_kind is VisionObservationKind.LOW_CONFIDENCE_CARD
-    assert build_status_view(third_state).title == "Lectura inválida"
-    assert build_status_view(third_state).detail == "Revisa que las cartas estén bien colocadas y visibles."
+    for state in states[:-1]:
+        assert state.observation_kind is None
+
+    warned_state = states[-1]
+    assert warned_state.observation_kind is VisionObservationKind.LOW_CONFIDENCE_CARD
+    assert build_status_view(warned_state).title == "Lectura inválida"
+    assert build_status_view(warned_state).detail == "Revisa que las cartas estén bien colocadas y visibles."
 
 
 def test_step_clears_observation_warning_after_valid_observation() -> None:
@@ -320,12 +320,50 @@ def test_step_groups_low_confidence_card_warnings_with_varying_details() -> None
     runtime.running = True
     runtime._camera = _FakeCamera()
 
-    first_state = runtime.step()
-    second_state = runtime.step()
-    third_state = runtime.step()
+    states = [runtime.step() for _ in range(runtime._IN_GAME_OBSERVATION_WARNING_THRESHOLD)]
 
-    assert first_state.observation_kind is None
-    assert second_state.observation_kind is None
-    assert third_state.observation_kind is VisionObservationKind.LOW_CONFIDENCE_CARD
-    assert build_status_view(third_state).title == "Lectura inválida"
-    assert build_status_view(third_state).detail == "Revisa que las cartas estén bien colocadas y visibles."
+    for state in states[:-1]:
+        assert state.observation_kind is None
+
+    assert states[-1].observation_kind is VisionObservationKind.LOW_CONFIDENCE_CARD
+
+
+def test_reset_discards_buffered_frames_before_bootstrap() -> None:
+    initial_state = GameState.initial(seed=1)
+    snapshot = _snapshot_from_state(initial_state)
+
+    class _FakePipeline:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def snapshot_from_frame(self, frame):
+            self.calls += 1
+            return snapshot
+
+    class _FakeCamera:
+        def read(self):
+            return True, np.zeros((4, 4, 3), dtype=np.uint8)
+
+    runtime = VisionGameRuntime(
+        VisionRuntimeConfig(
+            human_player=initial_state.to_move,
+            required_repeats=1,
+            ai_depth=1,
+            ai_evaluator="v1",
+        ),
+        pipeline=_FakePipeline(),
+    )
+    runtime.running = True
+    runtime._camera = _FakeCamera()
+
+    runtime.reset()
+
+    for _ in range(runtime._RESET_FRAME_DISCARD_COUNT):
+        state = runtime.step()
+        assert state.current_state is None
+        assert runtime.pipeline.calls == 0
+
+    bootstrapped_state = runtime.step()
+
+    assert runtime.pipeline.calls == 1
+    assert bootstrapped_state.current_state == initial_state
