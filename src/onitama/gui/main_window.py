@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self._latest_state: VisionRuntimeState | None = None
         self._camera_window: CameraWindow | None = None
         self._calibration_process: QProcess | None = None
+        self._close_requested = False
 
         self._finish_button = QPushButton("Finalizar partida")
         self._reset_button = QPushButton("Reiniciar")
@@ -255,6 +256,19 @@ class MainWindow(QMainWindow):
         self._worker = None
         self._set_running_controls(False)
 
+    def _request_runtime_stop_for_close(self) -> None:
+        if self._worker is None:
+            return
+        self._worker.request_stop()
+        self._set_running_controls(False)
+
+    def _stop_calibration_process(self) -> None:
+        if self._calibration_process is None:
+            return
+        self._calibration_process.kill()
+        self._calibration_process.waitForFinished(1000)
+        self._calibration_process = None
+
     @Slot()
     def _show_camera(self) -> None:
         if self._camera_window is None:
@@ -287,11 +301,15 @@ class MainWindow(QMainWindow):
         self._message.apply(StatusView("Error de ejecucion", message, "error"))
         self._set_running_controls(False)
         self._worker = None
+        if self._close_requested:
+            self.close()
 
     @Slot()
     def _on_worker_finished(self) -> None:
         self._set_running_controls(False)
         self._worker = None
+        if self._close_requested:
+            self.close()
 
     def _apply_state(self, state: VisionRuntimeState | None) -> None:
         current_state = state.current_state if state is not None else None
@@ -441,11 +459,13 @@ class MainWindow(QMainWindow):
         self._setup_page.set_calibration_error(message)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt API
-        self._stop_runtime()
-        if self._calibration_process is not None:
-            self._calibration_process.kill()
-            self._calibration_process.waitForFinished(1000)
-            self._calibration_process = None
+        if self._worker is not None:
+            self._close_requested = True
+            self._request_runtime_stop_for_close()
+            self._stop_calibration_process()
+            event.ignore()
+            return
+        self._stop_calibration_process()
         super().closeEvent(event)
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
