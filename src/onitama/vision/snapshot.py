@@ -8,9 +8,13 @@ from pathlib import Path
 from onitama.engine.cards import CARD_BY_NAME, Card
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.state import Board, GameState
-from onitama.app.errors import VisionObservationError
+from onitama.app.errors import VisionObservationError, VisionObservationKind, VisionPipelineError
 from onitama.vision.board import VisionBoard, VisionPiece
 from onitama.vision.card_classifier import CardClassificationResult
+
+
+def _raise_invalid_board(debug_message: str) -> None:
+    raise VisionObservationError(VisionObservationKind.INVALID_BOARD_PIECE_COUNT, debug_message=debug_message)
 
 
 def _parse_player(value: Player | str) -> Player:
@@ -29,11 +33,11 @@ def _parse_player(value: Player | str) -> Player:
 def _parse_card_pair(value: tuple[str, str] | list[str], field_name: str) -> tuple[str, str]:
     """Validate a pair of card names."""
     if len(value) != 2:
-        raise VisionObservationError(f"{field_name} must contain exactly 2 card names.")
+        raise ValueError(f"{field_name} must contain exactly 2 card names.")
     first = str(value[0]).strip()
     second = str(value[1]).strip()
     if not first or not second:
-        raise VisionObservationError(f"{field_name} contains empty card names.")
+        raise ValueError(f"{field_name} contains empty card names.")
     return (first, second)
 
 
@@ -63,14 +67,12 @@ def _resolve_card(card_name: str) -> Card:
     """Resolve a card name to the engine Card object."""
     resolved = CARD_BY_NAME.get(card_name)
     if resolved is None:
-        raise VisionObservationError(f"Unknown card name: {card_name!r}")
+        raise VisionPipelineError(f"Unknown card name from vision pipeline: {card_name!r}")
     return resolved
 
 
-def _resolve_card_pair(cards: Sequence[str], field_name: str) -> tuple[Card, Card]:
+def _resolve_card_pair(cards: Sequence[str]) -> tuple[Card, Card]:
     """Resolve a pair of card names to engine cards."""
-    if len(cards) != 2:
-        raise ValueError(f"{field_name} must contain exactly 2 cards.")
     first = _resolve_card(cards[0])
     second = _resolve_card(cards[1])
     return (first, second)
@@ -99,18 +101,17 @@ def _validate_piece_counts(board: Board) -> None:
                 else:
                     blue_students += 1
 
-    if red_masters > 1:
-        raise VisionObservationError("Invalid board: more than one RED master detected.")
-    if blue_masters > 1:
-        raise VisionObservationError("Invalid board: more than one BLUE master detected.")
-    if red_students > 4:
-        raise VisionObservationError("Invalid board: more than four RED students detected.")
-    if blue_students > 4:
-        raise VisionObservationError("Invalid board: more than four BLUE students detected.")
-    if red_masters + red_students > 5:
-        raise VisionObservationError("Invalid board: more than five RED pieces detected.")
-    if blue_masters + blue_students > 5:
-        raise VisionObservationError("Invalid board: more than five BLUE pieces detected.")
+    invalid_limits = (
+        (red_masters > 1, "Invalid board: more than one RED master detected."),
+        (blue_masters > 1, "Invalid board: more than one BLUE master detected."),
+        (red_students > 4, "Invalid board: more than four RED students detected."),
+        (blue_students > 4, "Invalid board: more than four BLUE students detected."),
+        (red_masters + red_students > 5, "Invalid board: more than five RED pieces detected."),
+        (blue_masters + blue_students > 5, "Invalid board: more than five BLUE pieces detected."),
+    )
+    for condition, debug_message in invalid_limits:
+        if condition:
+            _raise_invalid_board(debug_message)
 
 
 @dataclass(frozen=True)
@@ -131,7 +132,7 @@ class VisionSnapshot:
 
         side = str(self.side_card).strip()
         if not side:
-            raise VisionObservationError("side_card cannot be empty.")
+            raise ValueError("side_card cannot be empty.")
         object.__setattr__(self, "side_card", side)
 
     @classmethod
@@ -207,14 +208,17 @@ class VisionSnapshot:
         # Validate the board does not exceed Onitama piece limits.
         _validate_piece_counts(engine_board)
 
-        red_pair = _resolve_card_pair(self.red_cards, "red_cards")
-        blue_pair = _resolve_card_pair(self.blue_cards, "blue_cards")
+        red_pair = _resolve_card_pair(self.red_cards)
+        blue_pair = _resolve_card_pair(self.blue_cards)
         side = _resolve_card(self.side_card)
 
         # Enforced unique cards
         used = [red_pair[0].name, red_pair[1].name, blue_pair[0].name, blue_pair[1].name, side.name]
         if len(set(used)) != 5:
-            raise VisionObservationError("Cards must be 5 unique cards across red, blue and side.")
+            raise VisionObservationError(
+                VisionObservationKind.LOW_CONFIDENCE_CARD,
+                debug_message="Cards must be 5 unique cards across red, blue and side.",
+            )
 
         return GameState(
             board=engine_board,

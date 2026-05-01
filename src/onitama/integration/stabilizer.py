@@ -15,7 +15,7 @@ class StateStabilizer:
     legality; it only tracks repeated equal observations.
     """
 
-    required_repeats: int = 4
+    required_repeats: int = 3
     candidate_state: GameState | None = field(init=False, default=None)
     repeat_count: int = field(init=False, default=0)
 

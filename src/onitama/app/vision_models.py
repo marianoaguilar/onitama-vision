@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from onitama.app.errors import VisionConfigurationError
+from onitama.app.errors import VisionConfigurationError, VisionObservationKind
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action
 from onitama.engine.state import GameState
@@ -58,5 +58,6 @@ class VisionRuntimeState:
     expected_state: GameState | None
     ai_action: Action | None
     error_message: str | None
+    observation_kind: VisionObservationKind | None
     winner_player: Player | None
     winner_reason: str | None

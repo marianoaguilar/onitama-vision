@@ -1,8 +1,28 @@
 from __future__ import annotations
 
+from enum import Enum
+
+
+class VisionObservationKind(str, Enum):
+    """Stable categories for recoverable vision observation failures."""
+
+    INVALID_BOARD_PIECE_COUNT = "invalid_board_piece_count"
+    LOW_CONFIDENCE_CARD = "low_confidence_card"
+    GENERIC = "generic"
+
 
 class VisionObservationError(ValueError):
     """The current visual observation is invalid but the runtime can continue."""
+
+    def __init__(
+        self,
+        kind: VisionObservationKind,
+        *,
+        debug_message: str | None = None,
+    ) -> None:
+        self.kind = kind
+        self.debug_message = debug_message or kind.value
+        super().__init__(self.debug_message)
 
 
 class VisionFatalError(RuntimeError):

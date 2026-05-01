@@ -1,7 +1,9 @@
 import math
 
 import numpy as np
+import pytest
 
+from onitama.app.errors import VisionObservationError, VisionObservationKind
 from onitama.vision.card_classifier import (
     CardClassificationResult,
     CardSlotPrediction,
@@ -91,3 +93,68 @@ def test_card_classification_result_loads_legacy_debug_fields() -> None:
 
     assert loaded.cards_layout() == (("Tiger", "Horse"), ("Crab", "Boar"), "Rabbit")
     assert loaded.predictions[0].confidence == 0.99
+
+
+def test_classify_prepared_crops_rejects_low_confidence_prediction() -> None:
+    class _FakeProbs:
+        def __init__(self, top1: int, top1conf: float) -> None:
+            self.top1 = top1
+            self.top1conf = top1conf
+
+    class _FakeResult:
+        def __init__(self, top1: int, top1conf: float) -> None:
+            self.probs = _FakeProbs(top1=top1, top1conf=top1conf)
+
+    classifier = object.__new__(YoloCardClassifier)
+    classifier.min_card_confidence = 0.80
+    classifier.class_names = {
+        0: "Boar",
+        2: "Crab",
+        9: "Horse",
+        13: "Rabbit",
+        15: "Tiger",
+    }
+    classifier.predict_prepared_crops = lambda prepared_crops: [
+        _FakeResult(top1=15, top1conf=0.95),
+        _FakeResult(top1=9, top1conf=0.92),
+        _FakeResult(top1=13, top1conf=0.41),
+        _FakeResult(top1=2, top1conf=0.96),
+        _FakeResult(top1=0, top1conf=0.90),
+    ]
+
+    with pytest.raises(VisionObservationError) as exc_info:
+        classifier._classify_prepared_crops({})
+
+    assert exc_info.value.kind is VisionObservationKind.LOW_CONFIDENCE_CARD
+
+
+def test_classify_prepared_crops_accepts_predictions_at_threshold() -> None:
+    class _FakeProbs:
+        def __init__(self, top1: int, top1conf: float) -> None:
+            self.top1 = top1
+            self.top1conf = top1conf
+
+    class _FakeResult:
+        def __init__(self, top1: int, top1conf: float) -> None:
+            self.probs = _FakeProbs(top1=top1, top1conf=top1conf)
+
+    classifier = object.__new__(YoloCardClassifier)
+    classifier.min_card_confidence = 0.80
+    classifier.class_names = {
+        0: "Boar",
+        2: "Crab",
+        9: "Horse",
+        13: "Rabbit",
+        15: "Tiger",
+    }
+    classifier.predict_prepared_crops = lambda prepared_crops: [
+        _FakeResult(top1=15, top1conf=0.95),
+        _FakeResult(top1=9, top1conf=0.92),
+        _FakeResult(top1=13, top1conf=0.80),
+        _FakeResult(top1=2, top1conf=0.96),
+        _FakeResult(top1=0, top1conf=0.90),
+    ]
+
+    result = classifier._classify_prepared_crops({})
+
+    assert result.cards_layout() == (("Tiger", "Horse"), ("Crab", "Boar"), "Rabbit")

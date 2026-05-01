@@ -11,6 +11,8 @@ import numpy as np
 from onitama.app.errors import (
     VisionConfigurationError,
     VisionDependencyError,
+    VisionObservationError,
+    VisionObservationKind,
     VisionPipelineError,
 )
 from onitama.vision.card_rois import SLOT_ORDER, SlotName, extract_card_crops, load_card_rois
@@ -102,6 +104,7 @@ class YoloCardClassifier:
         imgsz: int = 320,
         yolo_device: str = "cpu",
         mask_polygon: bool = True,
+        min_card_confidence: float = 0.50,
     ) -> None:
         model_path = Path(model_path)
         rois_path = Path(rois_path)
@@ -111,12 +114,15 @@ class YoloCardClassifier:
             raise VisionConfigurationError(f"Card ROI file not found: {rois_path}")
         if imgsz <= 0:
             raise VisionConfigurationError("imgsz must be > 0.")
+        if not (0.0 <= min_card_confidence <= 1.0):
+            raise VisionConfigurationError("min_card_confidence must be in [0.0, 1.0]")
 
         self.model_path = model_path
         self.rois_path = rois_path
         self.imgsz = int(imgsz)
         self.yolo_device = yolo_device
         self.mask_polygon = bool(mask_polygon)
+        self.min_card_confidence = float(min_card_confidence)
         self.rois = load_card_rois(rois_path)
 
         try:
@@ -193,6 +199,14 @@ class YoloCardClassifier:
                 )
 
             top1_conf = float(probs.top1conf.item() if hasattr(probs.top1conf, "item") else probs.top1conf)
+            if top1_conf < self.min_card_confidence:
+                raise VisionObservationError(
+                    VisionObservationKind.LOW_CONFIDENCE_CARD,
+                    debug_message=(
+                        f"Low-confidence card prediction for slot '{slot}': "
+                        f"{top1_conf:.2f} < {self.min_card_confidence:.2f}."
+                    ),
+                )
             top1_index = int(probs.top1)
 
             predictions.append(

@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from onitama.app.errors import VisionObservationKind
 from onitama.cli.render import format_action
 from onitama.engine.pieces import Player
 from onitama.integration.session import SessionOutcome, SessionPhase
 from onitama.app.vision_models import VisionRuntimeState
+
+
+OBSERVATION_DETAILS = {
+    VisionObservationKind.INVALID_BOARD_PIECE_COUNT: "Revisa que las piezas estén bien colocadas y visibles.",
+    VisionObservationKind.LOW_CONFIDENCE_CARD: "Revisa que las cartas estén bien colocadas y visibles.",
+    VisionObservationKind.GENERIC: "La observación visual no es válida.",
+}
 
 
 @dataclass(frozen=True)
@@ -29,6 +37,10 @@ def player_label(player: Player | None) -> str:
     return "-"
 
 
+def observation_detail(kind: VisionObservationKind) -> str:
+    return OBSERVATION_DETAILS.get(kind, OBSERVATION_DETAILS[VisionObservationKind.GENERIC])
+
+
 def build_status_view(state: VisionRuntimeState | None) -> StatusView:
     """Translate raw runtime state into one clear UI message."""
     if state is None:
@@ -36,7 +48,7 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
 
     if state.error_message:
         return StatusView(
-            title="Error de vision",
+            title="Error de visión",
             detail=state.error_message,
             tone="error",
         )
@@ -51,16 +63,22 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         )
 
     if state.phase is SessionPhase.BOOTSTRAP:
+        if state.observation_kind is not None:
+            return StatusView(
+                title="No se puede confirmar la posición inicial",
+                detail=observation_detail(state.observation_kind),
+                tone="warning",
+            )
         return StatusView(
-            title="Leyendo posicion inicial",
-            detail="Manten el tablero quieto hasta confirmar una posicion estable",
+            title="Leyendo posición inicial",
+            detail="Mantén el tablero quieto hasta confirmar una posición estable",
         )
 
     if state.phase is SessionPhase.WAITING_HUMAN_MOVE:
         if state.last_outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
             return StatusView(
                 title="Movimiento rechazado",
-                detail="La posicion fisica no coincide con un movimiento legal",
+                detail="La posición física no coincide con un movimiento legal",
                 tone="warning",
             )
         if state.last_outcome is SessionOutcome.AI_EXECUTION_CONFIRMED:
@@ -69,15 +87,21 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
                 detail="Turno del humano",
                 tone="success",
             )
+        if state.observation_kind is not None:
+            return StatusView(
+                title="Lectura inválida",
+                detail=observation_detail(state.observation_kind),
+                tone="warning",
+            )
         return StatusView(
             title="Turno del humano",
-            detail="Haz tu movimiento en el tablero fisico",
+            detail="Haz tu movimiento en el tablero físico",
         )
 
     if state.phase is SessionPhase.READY_FOR_AI:
         return StatusView(
             title="Turno de la IA",
-            detail="La IA esta eligiendo un movimiento",
+            detail="La IA está eligiendo un movimiento",
         )
 
     if state.phase is SessionPhase.WAITING_AI_EXECUTION:
@@ -89,6 +113,12 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
             return StatusView(
                 title="El movimiento de la IA no coincide",
                 detail=f"Esperado: {action_text}",
+                tone="warning",
+            )
+        if state.observation_kind is not None:
+            return StatusView(
+                title="Lectura inválida",
+                detail=observation_detail(state.observation_kind),
                 tone="warning",
             )
 

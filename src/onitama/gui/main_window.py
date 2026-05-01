@@ -35,7 +35,7 @@ _CARD_ROIS_PATH = Path("data/vision/card_rois.json")
 _HOMOGRAPHY_SCRIPT = Path("scripts/vision/calibration/calibrate_homography.py")
 _CARD_ROIS_SCRIPT = Path("scripts/vision/calibration/calibrate_card_rois.py")
 _CARD_ROI_SLOTS = ("red_0", "red_1", "side", "blue_0", "blue_1")
-_DEFAULT_REQUIRED_REPEATS = 4
+_DEFAULT_REQUIRED_REPEATS = 3
 _DEFAULT_AI_DEPTH = 5
 
 

@@ -20,8 +20,7 @@ FILTERED_WARNING_OUTCOMES = {
     SessionOutcome.HUMAN_MOVE_REJECTED,
     SessionOutcome.AI_EXECUTION_MISMATCH,
 }
-WARNING_REPORT_THRESHOLD = 2
-VISION_ERROR_REPORT_THRESHOLD = 3
+WARNING_REPORT_THRESHOLD = 3
 
 
 def prompt_vision_config() -> VisionRuntimeConfig:
@@ -107,15 +106,16 @@ def run() -> None:
     # Track the last printed session phase/outcome.
     last_printed_key: tuple[SessionPhase, SessionOutcome] | None = None
 
-    # Track repeated vision errors
-    current_error: str | None = None
-    current_error_count = 0
-    current_error_reported = False
+    # Keep the last hard runtime error to avoid printing the same one every loop.
+    last_error_message: str | None = None
 
-    # Track repeated warnings
-    current_warning_key: tuple[SessionPhase, SessionOutcome] | None = None
-    current_warning_count = 0
-    current_warning_reported = False
+    # Track repeated warning outcomes from the session flow.
+    current_outcome_warning_key: tuple[SessionPhase, SessionOutcome] | None = None
+    current_outcome_warning_count = 0
+    current_outcome_warning_reported = False
+
+    # Observation warnings are already threshold-filtered by VisionGameRuntime.
+    last_observation_warning_kind: str | None = None
 
     try:
         while True:
@@ -123,24 +123,18 @@ def run() -> None:
 
             # --- Handle vision / runtime errors ---
             if state.error_message is not None:
-                message = state.error_message
-                if message != current_error:
-                    current_error = message
-                    current_error_count = 1
-                    current_error_reported = False
-                else:
-                    current_error_count += 1
-
-                # Only report vision errors if they repeat several times.
-                if not current_error_reported and current_error_count >= VISION_ERROR_REPORT_THRESHOLD:
-                    print(f"\n[vision error] {message}")
-                    current_error_reported = True
+                if state.error_message != last_error_message:
+                    print(f"\n[vision error] {state.error_message}")
+                    last_error_message = state.error_message
                 continue
 
-            # Reset error tracking on successful observation.
-            current_error = None
-            current_error_count = 0
-            current_error_reported = False
+            last_error_message = None
+
+            if state.observation_kind is not None:
+                if state.observation_kind.value != last_observation_warning_kind:
+                    print(f"\n[vision warning] {state.observation_kind.value}")
+                    last_observation_warning_kind = state.observation_kind.value
+                continue
 
             outcome = state.last_outcome
             if outcome is None:
@@ -149,31 +143,41 @@ def run() -> None:
             step_key = (state.phase, outcome)
 
             if outcome in FILTERED_WARNING_OUTCOMES:
-                if step_key != current_warning_key:
-                    current_warning_key = step_key
-                    current_warning_count = 1
-                    current_warning_reported = False
+                if step_key != current_outcome_warning_key:
+                    current_outcome_warning_key = step_key
+                    current_outcome_warning_count = 1
+                    current_outcome_warning_reported = False
                 else:
-                    current_warning_count += 1
+                    current_outcome_warning_count += 1
 
                 # Only show warnings if they repeat several.
-                if (not current_warning_reported
-                    and current_warning_count >= WARNING_REPORT_THRESHOLD
+                if (not current_outcome_warning_reported
+                    and current_outcome_warning_count >= WARNING_REPORT_THRESHOLD
                     and step_key != last_printed_key):
                     _print_step(state)
                     last_printed_key = step_key
-                    current_warning_reported = True
+                    last_observation_warning_kind = None
+                    current_outcome_warning_reported = True
 
             elif outcome in VISIBLE_OUTCOMES:
                 # Show important non-warning events right away.
-                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
+                (
+                    current_outcome_warning_key,
+                    current_outcome_warning_count,
+                    current_outcome_warning_reported,
+                ) = _reset_warning_tracking()
                 if step_key != last_printed_key:
                     _print_step(state)
                     last_printed_key = step_key
+                    last_observation_warning_kind = None
 
             else:
                 # Hidden/internal outcomes still reset warning tracking.
-                current_warning_key, current_warning_count, current_warning_reported = _reset_warning_tracking()
+                (
+                    current_outcome_warning_key,
+                    current_outcome_warning_count,
+                    current_outcome_warning_reported,
+                ) = _reset_warning_tracking()
 
             # Once the session reaches a terminal state, announce the winner and stop.
             if state.phase is SessionPhase.FINISHED and state.current_state is not None:

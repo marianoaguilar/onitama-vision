@@ -8,6 +8,8 @@ from onitama.app.errors import (
     VisionFatalError,
     VisionInternalError,
     VisionObservationError,
+    VisionObservationKind,
+    VisionPipelineError,
 )
 from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.engine.cards import CARD_BY_NAME
@@ -34,6 +36,9 @@ class VisionGameRuntime:
     the translation into a raw runtime state consumable by different frontends.
     """
 
+    _BOOTSTRAP_OBSERVATION_WARNING_THRESHOLD = 2
+    _IN_GAME_OBSERVATION_WARNING_THRESHOLD = 10
+
     def __init__(
         self,
         config: VisionRuntimeConfig,
@@ -47,6 +52,11 @@ class VisionGameRuntime:
 
         # Keep the latest raw runtime error.
         self._tracked_error_message: str | None = None
+
+        # Keep the latest recoverable observation warning.
+        self._observation_warning_kind: VisionObservationKind | None = None
+        self._pending_observation_warning_kind: VisionObservationKind | None = None
+        self._pending_observation_warning_count = 0
         
         # Keep the latest emitted session outcome.
         self._last_outcome: SessionOutcome | None = None
@@ -82,6 +92,7 @@ class VisionGameRuntime:
         """Reset the game session while keeping the configured pipeline and camera."""
         self.session = self._build_session(self.config)
         self._clear_error()
+        self._clear_observation_warning()
         self._last_outcome = None
 
     def step(self) -> VisionRuntimeState:
@@ -120,13 +131,16 @@ class VisionGameRuntime:
             # 2) Infer the correct player-to-move for the current session phase.
             snapshot = self.pipeline.snapshot_from_frame(frame)
             observed_state = self._state_from_snapshot_for_session(snapshot)
-        except VisionObservationError:
+        except VisionObservationError as exc:
+            self._record_observation_warning(exc)
             return self._build_state()
         except VisionFatalError as exc:
+            self._clear_observation_warning()
             self._record_error(exc)
             return self._build_state()
 
         self._clear_error()
+        self._clear_observation_warning()
 
         # Let the session decide whether the observation is stable, legal and actionable.
         self._last_outcome = self.session.process_observation(observed_state)
@@ -183,7 +197,7 @@ class VisionGameRuntime:
         """Infer the initial player to move from the observed side card."""
         side_card = CARD_BY_NAME.get(snapshot.side_card)
         if side_card is None:
-            raise VisionObservationError(f"Unknown side card from snapshot: {snapshot.side_card!r}")
+            raise VisionPipelineError(f"Unknown side card from vision pipeline: {snapshot.side_card!r}")
         return side_card.stamp
 
     def _record_error(self, exc: Exception) -> None:
@@ -191,6 +205,27 @@ class VisionGameRuntime:
 
     def _clear_error(self) -> None:
         self._tracked_error_message = None
+
+    def _record_observation_warning(self, exc: VisionObservationError) -> None:
+        if exc.kind is not self._pending_observation_warning_kind:
+            self._pending_observation_warning_kind = exc.kind
+            self._pending_observation_warning_count = 1
+            self._observation_warning_kind = None
+            return
+
+        self._pending_observation_warning_count += 1
+        if self._pending_observation_warning_count >= self._observation_warning_threshold():
+            self._observation_warning_kind = exc.kind
+
+    def _clear_observation_warning(self) -> None:
+        self._observation_warning_kind = None
+        self._pending_observation_warning_kind = None
+        self._pending_observation_warning_count = 0
+
+    def _observation_warning_threshold(self) -> int:
+        if self.session.phase is SessionPhase.BOOTSTRAP:
+            return self._BOOTSTRAP_OBSERVATION_WARNING_THRESHOLD
+        return self._IN_GAME_OBSERVATION_WARNING_THRESHOLD
 
     def _build_state(self) -> VisionRuntimeState:
         current_state = self.session.current_state
@@ -205,6 +240,7 @@ class VisionGameRuntime:
             expected_state=self.session.expected_state,
             ai_action=self.session.last_ai_action,
             error_message=self._tracked_error_message,
+            observation_kind=self._observation_warning_kind,
             winner_player=winner_player,
             winner_reason=winner_reason,
         )
