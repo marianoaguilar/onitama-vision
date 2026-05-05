@@ -92,7 +92,7 @@ def save_card_rois(path: str | Path, rois: Dict[SlotName, Quad]) -> None:
             raise ValueError(f"Cannot save: slot '{slot}' does not have 4 points.")
         ordered = order_points_clockwise(np.array(points, dtype=np.float32))
         payload[slot] = {
-            "src_points": [[float(x), float(y)] for x, y in ordered.tolist()],
+            "src_points": [[float(round(x)), float(round(y))] for x, y in ordered.tolist()],
         }
 
     out = Path(path)

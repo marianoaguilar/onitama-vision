@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import List, Tuple
 
@@ -39,14 +38,8 @@ def main() -> None:
     # Load existing calibration if available
     calib = None
     try:
-        with open(out_path, "r") as f:
-            data = json.load(f)
-            calib = HomographyCalibration(
-                src_points=tuple(tuple(p) for p in data["src_points"]),
-                dst_size=tuple(data["dst_size"]),
-                rotate=data["rotate"],
-            )
-            print(f"Loaded existing calibration from: {out_path}")
+        calib = HomographyCalibration.load(out_path)
+        print(f"Loaded existing calibration from: {out_path}")
     except FileNotFoundError:
         print("No existing calibration found. Press 'c' to calibrate.")
 
@@ -125,12 +118,7 @@ def main() -> None:
             cv2.waitKey(0)
             cv2.destroyWindow("warped")
 
-            out_data = {
-                "src_points": [[p[0], p[1]] for p in calib.src_points],
-                "dst_size": [calib.dst_size[0], calib.dst_size[1]],
-                "rotate": calib.rotate,
-            }
-            out_path.write_text(json.dumps(out_data, indent=2), encoding="utf-8")
+            calib.save(out_path)
             print(f"Saved calibration to: {out_path}")
 
             frozen = None

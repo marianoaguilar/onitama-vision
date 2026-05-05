@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, Qt, Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -24,6 +23,8 @@ from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.engine.moves import Move
 from onitama.engine.pieces import Player
 from onitama.gui.camera_window import CameraWindow
+from onitama.gui.calibration.board_calibration_dialog import BoardCalibrationDialog
+from onitama.gui.calibration.card_rois_calibration_dialog import CardRoisCalibrationDialog
 from onitama.gui.runtime_worker import RuntimeWorker
 from onitama.gui.setup_page import SetupPage
 from onitama.gui.view_logic import StatusView, build_status_view
@@ -32,8 +33,6 @@ from onitama.gui.widgets import BoardWidget, CardWidget, MessageBanner
 
 _CALIBRATION_PATH = Path("data/vision/calibration.json")
 _CARD_ROIS_PATH = Path("data/vision/card_rois.json")
-_HOMOGRAPHY_SCRIPT = Path("scripts/vision/calibration/calibrate_homography.py")
-_CARD_ROIS_SCRIPT = Path("scripts/vision/calibration/calibrate_card_rois.py")
 _CARD_ROI_SLOTS = ("red_0", "red_1", "side", "blue_0", "blue_1")
 _DEFAULT_REQUIRED_REPEATS = 3
 _DEFAULT_AI_DEPTH = 5
@@ -48,7 +47,7 @@ class MainWindow(QMainWindow):
         self._worker: RuntimeWorker | None = None
         self._latest_state: VisionRuntimeState | None = None
         self._camera_window: CameraWindow | None = None
-        self._calibration_process: QProcess | None = None
+        self._calibration_dialog: QDialog | None = None
         self._close_requested = False
 
         self._finish_button = QPushButton("Finalizar partida")
@@ -262,12 +261,11 @@ class MainWindow(QMainWindow):
         self._worker.request_stop()
         self._set_running_controls(False)
 
-    def _stop_calibration_process(self) -> None:
-        if self._calibration_process is None:
+    def _close_calibration_dialog(self) -> None:
+        if self._calibration_dialog is None:
             return
-        self._calibration_process.kill()
-        self._calibration_process.waitForFinished(1000)
-        self._calibration_process = None
+        self._calibration_dialog.close()
+        self._calibration_dialog = None
 
     @Slot()
     def _show_camera(self) -> None:
@@ -365,7 +363,7 @@ class MainWindow(QMainWindow):
             ready=ready,
             board_message=board_message,
             cards_message=cards_message,
-            start_enabled=ready and self._calibration_process is None,
+            start_enabled=ready and self._calibration_dialog is None,
         )
         return ready
 
@@ -402,70 +400,51 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _calibrate_board(self) -> None:
-        self._run_calibration_script(_HOMOGRAPHY_SCRIPT)
+        if not self._can_open_calibration_dialog():
+            return
+        self._open_calibration_dialog(BoardCalibrationDialog(_CALIBRATION_PATH, self))
 
     @Slot()
     def _calibrate_cards(self) -> None:
-        self._run_calibration_script(_CARD_ROIS_SCRIPT)
-
-    def _run_calibration_script(self, script: Path) -> None:
-        if self._calibration_process is not None:
+        if not self._can_open_calibration_dialog():
             return
+        self._open_calibration_dialog(CardRoisCalibrationDialog(_CARD_ROIS_PATH, self))
+
+    def _can_open_calibration_dialog(self) -> bool:
+        if self._calibration_dialog is not None:
+            return False
         if self._worker is not None:
             self._message.apply(StatusView("Para la partida primero", "No se puede calibrar mientras la vision esta activa.", "warning"))
-            return
-        if not script.exists():
-            self._setup_page.set_calibration_script_missing(script)
-            return
+            return False
+        return True
 
-        process = QProcess(self)
-        process.setProgram(sys.executable)
-        process.setArguments([str(script)])
-        process.setWorkingDirectory(str(Path.cwd()))
-
-        env = QProcess.systemEnvironment()
-        src_path = str(Path("src"))
-        current_pythonpath = os.environ.get("PYTHONPATH")
-        env.append(f"PYTHONPATH={src_path}{os.pathsep}{current_pythonpath}" if current_pythonpath else f"PYTHONPATH={src_path}")
-        process.setEnvironment(env)
-
-        process.finished.connect(self._on_calibration_finished)
-        process.errorOccurred.connect(self._on_calibration_error)
-        self._calibration_process = process
+    def _open_calibration_dialog(self, dialog: QDialog) -> None:
+        self._calibration_dialog = dialog
         self._setup_page.set_calibration_buttons_enabled(False)
-        self._setup_page.set_calibration_running(script)
-        process.start()
+        self._refresh_calibration_status()
+        if isinstance(dialog, (BoardCalibrationDialog, CardRoisCalibrationDialog)):
+            dialog.saved.connect(self._refresh_calibration_status)
+        dialog.finished.connect(self._on_calibration_dialog_finished)
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
-    def _on_calibration_finished(self, exit_code: int, _exit_status) -> None:
-        process = self._calibration_process
-        stderr = ""
-        if process is not None:
-            stderr = bytes(process.readAllStandardError()).decode("utf-8", errors="replace").strip()
-            process.deleteLater()
-        self._calibration_process = None
+    @Slot()
+    def _on_calibration_dialog_finished(self) -> None:
+        if self._calibration_dialog is not None:
+            self._calibration_dialog.deleteLater()
+        self._calibration_dialog = None
         self._setup_page.set_calibration_buttons_enabled(True)
         self._refresh_calibration_status()
-        if exit_code != 0 and stderr:
-            self._setup_page.set_calibration_exit_error(exit_code, stderr)
-
-    def _on_calibration_error(self, _error) -> None:
-        process = self._calibration_process
-        message = process.errorString() if process is not None else "Error desconocido del proceso."
-        if process is not None:
-            process.deleteLater()
-        self._calibration_process = None
-        self._setup_page.set_calibration_buttons_enabled(True)
-        self._refresh_calibration_status()
-        self._setup_page.set_calibration_error(message)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt API
         if self._worker is not None:
             self._close_requested = True
             self._request_runtime_stop_for_close()
-            self._stop_calibration_process()
+            self._close_calibration_dialog()
             event.ignore()
             return
-        self._stop_calibration_process()
+        self._close_calibration_dialog()
         super().closeEvent(event)
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API

@@ -35,6 +35,18 @@ class HomographyCalibration:
         
         return HomographyCalibration(src_points=src_points, dst_size=dst_size, rotate=rotate)
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "src_points": [[float(round(x)), float(round(y))] for x, y in self.src_points],
+            "dst_size": [int(self.dst_size[0]), int(self.dst_size[1])],
+            "rotate": int(self.rotate),
+        }
+
+    def save(self, path: str | Path) -> None:
+        out_path = Path(path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
+
 
 def order_points_clockwise(pts: np.ndarray) -> np.ndarray:
     """
