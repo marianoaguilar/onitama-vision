@@ -1,17 +1,39 @@
+# Virtual environments
 .venv/
 .venv-pypy/
+
+# Python cache and test artifacts
 __pycache__/
 *.pyc
 .pytest_cache/
-.DS_Store
-.vscode/
-.idea/
-/scripts/results/
 *.egg-info/
-build/
-dist/
-AGENTS.md
+
+# IDE and editor settings
+.vscode/
+.agents/
+.codex
+
+# Project-local generated data
+/scripts/results/
 data/vision/*
 !data/vision/calibration.json
 !data/vision/card_rois.json
-.codex
+AGENTS.md
+
+# LaTeX generated files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
