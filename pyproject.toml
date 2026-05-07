@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tfg-onitama"
 version = "0.1.0"
-description = "Onitama engine + CLI"
+description = "Onitama engine, AI, and vision-assisted GUI"
 requires-python = ">=3.10"
 
 [project.scripts]
@@ -13,6 +13,19 @@ onitama-vision = "onitama.gui.vision_app:main"
 
 [project.optional-dependencies]
 gui = ["PySide6>=6.6"]
+vision = [
+    "numpy",
+    "opencv-python",
+    "ultralytics",
+]
+dev = ["pytest>=8"]
+full = [
+    "PySide6>=6.6",
+    "numpy",
+    "opencv-python",
+    "ultralytics",
+    "pytest>=8",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
