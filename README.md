@@ -6,15 +6,18 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 
 ## Table of Contents
 
-- [Implemented features](#implemented-features)
-- [Main technologies](#main-technologies)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Running the project](#running-the-project)
-- [Project structure](#project-structure)
-- [Limitations](#limitations)
-- [Documentation](#documentation)
-- [Legal notice](#legal-notice)
+1. [Implemented features](#implemented-features)
+2. [Main technologies](#main-technologies)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Running the project](#running-the-project)
+   - [Desktop application](#desktop-application)
+   - [First-time setup](#first-time-setup)
+   - [Development and evaluation tools](#development-and-evaluation-tools)
+6. [Project structure](#project-structure)
+7. [Limitations](#limitations)
+8. [Documentation](#documentation)
+9. [Legal notice](#legal-notice)
 
 ## Implemented features
 
@@ -27,7 +30,7 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 
 ## Main technologies
 
-- Python
+- `Python`
 - `PySide6` for the desktop GUI
 - `numpy` and `opencv-python` for image processing
 - `ultralytics` for YOLO-based detection and classification
@@ -149,7 +152,7 @@ TFG-Onitama/
 
 ## Documentation
 
-For a full technical explanation of the project, methodology, architecture, and implementation details, see [docs/memoria/proyecto.pdf](/home/mariano/Escritorio/TFG-Onitama/docs/memoria/proyecto.pdf).
+For a full technical explanation of the project, methodology, architecture, and implementation details, see [docs/memoria/proyecto.pdf](docs/memoria/proyecto.pdf).
 
 ## Legal notice
 
