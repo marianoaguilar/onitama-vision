@@ -19,7 +19,7 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 8. [Documentation](#documentation)
 9. [Legal notice](#legal-notice)
 
-## Implemented features
+## 1. Implemented features
 
 - Complete Onitama rules engine with immutable game state, official card handling, and legal move generation.
 - Search-based AI opponent with negamax, alpha-beta pruning, quiescence search, transposition-table support, and multiple heuristic evaluators.
@@ -28,20 +28,20 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 - Desktop GUI with integrated board calibration, card-ROI calibration, live board/card rendering, status feedback, and optional camera preview.
 - Auxiliary tooling for automated tests, vision debugging, data capture, tournaments, and search benchmarking.
 
-## Main technologies
+## 2. Main technologies
 
 - `Python`
 - `PySide6` for the desktop GUI
 - `numpy` and `opencv-python` for image processing
 - `ultralytics` for YOLO-based detection and classification
 
-## Requirements
+## 3. Requirements
 
 - Python `3.10` or newer
 - A webcam or compatible camera
 - A physical Onitama board and cards
 
-## Installation
+## 4. Installation
 
 Clone the repository:
 
@@ -71,9 +71,9 @@ pip install -e .[full]
 
 The repository already includes the trained models in `models/`. Calibration files live under `data/vision/`, but a different camera or physical setup will usually require recalibration.
 
-## Running the project
+## 5. Running the project
 
-### Desktop application
+### 5.1 Desktop application
 
 This is the main way to use the project:
 
@@ -87,7 +87,7 @@ You can also run it directly from the source tree:
 PYTHONPATH=src python -m onitama.gui.vision_app
 ```
 
-### First-time setup
+### 5.2 First-time setup
 
 From the GUI you can:
 
@@ -104,7 +104,7 @@ Recommended physical setup:
 
 ![Ideal physical setup](docs/Disposicion_ideal.png)
 
-### Development and evaluation tools
+### 5.3 Development and evaluation tools
 
 Run the test suite:
 
@@ -124,7 +124,7 @@ Search benchmark:
 python scripts/bench_search.py --help
 ```
 
-## Project structure
+## 6. Project structure
 
 ```text
 TFG-Onitama/
@@ -143,18 +143,18 @@ TFG-Onitama/
 └── docs/              # Project notes and supporting documentation
 ```
 
-## Limitations
+## 7. Limitations
 
 - The vision pipeline depends on camera quality, lighting, framing, and physical setup consistency.
 - Calibration is mandatory for reliable vision-assisted play.
 - The system is designed around the included models and expected board/card layout.
 - The GUI is the primary supported play mode; some CLI tools exist mainly for development and debugging.
 
-## Documentation
+## 8. Documentation
 
 For a full technical explanation of the project, methodology, architecture, and implementation details, see [docs/memoria/proyecto.pdf](docs/memoria/proyecto.pdf).
 
-## Legal notice
+## 9. Legal notice
 
 
 This repository is an academic project and is not an official Onitama product.
