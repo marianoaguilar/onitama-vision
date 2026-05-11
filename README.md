@@ -22,7 +22,7 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 ## 1. Implemented features
 
 - Complete Onitama rules engine with immutable game state, official card handling, and legal move generation.
-- Search-based AI opponent with negamax, alpha-beta pruning, quiescence search, transposition-table support, and multiple heuristic evaluators.
+- Search-based AI opponent with negamax, alpha-beta pruning, quiescence search, transposition tables, iterative deepening, aspiration windows, and move ordering heuristics.
 - Vision pipeline that detects board pieces, classifies the five visible cards, and reconstructs a snapshot from camera frames.
 - Integration layer that stabilizes repeated observations, validates legal one-ply transitions, and coordinates turns.
 - Desktop GUI with integrated board calibration, card-ROI calibration, live board/card rendering, status feedback, and optional camera preview.
@@ -130,7 +130,7 @@ python scripts/bench_search.py --help
 TFG-Onitama/
 ├── src/onitama/
 │   ├── engine/        # Game rules, state, cards, pieces, actions
-│   ├── ai/            # Search, evaluation, AI controllers
+│   ├── ai/            # Negamax search, pruning/ordering, evaluation, AI controllers
 │   ├── vision/        # Board detection, card classification, snapshots
 │   ├── integration/   # Stabilization and legality synchronization
 │   ├── gui/           # Desktop application
