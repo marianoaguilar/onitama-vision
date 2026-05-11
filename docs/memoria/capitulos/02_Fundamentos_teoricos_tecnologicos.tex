@@ -1,0 +1,348 @@
+\chapter{Fundamentos teóricos y tecnológicos}
+\label{chap:fundamentos-teoricos-tecnologicos}
+
+Este capítulo presenta los conceptos teóricos y tecnológicos necesarios para contextualizar el desarrollo del proyecto. En primer lugar, se introduce la representación digital de juegos de tablero, prestando atención a cómo una partida física puede modelarse mediante estados, acciones y transiciones. A continuación, se revisan los fundamentos de la inteligencia artificial aplicada a juegos de dos jugadores, incluyendo los algoritmos de búsqueda adversarial más relevantes. Finalmente, se describen los conceptos principales de visión por computador necesarios para comprender la digitalización de un tablero físico mediante imágenes.
+
+%==============================================================================
+% 2.1. Juegos de tablero y representación digital
+% =============================================================================
+\section{Juegos de tablero y representación digital}
+\label{sec:juegos-tablero-representacion-digital}
+
+Los juegos de tablero constituyen un tipo concreto de juego de mesa en el que la partida se desarrolla sobre un espacio físico organizado, normalmente representado por un tablero dividido en posiciones, casillas o regiones. En torno a este espacio, los jugadores interactúan con piezas, fichas, cartas u otros componentes materiales siguiendo un conjunto de reglas que determina qué acciones son válidas, cómo se modifica la configuración de la partida y en qué condiciones esta llega a su fin. Esta naturaleza estructurada permite describir muchos juegos de tablero como una sucesión de decisiones discretas que transforman una configuración inicial en nuevas configuraciones hasta alcanzar un estado final.
+
+Para que un juego de tablero pueda ser tratado por un sistema informático, es necesario abstraer sus elementos físicos en una representación digital. Esta representación no busca reproducir todos los detalles materiales del juego, como la apariencia exacta del tablero o la forma de sus componentes, sino conservar la información necesaria para aplicar sus reglas. De este modo, el tablero físico se convierte en una estructura formal sobre la que el programa puede comprobar movimientos, actualizar la partida y mantener una descripción coherente de su evolución.
+
+Desde el punto de vista computacional, un juego puede definirse formalmente como un problema de búsqueda. Russell y Norvig describen esta formulación mediante una serie de componentes básicos~\cite{russell2020aima}:
+
+\begin{itemize}
+    \item \textbf{Estado inicial}: describe la configuración de partida e identifica el jugador al que corresponde mover.
+    \item \textbf{Función sucesora}: devuelve, para un estado dado, las parejas formadas por un movimiento legal y el estado resultante tras aplicarlo.
+    \item \textbf{Prueba terminal}: determina si la partida ha finalizado. Los estados en los que el juego ha terminado se denominan estados terminales.
+    \item \textbf{Función de utilidad}: asigna un valor a los estados terminales, representando el resultado de la partida desde el punto de vista considerado.
+\end{itemize}
+
+Esta formulación permite describir la dinámica de una partida sin depender de la manipulación física del tablero, ya que la evolución del juego queda expresada mediante estados, acciones legales y resultados.
+
+El estado de juego representa una descripción lógica de una posición concreta de la partida. En un juego de tablero, este estado suele incluir la ubicación de las piezas, el turno actual, los recursos disponibles para cada jugador y cualquier otra información necesaria para aplicar correctamente las reglas. Por tanto, no se trata simplemente de almacenar una imagen del tablero, sino de identificar los datos que definen la situación de la partida y permiten determinar qué acciones pueden realizarse a continuación.
+
+A partir del estado actual, las reglas del juego determinan el conjunto de acciones legales. Esta distinción es fundamental, ya que no toda modificación posible del tablero constituye un movimiento válido. Aunque en un entorno físico un jugador pueda desplazar una pieza manualmente a una posición cualquiera, el modelo digital debe ser capaz de comprobar si esa acción respeta las restricciones del juego. En este sentido, la representación digital convierte las reglas en condiciones verificables por el sistema.
+
+Cuando se aplica una acción legal, la partida avanza hacia un nuevo estado. Esta relación entre el estado actual, la acción ejecutada y el estado resultante recibe el nombre de transición. En los juegos por turnos, este modelo resulta especialmente natural, ya que cada jugador actúa en un momento determinado y cada movimiento modifica la posición sobre la que se tomará la siguiente decisión.
+
+Además de representar posiciones intermedias, el modelo digital debe identificar cuándo la partida ha terminado. Para ello se reconocen estados terminales, es decir, situaciones en las que ya no es necesario continuar aplicando acciones. Estos estados suelen estar asociados a un resultado, como la victoria de un jugador, la derrota del otro o, en determinados juegos, un empate. La detección de estas condiciones permite validar el desarrollo de la partida y comunicar su desenlace al resto del sistema.
+
+La representación digital de juegos de tablero actúa, por tanto, como una capa intermedia entre el juego físico y los procedimientos automáticos que operan sobre él. Una vez que la partida se expresa mediante estados, acciones, transiciones y resultados, es posible validar movimientos, reconstruir la evolución del juego, detectar inconsistencias y proporcionar una base formal para técnicas posteriores de inteligencia artificial o visión por computador. Estos conceptos serán necesarios para comprender cómo un sistema software puede interpretar una partida real y razonar sobre ella en los capítulos posteriores.
+
+
+%==============================================================================
+% 2.2. Inteligencia artificial en juegos de dos jugadores
+% =============================================================================
+\section{Inteligencia artificial en juegos de dos jugadores}
+\label{sec:inteligencia-artificial-juegos-dos-jugadores}
+
+Una vez que un juego ha sido representado digitalmente mediante estados, acciones legales y transiciones, es posible aplicar técnicas de inteligencia artificial para seleccionar acciones de forma automática. En este contexto, el objetivo no consiste únicamente en ejecutar movimientos válidos, sino en escoger aquellos que resulten más favorables de acuerdo con el estado actual de la partida y sus posibles consecuencias futuras.
+
+\subsection{Juegos como entornos de decisión multiagente}
+
+Un juego puede entenderse como un entorno de decisión en el que uno o varios agentes eligen acciones que modifican el estado del sistema. En los juegos de dos jugadores, cada participante toma decisiones que afectan no solo a su propia situación, sino también a las posibilidades del oponente. Por ello, este tipo de juegos constituye un caso particular de entorno multiagente, donde el resultado final depende de la interacción entre las acciones de ambos jugadores.
+
+Esta característica diferencia los juegos competitivos de otros problemas de decisión más simples. En un entorno pasivo, una acción puede evaluarse atendiendo principalmente a sus consecuencias directas. En cambio, en un juego de dos jugadores, una acción debe valorarse teniendo en cuenta que el otro agente también actuará posteriormente y que sus decisiones pueden modificar la conveniencia de la jugada inicial.
+
+Para razonar sobre juegos e interacciones multiagente, es necesario representar las acciones disponibles para los agentes y los resultados que se derivan de dichas acciones~\cite{poole2023foundations}. Esta idea amplía la representación digital descrita en la sección anterior: ya no basta con conocer el estado actual y las reglas, sino que también es necesario considerar cómo las decisiones de varios agentes pueden transformar la evolución de la partida.
+
+\subsection{Propiedades del modelo de juego}
+
+Muchos juegos de tablero pueden estudiarse dentro de una categoría especialmente adecuada para la inteligencia artificial clásica: juegos deterministas, por turnos, de información perfecta y, en muchos casos, de suma cero. Estas propiedades permiten formular el problema de decisión de manera precisa y facilitan el análisis de posibles continuaciones de la partida.
+
+\begin{itemize}
+    \item \textbf{Determinismo}: un juego es determinista cuando el resultado de una acción queda completamente determinado por el estado actual y por las reglas del juego. En este tipo de juegos no intervienen elementos aleatorios que alteren el resultado de una jugada, como dados, cartas ocultas robadas al azar o eventos externos. Por tanto, si se conoce el estado actual y la acción realizada, el estado resultante puede calcularse de forma precisa.
+
+    \item \textbf{Turnos}: un juego por turnos es aquel en el que los jugadores actúan de forma alterna o secuencial. Cada jugador realiza una acción en su turno y modifica el estado sobre el que actuará el siguiente participante. Esta estructura se adapta de forma natural al razonamiento computacional, ya que la partida puede analizarse como una sucesión ordenada de decisiones.
+
+    \item \textbf{Información perfecta}: en un juego de información perfecta, los jugadores conocen el estado completo de la partida en el momento de tomar una decisión. En este tipo de juegos, los agentes actúan secuencialmente y observan el estado del mundo antes de decidir qué acción realizar~\cite{poole2023foundations}. Esta propiedad los diferencia de juegos con información oculta o privada, donde un jugador puede desconocer parte de la situación real.
+
+    \item \textbf{Suma cero}: en los juegos de suma cero, los intereses de los jugadores están directamente enfrentados. Una mejora en el resultado de un jugador implica un empeoramiento equivalente en el resultado del otro. En juegos de dos agentes de suma cero, una recompensa positiva para un agente se corresponde con una recompensa negativa para el otro~\cite{poole2023foundations}. Esta propiedad permite interpretar la partida como un conflicto directo entre objetivos opuestos.
+\end{itemize}
+
+
+\subsection{Decisión adversarial}
+
+La combinación de estas propiedades da lugar a un problema de decisión adversarial. La inteligencia artificial debe elegir una acción en un entorno donde el resultado no depende únicamente de la jugada propia, sino también de las respuestas futuras del oponente. Por este motivo, una acción que parece favorable de manera inmediata puede ser perjudicial si permite al rival alcanzar una posición ventajosa en el turno siguiente.
+
+En este contexto, tomar una decisión implica anticipar posibles continuaciones de la partida. El sistema debe considerar que ambos jugadores intentan mejorar su propio resultado y que cada movimiento modifica las opciones disponibles para los turnos posteriores. Esta forma de razonamiento es característica de los juegos competitivos de dos jugadores y constituye la base de la búsqueda adversarial~\cite{russell2020aima}.
+
+En resumen, los juegos deterministas, por turnos, de información perfecta y de suma cero proporcionan un marco especialmente adecuado para estudiar la inteligencia artificial aplicada a juegos. En ellos, la decisión automática no se reduce a seleccionar una acción legal, sino a valorar sus consecuencias dentro de una interacción estratégica entre dos agentes con objetivos opuestos. Los algoritmos de búsqueda adversarial, presentados en la siguiente sección, permiten abordar este problema mediante la exploración sistemática de posibles continuaciones de la partida.
+
+
+%==============================================================================
+% 2.3. Algoritmos de búsqueda adversarial
+% =============================================================================
+\section{Algoritmos de búsqueda adversarial}
+\label{sec:algoritmos-busqueda-adversarial}
+
+\subsection{Árbol de juego}
+
+El árbol de juego es una representación de las posibles continuaciones de una partida a partir de un estado determinado. La raíz del árbol corresponde al estado actual, cada rama representa una acción legal y cada nodo hijo representa el estado resultante tras aplicar dicha acción. Al expandir sucesivamente los estados alcanzables, el árbol describe las diferentes secuencias de movimientos que podrían producirse durante la partida.
+
+En un juego por turnos de dos jugadores, los niveles del árbol suelen alternar entre ambos participantes. Un nivel representa las decisiones disponibles para el jugador que debe mover en ese momento, mientras que el siguiente nivel representa las posibles respuestas del oponente. De este modo, el árbol no solo muestra las acciones inmediatas, sino también las consecuencias que pueden derivarse de ellas tras varios turnos.
+
+Las hojas del árbol pueden corresponder a estados terminales, cuando la partida ha finalizado, o a estados intermedios cuando la búsqueda se detiene antes de llegar al final. En el primer caso, el valor del estado puede obtenerse directamente a partir del resultado de la partida. En el segundo caso, es necesario estimar la calidad de la posición mediante una función de evaluación, aspecto que se tratará más adelante.
+
+Aunque el árbol de juego proporciona una representación clara del problema, su tamaño puede crecer rápidamente. Si en cada estado existen varias acciones legales, el número de nodos aumenta de forma exponencial con la profundidad de búsqueda. Esta expansión combinatoria hace que, en muchos juegos, no sea viable explorar todas las partidas posibles hasta llegar a estados terminales. Por este motivo, los algoritmos de búsqueda adversarial incorporan técnicas para seleccionar, limitar u optimizar la exploración del árbol~\cite{russell2020aima,poole2023foundations}.
+
+
+\subsection{Algoritmo minimax}
+
+El algoritmo minimax es uno de los métodos clásicos para la toma de decisiones en juegos de dos jugadores, deterministas, por turnos y de suma cero. El concepto minimax tiene su origen en la teoría de juegos, especialmente en los trabajos de John von Neumann sobre juegos de dos personas con intereses opuestos~\cite{kjeldsen2001minimax}. En inteligencia artificial, se utiliza habitualmente como un procedimiento de búsqueda sobre árboles de juego para seleccionar movimientos bajo la hipótesis de que ambos jugadores actúan de forma racional~\cite{russell2020aima,poole2023foundations}. En este contexto, un jugador intenta maximizar el valor de la posición, mientras que el adversario intenta minimizarlo.
+
+El funcionamiento general del algoritmo puede resumirse en los siguientes pasos:
+
+\begin{enumerate}
+    \item Se construye, de forma explícita o implícita, el árbol de juego a partir del estado actual.
+    \item Se asigna un valor a los nodos hoja, ya sea porque representan estados terminales o porque se ha alcanzado una profundidad máxima de búsqueda.
+    \item En los niveles correspondientes al jugador maximizador, se selecciona el mayor valor entre los nodos sucesores.
+    \item En los niveles correspondientes al jugador minimizador, se selecciona el menor valor entre los nodos sucesores.
+    \item Los valores se propagan desde las hojas hacia la raíz, permitiendo elegir la acción inicial con mejor valor minimax.
+\end{enumerate}
+
+La Figura~\ref{fig:minimax-tree} muestra un ejemplo sencillo de propagación de valores. Los nodos hoja contienen evaluaciones numéricas de distintas posiciones. En primer lugar, cada nodo de minimización selecciona el menor valor entre sus hijos. Después, la raíz, correspondiente al jugador maximizador, selecciona el mayor valor entre los valores propagados por sus sucesores.
+
+\vspace{1cm}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    level distance=1.4cm,
+    level 1/.style={sibling distance=4.2cm},
+    level 2/.style={sibling distance=1.8cm},
+    every node/.style={
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=1.2cm,
+        minimum height=0.7cm
+    },
+    edge from parent/.style={draw, -latex}
+]
+\node {MAX\\$3$}
+    child {node {MIN\\$3$}
+        child {node {$3$}}
+        child {node {$5$}}
+    }
+    child {node {MIN\\$2$}
+        child {node {$2$}}
+        child {node {$9$}}
+    };
+\end{tikzpicture}
+\caption{Ejemplo de propagación de valores en el algoritmo minimax.}
+\label{fig:minimax-tree}
+\end{figure}
+\vspace{1cm}
+
+
+El Algoritmo~\ref{alg:minimax} muestra una versión simplificada de minimax, adaptada a una búsqueda con profundidad limitada a partir de la formulación clásica del algoritmo~\cite{russell2020aima}. La función recibe un estado, una profundidad restante y un indicador que determina si el turno corresponde al jugador maximizador o al minimizador. Si el estado es terminal o se ha alcanzado la profundidad límite, se devuelve una evaluación del estado. En caso contrario, se exploran las acciones legales y se propaga el valor máximo o mínimo según el jugador que deba actuar.
+
+\begin{algorithm}[H]
+\caption{Algoritmo minimax}
+\label{alg:minimax}
+\begin{algorithmic}[1]
+\State \textbf{Entrada:} estado de juego $s$, profundidad restante $d$, indicador $maximizando$
+\State \textbf{Salida:} valor estimado del estado $s$
+\If{$s$ es terminal \textbf{o} $d = 0$}
+    \State \Return $evaluar(s)$
+\EndIf
+\If{$maximizando$}
+    \State $mejor \gets -\infty$
+    \ForAll{acción legal $a$ en $s$}
+        \State $s' \gets resultado(s, a)$
+        \State $mejor \gets \max(mejor, minimax(s', d - 1, false))$
+    \EndFor
+    \State \Return $mejor$
+\Else
+    \State $mejor \gets +\infty$
+    \ForAll{acción legal $a$ en $s$}
+        \State $s' \gets resultado(s, a)$
+        \State $mejor \gets \min(mejor, minimax(s', d - 1, true))$
+    \EndFor
+    \State \Return $mejor$
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+En juegos de suma cero, minimax puede expresarse también mediante la formulación \textbf{negamax}. Esta variante aprovecha que el valor de una posición para un jugador es el opuesto del valor de esa misma posición para el adversario. De este modo, en lugar de alternar explícitamente entre una función de maximización y otra de minimización, la búsqueda puede formularse como una única función que maximiza el valor negativo del estado resultante desde la perspectiva del rival. Conceptualmente, negamax no cambia el criterio de decisión de minimax, sino que ofrece una forma más compacta de expresarlo en juegos con utilidad opuesta para ambos jugadores.
+
+La principal ventaja de minimax es que proporciona un criterio claro para decidir en juegos adversariales. Sin embargo, su coste computacional puede ser elevado, ya que el número de nodos crece rápidamente con la profundidad de búsqueda. Por ello, en la práctica suele combinarse con límites de profundidad, funciones heurísticas y técnicas de optimización. La poda alfa-beta, presentada en el siguiente apartado, mantiene el mismo resultado que minimax, pero evita explorar ramas del árbol que no pueden influir en la decisión final.
+
+
+\subsection{Poda alfa-beta}
+
+La poda alfa-beta es una optimización del algoritmo minimax que permite reducir el número de nodos explorados en el árbol de juego sin modificar la decisión final obtenida. La idea principal consiste en dejar de analizar aquellas ramas que no pueden influir en el valor que finalmente será seleccionado por minimax. Por tanto, alfa-beta no cambia el criterio de decisión del algoritmo, sino la eficiencia con la que se recorre el árbol~\cite{russell2020aima,poole2023foundations}.
+
+El algoritmo mantiene dos valores durante la búsqueda: $\alpha$ y $\beta$. El valor $\alpha$ representa la mejor alternativa encontrada hasta el momento para el jugador maximizador, mientras que $\beta$ representa la mejor alternativa encontrada hasta el momento para el jugador minimizador. Si durante la exploración se detecta que un nodo no puede mejorar la decisión ya disponible para alguno de los jugadores, el resto de sus sucesores puede descartarse sin necesidad de evaluarlos.
+
+El funcionamiento de la poda alfa-beta puede resumirse en los siguientes pasos:
+
+\begin{enumerate}
+    \item Se recorre el árbol de juego de forma similar a minimax, alternando entre niveles de maximización y minimización.
+    \item Durante la búsqueda, se actualiza $\alpha$ con el mejor valor encontrado hasta el momento para el jugador maximizador.
+    \item Del mismo modo, se actualiza $\beta$ con el mejor valor encontrado hasta el momento para el jugador minimizador.
+    \item Si en algún momento se cumple que $\alpha \geq \beta$, la rama actual deja de poder afectar al resultado final y se interrumpe su exploración.
+    \item El valor devuelto por el algoritmo es el mismo que devolvería minimax, pero normalmente habiendo evaluado menos nodos.
+\end{enumerate}
+
+La Figura~\ref{fig:alphabeta-pruning} muestra un ejemplo simplificado de esta idea. Una vez que el primer subárbol ha proporcionado a la raíz una alternativa con valor $3$, el segundo nodo de minimización encuentra un sucesor con valor $2$. Dado que el jugador minimizador escogería como máximo un valor menor o igual que $2$ en ese subárbol, dicha rama ya no puede mejorar la opción disponible para el jugador maximizador. Por ello, el resto de sucesores del nodo puede descartarse sin alterar la decisión final.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    level distance=1.5cm,
+    level 1/.style={sibling distance=5.0cm},
+    level 2/.style={sibling distance=2.0cm},
+    normal/.style={
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=1.3cm,
+        minimum height=0.75cm,
+    },
+    pruned/.style={
+        draw=red!70,
+        rounded corners,
+        align=center,
+        minimum width=1.3cm,
+        minimum height=0.75cm,
+        fill=red!10,
+        text=red!70
+    },
+    edge from parent/.style={draw, -latex},
+    prunededge/.style={draw=red!70, dashed, -latex}
+]
+
+\node[normal] {MAX\\$3$}
+    child {node[normal] {MIN\\$3$}
+        child {node[normal] {$3$}}
+        child {node[normal] {$5$}}
+    }
+    child {node[normal] {MIN\\$2$}
+        child {node[normal] {$2$}}
+        child[prunededge] {node[pruned] {podado}}
+    };
+
+\end{tikzpicture}
+\caption{Ejemplo de poda alfa-beta en un árbol minimax.}
+\label{fig:alphabeta-pruning}
+\end{figure}
+\vspace{0.8cm}
+
+El Algoritmo~\ref{alg:alphabeta} muestra una versión simplificada de minimax con poda alfa-beta. Al igual que en el caso anterior, se utiliza una profundidad máxima de búsqueda y una función de evaluación para los estados terminales o para aquellos estados en los que se alcanza el límite de profundidad. La diferencia principal respecto a minimax es la actualización de los valores $\alpha$ y $\beta$, que permiten detectar cuándo una rama puede ser descartada.
+
+\begin{algorithm}[H]
+\caption{Minimax con poda alfa-beta}
+\label{alg:alphabeta}
+\begin{algorithmic}[1]
+\State \textbf{Entrada:} estado de juego $s$, profundidad restante $d$, valores $\alpha$ y $\beta$, indicador $maximizando$
+\State \textbf{Salida:} valor estimado del estado $s$
+\If{$s$ es terminal \textbf{o} $d = 0$}
+    \State \Return $evaluar(s)$
+\EndIf
+\If{$maximizando$}
+    \State $mejor \gets -\infty$
+    \ForAll{acción legal $a$ en $s$}
+        \State $s' \gets resultado(s, a)$
+        \State $mejor \gets \max(mejor, alphabeta(s', d - 1, \alpha, \beta, false))$
+        \State $\alpha \gets \max(\alpha, mejor)$
+        \If{$\alpha \geq \beta$}
+            \State \textbf{break}
+        \EndIf
+    \EndFor
+    \State \Return $mejor$
+\Else
+    \State $mejor \gets +\infty$
+    \ForAll{acción legal $a$ en $s$}
+        \State $s' \gets resultado(s, a)$
+        \State $mejor \gets \min(mejor, alphabeta(s', d - 1, \alpha, \beta, true))$
+        \State $\beta \gets \min(\beta, mejor)$
+        \If{$\alpha \geq \beta$}
+            \State \textbf{break}
+        \EndIf
+    \EndFor
+    \State \Return $mejor$
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+La eficacia de alfa-beta depende en gran medida del orden en que se exploran las acciones. Si las mejores jugadas se analizan al principio, los valores $\alpha$ y $\beta$ se ajustan antes y es posible descartar más ramas. En cambio, si las acciones se exploran en un orden poco favorable, el algoritmo puede realizar una cantidad de trabajo más cercana a la de minimax sin poda. Por este motivo, la ordenación de movimientos suele considerarse una técnica complementaria importante en motores de juego basados en búsqueda.
+
+La poda alfa-beta fue analizada de forma clásica por Knuth y Moore, quienes estudiaron sus propiedades y su efecto sobre la reducción del número de nodos examinados en árboles de juego~\cite{knuth1975alphabeta}. En la práctica, esta técnica resulta especialmente relevante porque permite aumentar la profundidad efectiva de búsqueda sin cambiar la función de evaluación ni el criterio de elección de movimientos. Por ello, constituye una de las optimizaciones fundamentales de minimax en juegos deterministas de dos jugadores.
+
+
+\subsection{Profundidad limitada y funciones heurísticas}
+
+Aunque minimax y la poda alfa-beta proporcionan un marco claro para tomar decisiones en juegos adversariales, en muchos juegos no resulta viable explorar el árbol completo hasta alcanzar estados terminales. El número de nodos crece rápidamente con la profundidad de búsqueda, ya que cada acción legal puede dar lugar a nuevos estados y cada uno de ellos genera, a su vez, nuevas posibilidades. Por este motivo, incluso en juegos con reglas relativamente sencillas, analizar todas las partidas posibles puede ser computacionalmente inasumible.
+
+Para abordar esta limitación, es habitual utilizar una búsqueda con profundidad limitada. En lugar de expandir el árbol hasta el final de la partida, el algoritmo se detiene tras un número máximo de turnos o plies. Un \emph{ply} representa un movimiento individual de uno de los jugadores, por lo que una búsqueda de varios plies permite analizar secuencias alternas de acciones propias y respuestas del adversario. Esta limitación reduce el coste computacional y permite controlar el tiempo dedicado a la toma de decisiones.
+
+El uso de profundidad limitada plantea un nuevo problema: al detener la búsqueda antes de alcanzar estados terminales, el algoritmo ya no dispone de un resultado definitivo de victoria, derrota o empate. Por tanto, es necesario estimar la calidad de las posiciones alcanzadas en la frontera de búsqueda. Esta estimación se realiza mediante una función heurística de evaluación, que asigna un valor numérico a un estado no terminal en función de características consideradas relevantes para el juego~\cite{russell2020aima,poole2023foundations}.
+
+Una función heurística no garantiza conocer el resultado real de la partida desde una posición concreta, sino que proporciona una aproximación útil para orientar la búsqueda. En juegos de tablero, estas funciones suelen combinar distintos criterios, entre los que pueden encontrarse:
+
+\begin{itemize}
+    \item \textbf{Ventaja material}: diferencia entre las piezas o recursos disponibles para cada jugador.
+    \item \textbf{Movilidad}: número o calidad de las acciones legales disponibles.
+    \item \textbf{Seguridad}: grado de protección de piezas o posiciones importantes.
+    \item \textbf{Control del tablero}: influencia sobre zonas relevantes del espacio de juego.
+    \item \textbf{Proximidad a la victoria}: cercanía a una condición que permita finalizar favorablemente la partida.
+\end{itemize}
+
+La elección de estos factores depende de las características del juego y condiciona en gran medida el comportamiento del agente.
+
+Desde el punto de vista de minimax, la función heurística sustituye a la función de utilidad cuando la búsqueda no llega a un estado terminal. Los valores estimados en la frontera del árbol se propagan entonces hacia la raíz mediante el mismo procedimiento de maximización y minimización. De este modo, el algoritmo puede seleccionar una acción aunque solo haya explorado una parte limitada del espacio de juego.
+
+La calidad de una inteligencia artificial basada en búsqueda depende, por tanto, de un equilibrio entre profundidad y evaluación. Una búsqueda más profunda permite considerar consecuencias más lejanas, pero requiere más tiempo de cómputo. Una función heurística más precisa puede compensar parcialmente una búsqueda menos profunda, aunque también puede introducir errores si valora incorrectamente una posición. Este equilibrio entre coste computacional y calidad de la evaluación es uno de los aspectos fundamentales en el diseño de agentes para juegos de tablero.
+
+
+\subsection{Técnicas de optimización de la búsqueda}
+
+Además de la poda alfa-beta, los motores basados en búsqueda suelen incorporar técnicas complementarias para mejorar la eficiencia del recorrido del árbol o la calidad de las evaluaciones realizadas en la frontera de búsqueda. Schaeffer agrupa muchas de estas mejoras en torno a tres ideas principales: ordenar mejor los movimientos, reducir el tamaño de la ventana de búsqueda y reutilizar información obtenida en búsquedas anteriores~\cite{schaeffer1989historyHeuristic}. Estas técnicas no modifican el problema de decisión adversarial, pero permiten aprovechar mejor el tiempo de cómputo disponible.
+
+\begin{itemize}
+    \item \textbf{Ordenación de movimientos}: la eficacia de alfa-beta depende en gran medida del orden en que se exploran las acciones. Si las jugadas más prometedoras se analizan primero, los cortes pueden producirse antes y se reduce el número de nodos evaluados. Por ello, muchos motores utilizan heurísticas para priorizar ciertos movimientos, como capturas, amenazas o jugadas que en búsquedas anteriores han producido buenos resultados. Schaeffer estudia precisamente la \emph{history heuristic}, una técnica que acumula información sobre movimientos que han sido útiles en otras partes del árbol y la utiliza para ordenar movimientos en nodos posteriores~\cite{schaeffer1989historyHeuristic}.
+
+    \item \textbf{Tablas de transposición}: en un árbol de juego, una misma posición puede alcanzarse mediante distintas secuencias de movimientos. Las tablas de transposición aprovechan esta propiedad almacenando información de estados ya explorados, como el valor calculado, la profundidad de búsqueda utilizada o el mejor movimiento encontrado. Si la misma posición aparece de nuevo, el algoritmo puede reutilizar esa información para evitar búsquedas repetidas, ajustar los límites de alfa-beta o probar primero un movimiento previamente considerado prometedor~\cite{marsland1986gameTreePruning,schaeffer1989historyHeuristic}.
+
+    \item \textbf{Profundización iterativa}: en lugar de ejecutar directamente una búsqueda a una profundidad fija, la profundización iterativa realiza búsquedas sucesivas de profundidad creciente. Por ejemplo, primero se explora a un ply, después a dos, luego a tres, y así sucesivamente hasta alcanzar el límite deseado o agotar el tiempo disponible. Aunque pueda parecer redundante, esta técnica permite disponer siempre de una mejor jugada parcial si la búsqueda debe detenerse y, además, proporciona información útil para ordenar movimientos en iteraciones posteriores~\cite{marsland1986gameTreePruning,schaeffer1989historyHeuristic}.
+
+    \item \textbf{Ventanas de aspiración}: en una búsqueda alfa-beta habitual, los valores iniciales de $\alpha$ y $\beta$ pueden cubrir un intervalo muy amplio. Las ventanas de aspiración utilizan una ventana más estrecha alrededor de una estimación previa del valor esperado de la posición. Si el valor real cae dentro de esa ventana, la búsqueda puede completarse con menor coste; si queda fuera, es necesario repetir la búsqueda con límites más amplios. Esta técnica puede mejorar la eficiencia, aunque depende de que la estimación inicial sea suficientemente precisa~\cite{marsland1986gameTreePruning,schaeffer1989historyHeuristic}.
+
+    \item \textbf{Búsqueda quiescente}: al utilizar profundidad limitada, el algoritmo puede detenerse en una posición tácticamente inestable, por ejemplo justo antes de una captura o de una amenaza importante. Evaluar directamente ese estado puede producir una estimación engañosa. La búsqueda quiescente intenta reducir este problema extendiendo selectivamente la búsqueda en posiciones no estables hasta alcanzar estados más tranquilos, donde la función de evaluación pueda aplicarse con mayor fiabilidad. Marsland relaciona esta técnica con la reducción del efecto horizonte, que aparece cuando una pérdida inevitable queda artificialmente desplazada más allá de la profundidad máxima de búsqueda~\cite{marsland1986gameTreePruning}.
+\end{itemize}
+
+En conjunto, estas técnicas muestran que la calidad de un agente basado en búsqueda no depende únicamente del algoritmo minimax o de la poda alfa-beta, sino también de cómo se gestiona la exploración del árbol. Una buena ordenación de movimientos favorece cortes tempranos, las tablas de transposición reducen trabajo repetido, la profundización iterativa mejora el control del tiempo, las ventanas de aspiración pueden acelerar búsquedas sucesivas y la búsqueda quiescente ayuda a evitar evaluaciones prematuras en posiciones inestables. Estas optimizaciones son especialmente relevantes cuando el sistema debe tomar decisiones en un tiempo limitado y con una profundidad de búsqueda acotada.
+
+
+%==============================================================================
+\section{Visión por computador aplicada a tableros físicos}
+\label{sec:vision-computador-tableros-fisicos}
+
+% TODO: Explicar cómo la visión por computador puede utilizarse para observar juegos
+% de tablero físicos, incluyendo captura de imagen, corrección de perspectiva y reconstrucción del estado.
+
+
+%==============================================================================
+\section{Detección de objetos y clasificación de imágenes}
+\label{sec:deteccion-objetos-clasificacion-imagenes}
+
+% TODO: Explicar detección de objetos, clasificación de imágenes, modelos tipo YOLO,
+% conjuntos de datos, entrenamiento y métricas de evaluación.
+
+
+%==============================================================================
+% Esta seccion quizas se puede integrar en la anterior y aquí meter algo así como ejemplos de 
+% proyectos similares o aplicaciones concretas de visión por computador en juegos de tablero. Como el AlphaGo
+
+\section{Estabilización temporal de observaciones}
+\label{sec:estabilizacion-temporal-observaciones}
+
+% TODO: Explicar por qué un único frame de cámara puede ser poco fiable y cómo las observaciones
+% repetidas, el voto mayoritario o los mecanismos de confirmación temporal pueden mejorar la robustez.

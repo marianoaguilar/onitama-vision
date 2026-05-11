@@ -1,5 +1,6 @@
 \documentclass[a4paper,11pt]{book}
 %\documentclass[a4paper,twoside,11pt,titlepage]{book}
+\raggedbottom
 \usepackage{listings}
 \usepackage[utf8]{inputenc}
 \usepackage[spanish]{babel}
@@ -17,11 +18,15 @@
 \makeatother
 
 
-%\usepackage[chapter]{algorithm}
+\usepackage[chapter]{algorithm}
+\usepackage{algpseudocode}
 \RequirePackage{verbatim}
 %\RequirePackage[Glenn]{fncychap}
 \usepackage{fancyhdr}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{float}
 \usepackage{afterpage}
 
 \usepackage{longtable}
@@ -32,6 +37,7 @@
 % Re-usable information
 % ********************************************************************
 \newcommand{\myTitle}{Desarrollo de un sistema inteligente para el juego Onitama\xspace}
+\newcommand{\mySubTitle}{Motor de juego, agentes de búsqueda e integración con visión por computador\xspace}
 \newcommand{\myDegree}{Grado en Ingeniería Informática\xspace}
 \newcommand{\myName}{Mariano Aguilar Olmo\xspace}
 \newcommand{\myProf}{Salvador García López\xspace}
@@ -175,15 +181,15 @@ pdfproducer = {pdflatex}
 \begin{document}
 \input{portada/portada}
 \input{prefacios/prefacio}
-%\frontmatter
-%\tableofcontents
-%\listoffigures
-%\listoftables
-%
-%\mainmatter
-%\setlength{\parskip}{5pt}
+\frontmatter
+\tableofcontents
+\listoffigures
+\listoftables
+\mainmatter
+\setlength{\parskip}{5pt}
 
-%\input{capitulos/01_Introduccion}
+\input{capitulos/01_Introduccion}
+\input{capitulos/02_Fundamentos_teoricos_tecnologicos}
 %
 %\input{capitulos/02_EspecificacionRequisitos}
 %
@@ -203,8 +209,10 @@ pdfproducer = {pdflatex}
 %
 %
 %%\nocite{*}
-%\bibliography{bibliografia/bibliografia}\addcontentsline{toc}{chapter}{Bibliografía}
-%\bibliographystyle{miunsrturl}
+\bibliographystyle{unsrt}
+\bibliography{bibliografia/bibliografia} 
+\addcontentsline{toc}{chapter}{Bibliografía}
+
 %
 %\appendix
 %\input{apendices/manual_usuario/manual_usuario}
