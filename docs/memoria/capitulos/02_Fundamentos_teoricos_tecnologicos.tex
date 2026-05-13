@@ -322,14 +322,29 @@ En conjunto, estas técnicas muestran que la calidad de un agente basado en bús
 
 
 %==============================================================================
+% 2.4. Visión por computador aplicada a tableros físicos
+% =============================================================================
 \section{Visión por computador aplicada a tableros físicos}
 \label{sec:vision-computador-tableros-fisicos}
 
-% TODO: Explicar cómo la visión por computador puede utilizarse para observar juegos
-% de tablero físicos, incluyendo captura de imagen, corrección de perspectiva y reconstrucción del estado.
+\subsection{Captura visual de la escena física}
+
+La aplicación de visión por computador a un tablero físico parte de una diferencia fundamental entre la escena real y la información disponible para el sistema: la cámara no recibe directamente objetos, casillas o posiciones, sino una imagen bidimensional formada por valores de intensidad o color. Esta imagen es una proyección de la escena física y, por tanto, depende del punto de vista de la cámara, de la iluminación, de la distancia al tablero y de las propiedades visuales de los componentes observados. La visión por computador estudia precisamente cómo extraer información útil a partir de este tipo de datos visuales~\cite{szeliski2022computerVision}.
+
+En un entorno físico, la observación del tablero no suele ser completamente limpia ni constante. Pequeños cambios en la posición de la cámara, variaciones de luz, sombras, reflejos sobre las cartas o movimientos de la mano del jugador pueden modificar de forma significativa la imagen capturada, aunque la situación lógica del juego no haya cambiado. Esta diferencia entre estabilidad del juego y variabilidad de la imagen es uno de los principales retos al utilizar una cámara como mecanismo de entrada.
+
+Los juegos de tablero presentan, no obstante, una ventaja importante desde el punto de vista visual: la escena suele organizarse alrededor de una superficie plana y de regiones espaciales bien definidas. La existencia de un tablero permite buscar una referencia geométrica estable sobre la que interpretar el resto de elementos. En lugar de analizar la imagen como una escena completamente libre, puede aprovecharse la estructura del tablero para restringir el problema a una zona concreta y para relacionar los elementos observados con regiones conocidas de la superficie de juego.
+
+W{\"o}lflein y Arandjelovi{\'c} plantean el problema de determinar el estado de una partida de ajedrez a partir de una imagen. Su enfoque no trata la detección de piezas como una tarea aislada, sino como parte de un proceso más amplio en el que primero se localiza el tablero, después se transforma la imagen a una cuadrícula regular y, finalmente, se interpreta la ocupación de las casillas y el tipo de pieza presente en cada una de ellas~\cite{wolflein2021chessState}. Aunque las características visuales de cada juego sean distintas, este planteamiento ilustra una idea general aplicable a tableros físicos: la geometría de la superficie de juego proporciona un marco de referencia que facilita la interpretación posterior de los componentes.
+
+Por ello, antes de abordar la identificación de piezas o cartas, resulta necesario tratar la imagen capturada para reducir la dependencia respecto al punto de vista de la cámara. En particular, cuando el tablero se observa desde una posición oblicua, las casillas aparecen deformadas por la perspectiva y no ocupan regiones uniformes en la imagen. La corrección de esta deformación geométrica permite trabajar con una vista más regular del tablero y constituye el paso previo a la reconstrucción visual del estado observado.
+
+
 
 
 %==============================================================================
+% 2.5. Detección de objetos y clasificación de imágenes
+% =============================================================================
 \section{Detección de objetos y clasificación de imágenes}
 \label{sec:deteccion-objetos-clasificacion-imagenes}
 
@@ -337,12 +352,9 @@ En conjunto, estas técnicas muestran que la calidad de un agente basado en bús
 % conjuntos de datos, entrenamiento y métricas de evaluación.
 
 
+
+
 %==============================================================================
-% Esta seccion quizas se puede integrar en la anterior y aquí meter algo así como ejemplos de 
+% Para esta última seccion quizas se puede meter algo así como ejemplos de 
 % proyectos similares o aplicaciones concretas de visión por computador en juegos de tablero. Como el AlphaGo
 
-\section{Estabilización temporal de observaciones}
-\label{sec:estabilizacion-temporal-observaciones}
-
-% TODO: Explicar por qué un único frame de cámara puede ser poco fiable y cómo las observaciones
-% repetidas, el voto mayoritario o los mecanismos de confirmación temporal pueden mejorar la robustez.
