@@ -329,17 +329,112 @@ En conjunto, estas técnicas muestran que la calidad de un agente basado en bús
 
 \subsection{Captura visual de la escena física}
 
-La aplicación de visión por computador a un tablero físico parte de una diferencia fundamental entre la escena real y la información disponible para el sistema: la cámara no recibe directamente objetos, casillas o posiciones, sino una imagen bidimensional formada por valores de intensidad o color. Esta imagen es una proyección de la escena física y, por tanto, depende del punto de vista de la cámara, de la iluminación, de la distancia al tablero y de las propiedades visuales de los componentes observados. La visión por computador estudia precisamente cómo extraer información útil a partir de este tipo de datos visuales~\cite{szeliski2022computerVision}.
+La aplicación de visión por computador a un tablero físico parte de una diferencia fundamental entre la escena real y la información disponible para el sistema: la cámara no recibe directamente objetos, casillas o posiciones, sino una imagen bidimensional. Esta imagen es el resultado de un proceso de formación en el que intervienen la geometría de la escena, la iluminación, las propiedades de las superficies, la óptica de la cámara y la discretización realizada por el sensor~\cite{szeliski2022computerVision}. Por ello, el análisis visual del tablero debe partir de una observación condicionada por el modo en que la escena física se proyecta y se registra como imagen.
 
 En un entorno físico, la observación del tablero no suele ser completamente limpia ni constante. Pequeños cambios en la posición de la cámara, variaciones de luz, sombras, reflejos sobre las cartas o movimientos de la mano del jugador pueden modificar de forma significativa la imagen capturada, aunque la situación lógica del juego no haya cambiado. Esta diferencia entre estabilidad del juego y variabilidad de la imagen es uno de los principales retos al utilizar una cámara como mecanismo de entrada.
 
 Los juegos de tablero presentan, no obstante, una ventaja importante desde el punto de vista visual: la escena suele organizarse alrededor de una superficie plana y de regiones espaciales bien definidas. La existencia de un tablero permite buscar una referencia geométrica estable sobre la que interpretar el resto de elementos. En lugar de analizar la imagen como una escena completamente libre, puede aprovecharse la estructura del tablero para restringir el problema a una zona concreta y para relacionar los elementos observados con regiones conocidas de la superficie de juego.
 
-W{\"o}lflein y Arandjelovi{\'c} plantean el problema de determinar el estado de una partida de ajedrez a partir de una imagen. Su enfoque no trata la detección de piezas como una tarea aislada, sino como parte de un proceso más amplio en el que primero se localiza el tablero, después se transforma la imagen a una cuadrícula regular y, finalmente, se interpreta la ocupación de las casillas y el tipo de pieza presente en cada una de ellas~\cite{wolflein2021chessState}. Aunque las características visuales de cada juego sean distintas, este planteamiento ilustra una idea general aplicable a tableros físicos: la geometría de la superficie de juego proporciona un marco de referencia que facilita la interpretación posterior de los componentes.
+W{\"o}lflein y Arandjelovi{\'c} plantean el problema de determinar el estado de una partida de ajedrez a partir de una imagen. Su enfoque no trata la detección de piezas como una tarea aislada, sino como parte de un proceso más amplio en el que primero se localiza el tablero, después se transforma la imagen a una cuadrícula regular y, finalmente, se interpreta la ocupación de las casillas y el tipo de pieza presente en cada una de ellas~\cite{wolflein2021chessState}. Aunque las características visuales de cada juego sean distintas, este planteamiento ilustra una idea general aplicable a tableros físicos: la estructura regular del tablero permite descomponer una escena visual compleja en etapas más controladas de localización, normalización e interpretación.
 
-Por ello, antes de abordar la identificación de piezas o cartas, resulta necesario tratar la imagen capturada para reducir la dependencia respecto al punto de vista de la cámara. En particular, cuando el tablero se observa desde una posición oblicua, las casillas aparecen deformadas por la perspectiva y no ocupan regiones uniformes en la imagen. La corrección de esta deformación geométrica permite trabajar con una vista más regular del tablero y constituye el paso previo a la reconstrucción visual del estado observado.
+En consecuencia, antes de abordar la identificación de piezas o cartas, resulta necesario preparar la imagen capturada para que los elementos relevantes puedan analizarse dentro de un marco espacial estable. Esta preparación no consiste todavía en reconocer los componentes del juego, sino en reducir la ambigüedad introducida por la forma en que la escena física aparece en la imagen. El primer paso de este proceso es la corrección geométrica de la observación, que permite relacionar la imagen capturada con la estructura regular del tablero.
 
 
+\subsection{Corrección geométrica de la imagen}
+
+La corrección geométrica de la imagen permite relacionar la observación capturada por la cámara con una representación espacial más regular del tablero. Su objetivo no es identificar todavía las piezas o las cartas, sino preparar la imagen para que la superficie de juego pueda analizarse dentro de un sistema de coordenadas más estable. Esta etapa resulta especialmente útil cuando el tablero se observa desde una posición oblicua, ya que la imagen obtenida no conserva directamente la forma rectangular ni la distribución uniforme de sus regiones.
+
+Desde el punto de vista geométrico, el problema aparece porque una cámara proyecta una escena tridimensional sobre un plano bidimensional. Como consecuencia, un tablero rectangular puede aparecer en la imagen como un cuadrilátero deformado por la perspectiva: las casillas no tienen por qué ocupar áreas iguales y las distancias aparentes entre regiones pueden variar. Si la superficie del tablero se aproxima como un plano, esta deformación puede tratarse mediante una transformación proyectiva u homografía~\cite{szeliski2022computerVision}.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[scale=0.9, every node/.style={font=\small}]
+
+        % Left: perspective-distorted board
+        \coordinate (A) at (0,0.15);
+        \coordinate (B) at (3.6,0.65);
+        \coordinate (C) at (2.75,2.65);
+        \coordinate (D) at (-0.45,1.75);
+
+        \draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;
+
+        % Internal vertical-like grid lines
+        \foreach \t in {0.2,0.4,0.6,0.8} {
+            \draw[gray] ($(A)!\t!(B)$) -- ($(D)!\t!(C)$);
+        }
+
+        % Internal horizontal-like grid lines
+        \foreach \t in {0.2,0.4,0.6,0.8} {
+            \draw[gray] ($(A)!\t!(D)$) -- ($(B)!\t!(C)$);
+        }
+
+        \node at (1.45,-0.55) {Imagen capturada};
+
+        % Arrow
+        \draw[-{Latex}, thick] (4.25,1.3) -- (5.95,1.3);
+        \node at (5.1,1.68) {homografía};
+
+        % Right: normalized board
+        \draw[thick] (6.6,0) rectangle (9.0,2.4);
+
+        \foreach \x in {7.08,7.56,8.04,8.52} {
+            \draw[gray] (\x,0) -- (\x,2.4);
+        }
+
+        \foreach \y in {0.48,0.96,1.44,1.92} {
+            \draw[gray] (6.6,\y) -- (9.0,\y);
+        }
+
+        \node at (7.8,-0.55) {Vista normalizada};
+
+    \end{tikzpicture}
+    \caption{Normalización geométrica de un tablero aplicando homografía.}
+\end{figure}
+
+Una homografía establece una correspondencia entre puntos de dos vistas de una misma superficie plana. Esta relación puede expresarse como:
+
+\[
+\tilde{\mathbf{x}}' \sim \mathbf{H}\tilde{\mathbf{x}}
+\]
+
+donde:
+
+\begin{itemize}
+    \item \(\tilde{\mathbf{x}}\) representa un punto de la imagen original en coordenadas homogéneas;
+    \item \(\tilde{\mathbf{x}}'\) representa el punto correspondiente en la vista normalizada;
+    \item \(\mathbf{H}\) es una matriz \(3 \times 3\) que define la homografía;
+    \item el símbolo \(\sim\) indica igualdad hasta un factor de escala.
+\end{itemize}
+
+Szeliski describe este tipo de transformación como una transformación proyectiva bidimensional que conserva la rectitud de las líneas, propiedad especialmente útil cuando se trabaja con superficies planas y estructuras regulares como tableros~\cite{szeliski2022computerVision}.
+
+Para calcular esta transformación es necesario disponer de correspondencias entre puntos de la imagen capturada y puntos conocidos de la vista de destino. En un tablero físico, estas correspondencias pueden proceder de referencias espaciales estables, como esquinas, marcas o puntos característicos de la superficie. Una vez estimada la homografía, la imagen puede transformarse hacia una vista normalizada, en la que las regiones del tablero quedan organizadas de forma más uniforme.
+
+Esta normalización no resuelve por sí sola la identificación de los componentes del juego, pero reduce la variabilidad espacial introducida por la perspectiva. Al trabajar sobre una vista corregida, resulta más sencillo asociar regiones de imagen a posiciones concretas del tablero y preparar la reconstrucción del estado observado. Por tanto, la corrección geométrica actúa como una etapa intermedia entre la captura visual de la escena física y la interpretación posterior de sus elementos.
+
+
+\subsection{Reconstrucción del estado observado}
+
+Una vez corregida geométricamente la imagen, el análisis visual puede plantearse sobre una representación espacial más regular del tablero. En este punto, el objetivo ya no es compensar la perspectiva de la cámara, sino interpretar qué información relevante contiene cada región de la escena. En un juego de tablero, esta interpretación suele consistir en transformar evidencias visuales, como la presencia de una pieza o la identificación de una carta, en datos discretos compatibles con el modelo lógico del juego.
+
+La reconstrucción del estado observado puede entenderse como un proceso de correspondencia entre regiones de imagen y elementos del juego. En una superficie dividida en casillas, cada región del tablero puede analizarse de forma independiente para determinar si está vacía u ocupada y, en caso de estar ocupada, qué tipo de elemento contiene. Esta división espacial reduce la complejidad del problema, ya que la interpretación no se realiza sobre la imagen completa de forma indiferenciada, sino sobre zonas con significado conocido dentro de la estructura del tablero.
+
+De forma general, este proceso puede resumirse en las siguientes etapas:
+
+\begin{enumerate}
+    \item Localizar las regiones relevantes de la escena, como casillas del tablero o zonas asociadas a cartas.
+    \item Analizar visualmente cada región para detectar la presencia de elementos.
+    \item Asignar una etiqueta o clase a cada elemento reconocido.
+    \item Combinar las observaciones locales en una descripción global del estado observado.
+    \item Comprobar que dicha descripción sea coherente con las restricciones básicas del juego.
+\end{enumerate}
+
+Esta última comprobación es importante porque la visión por computador puede producir errores debidos a oclusiones, reflejos, ruido de imagen o clasificaciones incorrectas. Por ello, la reconstrucción visual no debe considerarse únicamente como una suma de predicciones independientes, sino como un proceso que debe producir una descripción global consistente. En trabajos de reconocimiento de estados de ajedrez, por ejemplo, W{\"o}lflein y Arandjelovi{\'c} combinan la localización del tablero con la predicción de ocupación de casillas y la clasificación de piezas para obtener una representación completa de la posición observada~\cite{wolflein2021chessState}. Este planteamiento ilustra la importancia de integrar las predicciones visuales dentro de una estructura de juego previamente conocida.
+
+En el caso de juegos con componentes adicionales al tablero, como cartas, fichas auxiliares o indicadores de turno, la reconstrucción del estado observado no se limita necesariamente a las posiciones de las piezas. También puede requerir interpretar regiones externas o complementarias que aportan información necesaria para describir la situación completa de la partida. Por tanto, el resultado final de esta etapa no es una imagen procesada, sino una representación estructurada que resume los elementos relevantes de la escena física.
+
+La reconstrucción del estado observado actúa así como el punto de unión entre la percepción visual y el razonamiento sobre el juego. Las etapas anteriores permiten obtener una imagen más estable y organizada; las técnicas de detección y clasificación permiten reconocer los elementos presentes; y la integración de esas observaciones permite construir una descripción discreta sobre la que pueden aplicarse las reglas del juego, la validación de acciones y los algoritmos de decisión. Estos conceptos enlazan directamente con las técnicas de detección de objetos y clasificación de imágenes que se presentan en la siguiente sección.
 
 
 %==============================================================================
@@ -348,13 +443,18 @@ Por ello, antes de abordar la identificación de piezas o cartas, resulta necesa
 \section{Detección de objetos y clasificación de imágenes}
 \label{sec:deteccion-objetos-clasificacion-imagenes}
 
-% TODO: Explicar detección de objetos, clasificación de imágenes, modelos tipo YOLO,
-% conjuntos de datos, entrenamiento y métricas de evaluación.
+\subsection{Reconocimiento visual mediante aprendizaje supervisado}
 
+\subsection{Clasificación de imágenes}
 
+\subsection{Detección de objetos}
 
+\subsection{Aplicación al reconocimiento de componentes de juego}
 
 %==============================================================================
+% ANTECEDENTES Y TRABAJOS RELACIONADOS  (OPCIONAL)
+% =============================================================================
 % Para esta última seccion quizas se puede meter algo así como ejemplos de 
-% proyectos similares o aplicaciones concretas de visión por computador en juegos de tablero. Como el AlphaGo
+% proyectos similares o aplicaciones concretas de visión por computador en juegos de tablero. 
+% Como el AlphaGo.
 
