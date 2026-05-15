@@ -6,18 +6,18 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 
 ## Table of Contents
 
-1. [Implemented features](#implemented-features)
-2. [Main technologies](#main-technologies)
-3. [Requirements](#requirements)
-4. [Installation](#installation)
-5. [Running the project](#running-the-project)
-   - [Desktop application](#desktop-application)
-   - [First-time setup](#first-time-setup)
-   - [Development and evaluation tools](#development-and-evaluation-tools)
-6. [Project structure](#project-structure)
-7. [Limitations](#limitations)
-8. [Documentation](#documentation)
-9. [Legal notice](#legal-notice)
+1. [Implemented features](#1-implemented-features)
+2. [Main technologies](#2-main-technologies)
+3. [Requirements](#3-requirements)
+4. [Installation](#4-installation)
+5. [Running the project](#5-running-the-project)
+   - [Desktop application](#51-desktop-application)
+   - [First-time setup](#52-first-time-setup)
+   - [Development and evaluation tools](#53-development-and-evaluation-tools)
+6. [Project structure](#6-project-structure)
+7. [Limitations](#7-limitations)
+8. [Documentation](#8-documentation)
+9. [Legal notice](#9-legal-notice)
 
 ## 1. Implemented features
 
