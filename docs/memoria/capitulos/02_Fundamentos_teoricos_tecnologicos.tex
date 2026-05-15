@@ -443,13 +443,184 @@ La reconstrucción del estado observado actúa así como el punto de unión entr
 \section{Detección de objetos y clasificación de imágenes}
 \label{sec:deteccion-objetos-clasificacion-imagenes}
 
-\subsection{Reconocimiento visual mediante aprendizaje supervisado}
+
+\subsection{Reconocimiento visual basado en modelos aprendidos}
+
+El reconocimiento visual basado en modelos aprendidos parte de la idea de sustituir reglas manuales por modelos entrenados con ejemplos. En lugar de describir explícitamente todas las formas, colores o patrones que caracterizan a un elemento visual, se proporciona al modelo un conjunto de imágenes representativas para que aprenda a distinguir unas clases de otras. Este planteamiento resulta especialmente útil en problemas con alta variabilidad visual, donde resulta difícil anticipar manualmente todas las apariencias posibles de un mismo objeto.
+
+Cuando los ejemplos utilizados durante el entrenamiento incluyen la respuesta esperada, como la clase asociada a cada imagen, el proceso se plantea como aprendizaje supervisado. En este caso, el sistema produce una predicción para cada entrada y compara esa predicción con la etiqueta correcta para ajustar sus parámetros. Una vez entrenado, el modelo puede aplicar lo aprendido a imágenes nuevas, siempre que estas mantengan una relación suficiente con los ejemplos empleados durante el entrenamiento.
+
+El aprendizaje profundo ha reforzado este enfoque al permitir que las características visuales relevantes se aprendan directamente a partir de los datos, reduciendo la dependencia de descriptores diseñados manualmente. Esta idea es importante porque una imagen no contiene únicamente objetos ya separados, sino patrones visuales distribuidos en píxeles, bordes, texturas y relaciones espaciales que deben organizarse para resultar discriminativos. LeCun, Bengio y Hinton destacan precisamente que los métodos de aprendizaje profundo permiten aprender representaciones con varios niveles de abstracción a partir de los datos de entrada~\cite{lecun2015deepLearning}. 
+
+Sobre esta base se desarrollan tareas de reconocimiento visual como la clasificación de imágenes y la detección de objetos, que se describen en las siguientes subsecciones.
+
 
 \subsection{Clasificación de imágenes}
 
+La clasificación de imágenes es una tarea de reconocimiento visual en la que se asigna una etiqueta a una imagen completa o a una región previamente delimitada. Su objetivo no es localizar objetos dentro de la imagen, sino decidir qué categoría describe mejor el contenido analizado. Por ello, resulta especialmente adecuada cuando la zona de interés ya ha sido separada antes de aplicar el modelo.
+
+De forma general, un clasificador recibe una imagen como entrada y produce una puntuación para cada una de las clases posibles. La predicción final se obtiene seleccionando la clase con mayor confianza. Este planteamiento permite convertir una observación visual en una etiqueta discreta, siempre que el contenido relevante esté suficientemente representado en la imagen de entrada.
+
+Una forma habitual de construir este tipo de clasificadores es mediante redes neuronales convolucionales. Estas redes aplican filtros sobre regiones locales de la imagen para extraer patrones visuales, como bordes, texturas o combinaciones de color. Al reutilizar los mismos filtros en distintas posiciones, pueden reconocer patrones similares aunque aparezcan en zonas diferentes de la entrada. Esta arquitectura resulta especialmente adecuada para imágenes porque aprovecha su estructura espacial mediante conexiones locales, pesos compartidos y capas sucesivas~\cite{lecun2015deepLearning}. La Figura~\ref{fig:clasificacion-imagenes-cnn} resume de forma esquemática este flujo de clasificación.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \resizebox{0.96\textwidth}{!}{
+    \begin{tikzpicture}[
+        every node/.style={font=\small},
+        arrow/.style={-{Latex}, thick, draw=black!80},
+        label/.style={font=\small, align=center, text width=2.8cm, anchor=north}
+    ]
+
+        \def\LabelY{-0.62}
+
+        % -------------------------------------------------
+        % 1. Imagen o recorte
+        % -------------------------------------------------
+        \fill[gray!5, rounded corners] (0,0) rectangle (2.4,2.4);
+        \draw[black!75, rounded corners, thick] (0,0) rectangle (2.4,2.4);
+        \foreach \x in {0.48,0.96,1.44,1.92} {
+            \draw[gray!55] (\x,0) -- (\x,2.4);
+        }
+        \foreach \y in {0.48,0.96,1.44,1.92} {
+            \draw[gray!55] (0,\y) -- (2.4,\y);
+        }
+        \node[label] at (1.2,\LabelY) {Imagen o recorte};
+
+        % Flecha 1
+        \draw[arrow] (2.4,1.2) -- (3.8,1.2);
+
+        % -------------------------------------------------
+        % 2. Red convolucional
+        % -------------------------------------------------
+        \draw[rounded corners, fill=gray!35, draw=black!70, thick] (4.20,0.30) rectangle (5.75,1.85);
+        \draw[rounded corners, fill=gray!25, draw=black!70, thick] (4.40,0.45) rectangle (5.95,2.00);
+        \draw[rounded corners, fill=gray!10, draw=black!75, thick] (4.60,0.60) rectangle (6.15,2.15);
+
+        \node[label] at (5.18,\LabelY) {Red neuronal convolucional};
+
+        % Flecha 2
+        \draw[arrow] (6.15,1.2) -- (7.55,1.2);
+
+        % -------------------------------------------------
+        % 3. Puntuaciones por clase
+        % -------------------------------------------------
+        \fill[gray!5, rounded corners] (7.55,0.40) rectangle (9.45,2.00);
+        \draw[black!75, rounded corners, thick] (7.55,0.40) rectangle (9.45,2.00);
+
+        % Barras centradas dentro del recuadro
+        \draw[fill=gray!35, draw=black!70, thick] (7.82,0.65) rectangle (8.08,1.55);
+        \draw[fill=gray!25, draw=black!70, thick] (8.22,0.65) rectangle (8.48,1.05);
+        \draw[fill=gray!50, draw=black!80, thick] (8.62,0.65) rectangle (8.88,1.80);
+        \draw[fill=gray!25, draw=black!70, thick] (9.02,0.65) rectangle (9.28,0.92);
+
+        \node[label] at (8.50,\LabelY) {Puntuaciones por clase};
+
+        % Flecha 3
+        \draw[arrow] (9.45,1.2) -- (10.85,1.2);
+
+        % -------------------------------------------------
+        % 4. Predicción final
+        % -------------------------------------------------
+        \fill[gray!10, rounded corners] (10.85,0.75) rectangle (12.65,1.65);
+        \draw[black!75, rounded corners, thick] (10.85,0.75) rectangle (12.65,1.65);
+        \node[font=\small\bfseries, text=black!85] at (11.75,1.2) {Clase};
+
+        \node[label] at (11.75,\LabelY) {Predicción final};
+
+    \end{tikzpicture}
+    }
+    \caption{Esquema general de clasificación de imágenes mediante una red neuronal convolucional.}
+    \label{fig:clasificacion-imagenes-cnn}
+\end{figure}
+
+La principal ventaja de la clasificación es su simplicidad conceptual: el sistema recibe una imagen ya delimitada y devuelve una identidad visual. Sin embargo, esta misma simplicidad implica una limitación importante, ya que la predicción depende de la calidad del recorte. Si la imagen incluye demasiado fondo, está mal alineada o contiene varios elementos relevantes, el resultado puede volverse menos fiable. Por este motivo, la clasificación suele combinarse con etapas previas de localización, segmentación o definición de regiones de interés.
+
+
 \subsection{Detección de objetos}
 
+La detección de objetos es una tarea de reconocimiento visual orientada a identificar y localizar elementos dentro de una imagen. A diferencia de la clasificación, no se parte de una región ya delimitada, sino de una escena completa que puede contener varios objetos. Por ello, la salida de un detector suele expresarse como un conjunto de predicciones, donde cada una incluye una caja delimitadora, una etiqueta de clase y un valor de confianza asociado~\cite{szeliski2022computerVision}.
+
+Esta forma de salida permite convertir la imagen en una descripción estructurada de la escena. Cada caja delimitadora aproxima la posición de un objeto, mientras que la etiqueta asociada indica su identidad. De este modo, la detección no solo informa de qué elementos están presentes, sino también de cómo se distribuyen espacialmente, lo que resulta especialmente útil cuando la localización forma parte de la información que se desea recuperar.
+
+Entre los detectores modernos destaca YOLO, acrónimo de \textit{You Only Look Once}. Su idea principal consiste en tratar la detección como un problema unificado: la imagen completa se procesa en una sola pasada por la red y el modelo predice directamente múltiples cajas delimitadoras junto con sus niveles de confianza y sus probabilidades de clase~\cite{redmon2016yolo}. Después, las predicciones menos fiables o redundantes se descartan para conservar únicamente las detecciones finales más plausibles. La Figura~\ref{fig:deteccion-objetos} ilustra el tipo de salida que produce un detector de este tipo.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \resizebox{0.80\textwidth}{!}{
+    \begin{tikzpicture}[
+        every node/.style={font=\small}
+    ]
+
+        % Imagen de fondo
+        \fill[gray!10] (0,0) rectangle (11,6);
+        \draw[rounded corners, thick] (0,0) rectangle (11,6);
+
+        % Objetos en la escena
+        % Objeto 1
+        \fill[red!35] (2.0,1.7) circle (0.55);
+
+        % Objeto 2
+        \fill[blue!35] (6.8,3.9) -- (7.5,2.8) -- (6.1,2.8) -- cycle;
+
+        % Objeto 3
+        \fill[green!60!black] (8.3,1.3) rectangle (9.2,2.2);
+
+        % Cajas delimitadoras
+        \draw[red, very thick] (1.2,0.9) rectangle (2.9,2.6);
+        \draw[blue, very thick] (5.8,2.5) rectangle (7.8,4.5);
+        \draw[green!50!black, very thick] (7.9,0.9) rectangle (9.6,2.6);
+
+        % Etiquetas ajustadas automáticamente al texto
+        \node[
+            fill=red,
+            rounded corners=1pt,
+            inner sep=2pt,
+            anchor=south west,
+            text=white,
+            font=\scriptsize\bfseries
+        ] at (1.2,2.6) {Clase A \, (0.93)};
+
+        \node[
+            fill=blue,
+            rounded corners=1pt,
+            inner sep=2pt,
+            anchor=south west,
+            text=white,
+            font=\scriptsize\bfseries
+        ] at (5.8,4.5) {Clase B \, (0.89)};
+
+        \node[
+            fill=green!50!black,
+            rounded corners=1pt,
+            inner sep=2pt,
+            anchor=south west,
+            text=white,
+            font=\scriptsize\bfseries
+        ] at (7.9,2.6) {Clase C \, (0.95)};
+
+    \end{tikzpicture}
+    }
+    \caption{Ejemplo esquemático de detección de objetos sobre una imagen, con cajas delimitadoras, clases y niveles de confianza.}
+    \label{fig:deteccion-objetos}
+\end{figure}
+
+La dificultad principal de la detección es que combina una decisión semántica y una decisión geométrica. El modelo debe reconocer la categoría de cada objeto, pero también ajustar una caja delimitadora que represente de forma razonable su posición y tamaño dentro de la imagen. Esta doble exigencia hace que la tarea sea sensible a objetos pequeños, oclusiones parciales, solapamientos o elementos muy próximos entre sí. Aun así, constituye una herramienta especialmente valiosa cuando la escena contiene varios objetos y se desea recuperar no solo su identidad, sino también su disposición espacial.
+
+
 \subsection{Aplicación al reconocimiento de componentes de juego}
+
+En un sistema que observa un juego de tablero físico, las técnicas de reconocimiento visual no constituyen un fin por sí mismas, sino un medio para transformar una imagen en información estructurada. La cámara proporciona una observación visual continua, formada por píxeles, mientras que el sistema necesita datos discretos sobre los componentes relevantes de la escena. En el contexto de este proyecto, esa transformación resulta necesaria para relacionar la imagen capturada con elementos como el tablero, las piezas y las cartas visibles. Para ello, se combina la referencia geométrica del tablero con el reconocimiento de los elementos observados.
+
+En el caso de las piezas situadas sobre el tablero, son relevantes tanto su identidad como su localización espacial. La identidad de una pieza incluye atributos visuales como el color y el tipo de pieza, ya que no todas las piezas cumplen el mismo papel dentro del juego. Además, no basta con reconocer qué pieza aparece en la imagen: también es necesario estimar dónde se encuentra para poder asociarla posteriormente a una casilla concreta del tablero. Por este motivo, la detección de objetos encaja de forma natural con este tipo de componente, ya que proporciona una categoría y una caja delimitadora aproximada para cada pieza observada.
+
+Las cartas visibles plantean un problema distinto. Cuando su posición en la escena está acotada mediante regiones de interés o recortes previamente definidos, la tarea principal no consiste en localizarlas dentro de toda la imagen, sino en identificar qué carta aparece en cada región. En este caso, la clasificación de imágenes resulta más adecuada, porque permite asignar una etiqueta a un recorte visual ya delimitado entre un conjunto cerrado de clases posibles.
+
+La información obtenida mediante visión debe entenderse como una observación candidata de la escena, no como el estado definitivo del juego. Las cajas delimitadoras, las etiquetas clasificadas y los valores de confianza proceden de modelos que pueden verse afectados por errores de captura, iluminación, oclusiones o recortes imperfectos. Por ello, el resultado visual necesita posteriormente interpretarse dentro de una estructura discreta y coherente con el funcionamiento del juego.
+
+Para comprender cómo esa observación visual puede transformarse después en un estado de juego válido, resulta necesario describir la estructura del propio juego, sus reglas, sus acciones posibles y sus condiciones de victoria. Estos aspectos se abordan en el siguiente capítulo, donde se estudia el funcionamiento de Onitama y su traducción a una representación computacional.
 
 %==============================================================================
 % ANTECEDENTES Y TRABAJOS RELACIONADOS  (OPCIONAL)
