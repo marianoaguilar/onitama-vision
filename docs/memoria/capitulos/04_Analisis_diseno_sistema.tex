@@ -1,3 +1,263 @@
 \chapter{Análisis y diseño del sistema}
 \label{chap:analisis-diseno-sistema}
 
+Una vez presentados los fundamentos teóricos, tecnológicos y reglamentarios sobre los que se apoya el proyecto, este capítulo aborda el análisis y diseño del sistema desarrollado. El objetivo es describir el problema desde el punto de vista de la solución software, identificando los requisitos principales, los actores que intervienen, la organización general del sistema y los flujos de funcionamiento que permiten coordinar el motor de juego, la inteligencia artificial, la visión por computador y la interfaz de usuario.
+
+Este capítulo no se centra todavía en los detalles concretos de implementación, sino en las decisiones de diseño que estructuran el sistema y justifican su división en módulos. De este modo, se establece una visión global de la solución antes de describir, en el capítulo siguiente, cómo se ha materializado cada componente en el código del proyecto.
+
+
+\section{Descripción y objetivos del sistema}
+\label{sec:descripcion-objetivos-sistema}
+
+El sistema desarrollado en este trabajo tiene como finalidad permitir que un jugador humano dispute una partida física de Onitama contra un agente de inteligencia artificial. A diferencia de una implementación puramente digital del juego, la aplicación se apoya en un tablero real observado mediante una cámara, de forma que el sistema debe interpretar la escena física, mantener una representación lógica de la partida y coordinar la respuesta del agente automático.
+
+Desde el punto de vista funcional, el jugador manipula las piezas y cartas sobre el tablero físico, mientras que el software reconstruye la información relevante de la partida y la contrasta con el motor de reglas. Esta separación entre observación visual y estado lógico resulta fundamental, ya que las imágenes capturadas pueden contener errores derivados de la iluminación, la perspectiva, las oclusiones o movimientos incompletos. Por ello, la información procedente de la cámara no se acepta directamente como estado definitivo, sino que se valida de acuerdo con las transiciones legales del juego.
+
+El objetivo general del proyecto es, por tanto, desarrollar un sistema inteligente capaz de gestionar una partida de Onitama sobre un tablero físico, integrando reglas de juego, búsqueda adversarial, reconocimiento visual e interacción con el usuario. A partir de este objetivo general, se derivan los siguientes objetivos específicos:
+
+\begin{itemize}
+    \item Representar digitalmente el estado completo de una partida de Onitama, incluyendo la disposición de las piezas, el turno actual, las cartas disponibles para cada jugador y la carta lateral.
+
+    \item Implementar un motor de reglas capaz de generar acciones legales, aplicar movimientos, resolver capturas, actualizar el intercambio de cartas y detectar las condiciones de victoria.
+
+    \item Incorporar un agente de inteligencia artificial que seleccione movimientos de forma automática a partir del estado actual de la partida.
+
+    \item Reconstruir el estado observado del tablero físico mediante técnicas de visión por computador, identificando tanto la posición y el tipo de las piezas como las cartas visibles.
+
+    \item Validar los cambios detectados en la escena física comprobando que corresponden a transiciones legales desde el estado lógico mantenido por el sistema.
+
+    \item Proporcionar una interfaz gráfica que permita configurar la partida, calibrar el sistema de visión, mostrar el estado actual y guiar la interacción entre el jugador humano y la inteligencia artificial.
+
+    \item Mantener una organización modular que facilite el desarrollo, prueba y evolución independiente de los distintos componentes del sistema.
+\end{itemize}
+
+
+\section{Requisitos del sistema}
+\label{sec:requisitos-sistema}
+
+A partir de los objetivos definidos anteriormente, se identifican los requisitos que debe satisfacer el sistema desarrollado. Estos requisitos concretan las capacidades funcionales de la aplicación, las propiedades de calidad esperadas y las restricciones derivadas del uso de un tablero físico observado mediante cámara. Para facilitar su lectura, se agrupan en requisitos funcionales, requisitos no funcionales y restricciones o supuestos de diseño.
+
+
+\subsection{Requisitos funcionales}
+
+Los requisitos funcionales describen las capacidades que debe proporcionar el sistema para permitir el desarrollo de una partida física de Onitama asistida por inteligencia artificial y visión por computador.
+
+\paragraph{Motor de juego}
+
+\begin{enumerate}[label=\textbf{RF-\twodigits*:}, leftmargin=2.2cm]
+    \item El sistema debe representar el estado completo de una partida de Onitama, incluyendo tablero, piezas, jugador activo, cartas de cada jugador y carta lateral.
+
+    \item El sistema debe permitir inicializar partidas válidas, seleccionando las cartas visibles de la partida y determinando el jugador inicial según las reglas del juego.
+
+    \item El sistema debe generar las acciones legales disponibles para el jugador activo, incluyendo el pase obligatorio cuando no exista ningún movimiento legal.
+
+    \item El sistema debe aplicar acciones legales actualizando la posición de las piezas, las capturas, el intercambio de cartas y el turno de juego.
+
+    \item El sistema debe detectar la finalización de la partida por captura del maestro rival o por llegada del maestro propio al templo contrario.
+\end{enumerate}
+
+\paragraph{Inteligencia artificial}
+
+\begin{enumerate}[label=\textbf{RF-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item El sistema debe permitir que un agente automático seleccione una acción a partir del estado lógico actual de la partida.
+
+    \item El sistema debe permitir configurar distintos niveles de dificultad o comportamiento del agente de inteligencia artificial.
+\end{enumerate}
+
+\paragraph{Visión por computador}
+
+\begin{enumerate}[label=\textbf{RF-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item El sistema debe capturar imágenes del tablero físico y de las cartas visibles mediante una cámara.
+
+    \item El sistema debe permitir calibrar el tablero físico para relacionar la imagen capturada con las casillas del juego.
+
+    \item El sistema debe permitir calibrar las regiones correspondientes a las cartas visibles.
+
+    \item El sistema debe identificar la posición, el color y el tipo de las piezas presentes sobre el tablero físico.
+
+    \item El sistema debe reconocer la identidad de las cartas visibles durante la partida.
+
+    \item El sistema debe transformar la información visual obtenida en una observación estructurada de la partida.
+\end{enumerate}
+
+\paragraph{Integración}
+
+\begin{enumerate}[label=\textbf{RF-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item El sistema debe validar que los cambios observados en el tablero físico corresponden a una transición legal desde el estado lógico actual.
+
+    \item El sistema debe coordinar el turno del jugador humano, la selección de la jugada de la inteligencia artificial y la confirmación de su ejecución física.
+\end{enumerate}
+
+\paragraph{Interfaz de usuario}
+
+\begin{enumerate}[label=\textbf{RF-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item El sistema debe permitir configurar una partida indicando el color del jugador humano y la dificultad de la inteligencia artificial.
+
+    \item El sistema debe permitir realizar la calibración del tablero y de las cartas desde la aplicación.
+
+    \item El sistema debe mostrar el estado actual de la partida, las cartas disponibles, la carta lateral, los mensajes de estado y la acción seleccionada por la inteligencia artificial.
+
+    \item El sistema debe permitir iniciar, reiniciar y finalizar una partida desde la aplicación de escritorio.
+\end{enumerate}
+
+
+\subsection{Requisitos no funcionales}
+
+Los requisitos no funcionales recogen propiedades de calidad que condicionan el diseño del sistema, aunque no describen una funcionalidad concreta de la aplicación.
+
+\paragraph{Modularidad y mantenibilidad}
+
+\begin{enumerate}[label=\textbf{RNF-\twodigits*:}, leftmargin=2.5cm]
+    \item El sistema debe mantener una separación clara entre lógica de juego, inteligencia artificial, visión por computador, integración e interfaz de usuario.
+
+    \item El diseño debe facilitar la modificación, sustitución o ampliación de componentes sin afectar innecesariamente al resto del sistema.
+
+    \item Los módulos principales deben poder probarse de forma independiente siempre que sea posible.
+\end{enumerate}
+
+\paragraph{Robustez y fiabilidad}
+
+\begin{enumerate}[label=\textbf{RNF-\twodigits*:}, leftmargin=2.5cm, resume]
+    \item El sistema debe reducir el impacto de errores visuales mediante mecanismos de estabilización, validación y rechazo de observaciones incoherentes, evitando que estas actualicen indebidamente el estado lógico de la partida.
+
+    \item El sistema debe detectar errores que impidan continuar el procesamiento asistido por visión, como la ausencia de cámara, modelos o datos de calibración, e informar al usuario de forma adecuada.
+\end{enumerate}
+
+\paragraph{Usabilidad y rendimiento}
+
+\begin{enumerate}[label=\textbf{RNF-\twodigits*:}, leftmargin=2.5cm, resume]
+    \item La interfaz debe proporcionar información clara sobre la configuración, el estado de la partida, los errores detectados y las acciones esperadas por parte del usuario.
+
+    \item El sistema debe ofrecer tiempos de respuesta adecuados para permitir una interacción fluida durante una partida.
+
+    \item Las operaciones de captura, procesamiento visual y actualización de la interfaz no deben bloquear innecesariamente la interacción del usuario.
+\end{enumerate}
+
+\paragraph{Extensibilidad y evaluación}
+
+\begin{enumerate}[label=\textbf{RNF-\twodigits*:}, leftmargin=2.5cm, resume]
+    \item El diseño debe permitir incorporar nuevas estrategias de inteligencia artificial, modelos de visión o herramientas auxiliares sin rediseñar completamente la aplicación.
+
+    \item El sistema debe facilitar la repetición de pruebas y experimentos, especialmente en la evaluación de agentes de inteligencia artificial.
+\end{enumerate}
+
+
+\subsection{Restricciones y supuestos de diseño}
+
+Además de los requisitos funcionales y no funcionales, el sistema está condicionado por una serie de restricciones y supuestos derivados del uso de un tablero físico, una cámara y modelos de reconocimiento visual. Estas restricciones delimitan el contexto en el que se espera que la aplicación funcione correctamente y ayudan a precisar el alcance del proyecto.
+
+\paragraph{Entorno físico}
+
+\begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm]
+    \item El sistema se diseña para partidas físicas de Onitama entre un jugador humano y un agente de inteligencia artificial.
+
+    \item La manipulación física de piezas y cartas corresponde al jugador humano; el sistema interpreta, valida y guía la partida, pero no incluye mecanismos de actuación física automática.
+
+    \item Se requiere una cámara compatible para capturar el tablero y las cartas visibles durante la partida.
+
+    \item El tablero físico y las cartas visibles deben encontrarse dentro del campo de visión de la cámara.
+\end{enumerate}
+
+\paragraph{Calibración y condiciones de captura}
+
+\begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item Se asume que la cámara permanece fija durante la partida. Si cambia su posición, el encuadre o la disposición física del montaje, será necesario recalibrar el sistema.
+
+    \item La calibración del tablero y de las regiones de cartas es necesaria antes de iniciar una partida asistida por visión.
+
+    \item El funcionamiento del módulo de visión depende de condiciones externas como iluminación, enfoque, perspectiva, reflejos, oclusiones y visibilidad suficiente de las piezas y cartas.
+\end{enumerate}
+
+\paragraph{Alcance del sistema}
+
+\begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm, resume]
+    \item El sistema está orientado a los componentes físicos, disposición del tablero y modelos de visión utilizados durante el desarrollo, por lo que cambios significativos en piezas, cartas o distribución espacial pueden requerir ajustes adicionales.
+
+    \item El sistema no contempla la recuperación automática ante desincronizaciones complejas producidas por varios movimientos no observados o por cambios físicos incoherentes con las reglas del juego.
+
+    \item La aplicación está orientada al uso en escritorio, por lo que no se plantea como una aplicación web, móvil o multijugador en línea.
+\end{enumerate}
+
+
+
+\section{Casos de uso}
+\label{sec:casos-uso}
+
+Una vez definidos los requisitos del sistema, se identifican los principales casos de uso de la aplicación. Estos casos representan las acciones más relevantes que puede realizar el jugador humano durante una partida física de Onitama asistida por inteligencia artificial y visión por computador.
+
+\subsection*{Actores}
+
+En los casos de uso considerados intervienen los siguientes elementos externos al sistema:
+
+\begin{itemize}
+    \item \textbf{Jugador humano (actor principal):} interactúa con la aplicación de escritorio y manipula físicamente las piezas y cartas sobre el tablero.
+
+    \item \textbf{Cámara (actor secundario):} actúa como dispositivo externo de captura y proporciona las imágenes necesarias para observar el tablero, las cartas y los cambios producidos durante la partida.
+\end{itemize}
+
+\subsection*{Casos de uso principales}
+
+\begin{description}[style=nextline, leftmargin=.95cm, itemsep=0.8em, font=\normalfont]
+    \item[\textbf{CU-01. Configurar partida.}]
+    El jugador selecciona el color con el que desea jugar y el nivel de dificultad de la inteligencia artificial.
+
+    \item[\textbf{CU-02. Calibrar tablero.}]
+    El jugador realiza la calibración del tablero físico, marcando la región necesaria para que el sistema pueda relacionar la imagen capturada con las casillas del juego.
+
+    \item[\textbf{CU-03. Calibrar cartas.}]
+    El jugador calibra las regiones correspondientes a las cartas visibles, de forma que el sistema pueda reconocer las cartas activas de ambos jugadores y la carta lateral.
+
+    \item[\textbf{CU-04. Iniciar partida.}]
+    El jugador inicia una nueva partida una vez seleccionada la configuración y completadas las calibraciones necesarias. A partir de ese momento, el sistema comienza a observar la posición física inicial y reconstruye el estado de juego.
+
+    \item[\textbf{CU-05. Realizar movimiento humano.}]
+    El jugador ejecuta físicamente su movimiento sobre el tablero y actualiza las cartas correspondientes. El sistema observa el nuevo estado y comprueba si el cambio detectado corresponde a una jugada legal desde el estado lógico actual.
+
+    \item[\textbf{CU-06. Obtener jugada de la inteligencia artificial.}]
+    Cuando corresponde el turno de la inteligencia artificial, el sistema calcula una acción a partir del estado actual de la partida y la muestra al jugador mediante la interfaz.
+
+    \item[\textbf{CU-07. Ejecutar y confirmar la jugada de la inteligencia artificial.}]
+    El jugador realiza físicamente sobre el tablero la jugada indicada por el sistema. La cámara observa el resultado y la aplicación comprueba si el estado físico coincide con el estado esperado tras aplicar la acción de la inteligencia artificial.
+
+    \item[\textbf{CU-08. Consultar estado de la partida.}]
+    El jugador puede consultar en la interfaz el tablero reconstruido, las piezas detectadas, las cartas disponibles, la carta lateral, los mensajes de estado y la información relativa al turno actual.
+
+    \item[\textbf{CU-09. Gestionar la sesión de juego.}]
+    El jugador puede reiniciar la partida, finalizarla, volver a la configuración inicial o salir de la aplicación.
+\end{description}
+
+La Figura~\ref{fig:casos-uso} resume gráficamente los principales casos de uso del sistema. En ella se incluye también el caso auxiliar \textit{Obtener observación visual}, utilizado por aquellos casos que requieren información procedente de la cámara.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{imagenes/casos_uso.pdf}
+    \caption{Diagrama de casos de uso principales del sistema.}
+    \label{fig:casos-uso}
+\end{figure}
+
+
+\section{Arquitectura del sistema}
+\label{sec:arquitectura-sistema}
+
+
+\section{Modelo de datos del dominio}
+\label{sec:modelo-datos-dominio}
+
+
+\section{Flujo de funcionamiento}
+\label{sec:flujo-funcionamiento}
+
+
+\section{Metodología y estrategia de desarrollo}
+\label{sec:metodologia-desarrollo}
+
+El desarrollo del proyecto se llevó a cabo mediante una estrategia iterativa e incremental, alineada con principios propios de las metodologías ágiles. Esta forma de trabajo permitió construir el sistema de manera progresiva, incorporando nuevas funcionalidades sobre componentes previamente validados y adaptando las decisiones de diseño a los resultados obtenidos durante el desarrollo.
+
+El carácter incremental del proceso se refleja en la construcción gradual del sistema. En lugar de abordar desde el inicio una aplicación completa con todos sus componentes integrados, el trabajo avanzó desde elementos más concretos y verificables hacia componentes de mayor nivel. De este modo, primero se desarrollaron las partes fundamentales sobre las que dependían los módulos posteriores, y posteriormente se fueron incorporando funcionalidades más complejas relacionadas con la toma de decisiones, la percepción visual, la integración entre subsistemas y la interacción con el usuario.
+
+El carácter iterativo del proceso se manifestó en la revisión y mejora continua de cada incremento. Cada módulo se implementó, se probó y se ajustó antes de utilizarse como base para la siguiente fase del proyecto. Esta estrategia permitió detectar errores en etapas tempranas, reducir la propagación de fallos entre componentes y mantener una evolución controlada del sistema. Además, las tutorías periódicas con el tutor actuaron como puntos de revisión del avance, permitiendo validar el trabajo realizado y orientar las siguientes decisiones de desarrollo.
+
+En las partes con mayor incertidumbre técnica se aplicó además una estrategia de prototipado experimental. En el caso de la inteligencia artificial, se probaron distintas funciones heurísticas y configuraciones del agente, comparando su comportamiento mediante enfrentamientos y pruebas específicas hasta seleccionar las alternativas más adecuadas. Del mismo modo, en el módulo de visión por computador fue necesario realizar pruebas sucesivas con el entorno físico, la cámara, la iluminación, la calibración y los modelos de reconocimiento, ya que el rendimiento del sistema dependía de condiciones reales de captura.
+
+*Introducir a continuación Diagrama de Gantt.*
+\vspace{1cm}

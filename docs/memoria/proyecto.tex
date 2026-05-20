@@ -33,6 +33,13 @@
 \usepackage{afterpage}
 
 \usepackage{longtable}
+\usepackage{enumitem}
+
+\makeatletter
+\newcommand{\twodigits}[1]{\expandafter\@twodigits\csname c@#1\endcsname}
+\newcommand{\@twodigits}[1]{\ifnum#1<10 0\fi\number#1}
+\makeatother
+\AddEnumerateCounter*{\twodigits}{\@twodigits}{99}
 
 \usepackage[hidelinks]{hyperref} %referencia
 
