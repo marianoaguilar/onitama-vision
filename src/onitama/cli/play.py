@@ -6,8 +6,8 @@ from onitama.ai.controllers import AIController
 from onitama.ai.evaluate import EVALUATORS
 from onitama.cli.controllers import HumanCLIController
 from onitama.cli.prompts import prompt_choice, prompt_int
-from onitama.cli.render import render_state, format_action
 from onitama.engine.controllers import Controller
+from onitama.engine.formatting import format_action, render_state
 from onitama.engine.pieces import Player
 from onitama.engine.rules import apply_action, winner
 from onitama.engine.state import GameState

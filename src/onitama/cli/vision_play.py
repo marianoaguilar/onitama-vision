@@ -4,7 +4,7 @@ from onitama.ai.evaluate import EVALUATORS
 from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.runtime.vision_runtime import VisionGameRuntime
 from onitama.cli.prompts import prompt_choice, prompt_int
-from onitama.cli.render import format_action, render_state
+from onitama.engine.formatting import format_action, render_state
 from onitama.engine.pieces import Player
 from onitama.integration.session import SessionOutcome, SessionPhase
 

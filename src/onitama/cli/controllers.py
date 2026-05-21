@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from onitama.cli.render import format_action
 from onitama.engine.controllers import Controller
+from onitama.engine.formatting import format_action
 from onitama.engine.rules import Action, generate_legal_actions
 from onitama.engine.state import GameState
 

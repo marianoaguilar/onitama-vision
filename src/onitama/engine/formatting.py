@@ -1,29 +1,22 @@
 from __future__ import annotations
 
+from onitama.engine.moves import Move, Pass
 from onitama.engine.pieces import PieceType, Player
 from onitama.engine.state import GameState
-from onitama.engine.moves import Move, Pass
-
-
-def _cell_to_token(piece) -> str:
-    if piece is None:
-        return "-"
-    if piece.owner.value == "RED":
-        return "R" if piece.kind is PieceType.MASTER else "r"
-    return "B" if piece.kind is PieceType.MASTER else "b"
 
 
 def pos_to_coord(pos: tuple[int, int]) -> str:
     """Convert (row, col) into chess-like coordinates a1..e5."""
     r, c = pos
-    file_char = chr(ord("a") + c)   # 0->a, 1->b, ...
-    rank_num = 5 - r                # row 4->1, row 0->5
+    file_char = chr(ord("a") + c)
+    rank_num = 5 - r
     return f"{file_char}{rank_num}"
 
 
 def format_action(state: GameState, action: Move | Pass) -> str:
     """
     Human-friendly representation of an action for the current player.
+
     Shows:
       - Move: a1 -> a2 (CardName)
       - Pass: PASS (CardName)
@@ -37,6 +30,13 @@ def format_action(state: GameState, action: Move | Pass) -> str:
     return f"{pos_to_coord(action.from_pos)} -> {pos_to_coord(action.to_pos)} ({card.name})"
 
 
+def _cell_to_token(piece) -> str:
+    if piece is None:
+        return "-"
+    if piece.owner is Player.RED:
+        return "R" if piece.kind is PieceType.MASTER else "r"
+    return "B" if piece.kind is PieceType.MASTER else "b"
+
 
 def render_state(state: GameState) -> str:
     """
@@ -49,14 +49,14 @@ def render_state(state: GameState) -> str:
     """
     lines: list[str] = []
     lines.append(f"\nTo move: {state.to_move.value}")
-    
+
     def _fmt_card(card) -> str:
         return f"{card.name}({card.stamp.value})"
-    
+
     lines.append(f"RED cards:  {_fmt_card(state.red_cards[0])}, {_fmt_card(state.red_cards[1])}")
     lines.append(f"BLUE cards: {_fmt_card(state.blue_cards[0])}, {_fmt_card(state.blue_cards[1])}")
     lines.append(f"SIDE card:  {_fmt_card(state.side_card)}")
-    
+
     lines.append("")
     lines.append("    a  b  c  d  e")
     lines.append("")

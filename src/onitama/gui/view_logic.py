@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from onitama.errors import VisionObservationKind
-from onitama.cli.render import format_action
+from onitama.engine.formatting import format_action
 from onitama.engine.pieces import Player
 from onitama.integration.session import SessionOutcome, SessionPhase
 from onitama.runtime.vision_models import VisionRuntimeState
