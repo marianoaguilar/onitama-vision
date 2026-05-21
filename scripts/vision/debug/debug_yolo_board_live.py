@@ -96,7 +96,7 @@ def draw_detections(img, detections: list[PieceDetection]):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Live debug: YOLO detections -> VisionBoard. Saves/prints discrete board before game integration."
+        description="Live debug: YOLO detections -> VisionBoard. Saves/prints discrete board before game session."
     )
     parser.add_argument("--model", type=Path, default=Path("models/pieces_yolov8s_640_best.pt"))
     parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))

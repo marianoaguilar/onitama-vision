@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from onitama.cli.render import render_state
+from onitama.engine.formatting import render_state
 from onitama.engine.pieces import Player
 from onitama.vision.snapshot import VisionSnapshot
 

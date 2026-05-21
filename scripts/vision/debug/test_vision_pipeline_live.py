@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from onitama.cli.render import render_state
+from onitama.engine.formatting import render_state
 from onitama.engine.pieces import Player
 from onitama.engine.state import GameState
 from onitama.vision.board import VisionBoard, VisionPiece
