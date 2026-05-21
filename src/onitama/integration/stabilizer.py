@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from onitama.app.errors import VisionConfigurationError
+from onitama.errors import VisionConfigurationError
 from onitama.engine.state import GameState
 
 

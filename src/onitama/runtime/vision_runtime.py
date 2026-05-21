@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from onitama.ai.controllers import AIController
-from onitama.app.errors import (
+from onitama.errors import (
     VisionCameraError,
     VisionFatalError,
     VisionInternalError,
@@ -11,7 +11,7 @@ from onitama.app.errors import (
     VisionObservationKind,
     VisionPipelineError,
 )
-from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.engine.cards import CARD_BY_NAME
 from onitama.engine.pieces import Player
 from onitama.engine.rules import winner

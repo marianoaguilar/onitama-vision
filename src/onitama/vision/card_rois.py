@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 
-from onitama.app.errors import VisionConfigurationError
+from onitama.errors import VisionConfigurationError
 from onitama.vision.homography import order_points_clockwise
 
 

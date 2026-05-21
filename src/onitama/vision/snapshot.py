@@ -8,7 +8,7 @@ from pathlib import Path
 from onitama.engine.cards import CARD_BY_NAME, Card
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.state import Board, GameState
-from onitama.app.errors import VisionObservationError, VisionObservationKind, VisionPipelineError
+from onitama.errors import VisionObservationError, VisionObservationKind, VisionPipelineError
 from onitama.vision.board import VisionBoard, VisionPiece
 from onitama.vision.card_classifier import CardClassificationResult
 

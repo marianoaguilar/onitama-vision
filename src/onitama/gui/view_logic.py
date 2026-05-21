@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from onitama.app.errors import VisionObservationKind
+from onitama.errors import VisionObservationKind
 from onitama.cli.render import format_action
 from onitama.engine.pieces import Player
 from onitama.integration.session import SessionOutcome, SessionPhase
-from onitama.app.vision_models import VisionRuntimeState
+from onitama.runtime.vision_models import VisionRuntimeState
 
 
 OBSERVATION_DETAILS = {

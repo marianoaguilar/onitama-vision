@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from onitama.ai.controllers import AIController
-from onitama.app.errors import VisionConfigurationError, VisionInternalError
+from onitama.errors import VisionConfigurationError, VisionInternalError
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action, apply_action, winner
 from onitama.engine.state import GameState

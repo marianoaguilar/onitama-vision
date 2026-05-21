@@ -6,7 +6,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
-from onitama.app.errors import VisionConfigurationError
+from onitama.errors import VisionConfigurationError
 
 
 @dataclass(frozen=True)

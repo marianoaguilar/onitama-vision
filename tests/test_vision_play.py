@@ -1,9 +1,9 @@
 import numpy as np
 
 from onitama.ai.controllers import AIController
-from onitama.app.errors import VisionObservationError, VisionObservationKind
-from onitama.app.vision_models import VisionRuntimeConfig
-from onitama.app.vision_runtime import VisionGameRuntime
+from onitama.errors import VisionObservationError, VisionObservationKind
+from onitama.runtime.vision_models import VisionRuntimeConfig
+from onitama.runtime.vision_runtime import VisionGameRuntime
 from onitama.engine.moves import Move
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions

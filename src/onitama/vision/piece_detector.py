@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from onitama.app.errors import (
+from onitama.errors import (
     VisionConfigurationError,
     VisionDependencyError,
 )

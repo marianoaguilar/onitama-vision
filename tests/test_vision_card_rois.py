@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from onitama.app.errors import VisionConfigurationError
+from onitama.errors import VisionConfigurationError
 from onitama.vision.card_rois import SLOT_ORDER, extract_polygon_crop, load_card_rois
 
 

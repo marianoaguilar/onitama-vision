@@ -5,8 +5,8 @@ import threading
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 
-from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
-from onitama.app.vision_runtime import VisionGameRuntime
+from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.runtime.vision_runtime import VisionGameRuntime
 
 
 class RuntimeWorker(QThread):

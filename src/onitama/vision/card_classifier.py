@@ -8,7 +8,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from onitama.app.errors import (
+from onitama.errors import (
     VisionConfigurationError,
     VisionDependencyError,
     VisionObservationError,

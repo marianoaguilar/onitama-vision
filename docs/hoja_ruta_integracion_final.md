@@ -28,6 +28,19 @@ El proyecto ya tiene una separacion bastante buena:
 - La IA ya puede elegir acciones desde un `GameState`.
 - El CLI actual ya sirve como referencia del bucle general de una partida.
 
+En la implementacion final, esta integracion no vive en un unico archivo. Se
+divide en dos capas:
+
+- `integration/`: logica pura de la partida asistida. Trabaja con estados ya
+  observados, estabiliza lecturas, valida sucesores legales y gestiona fases de
+  turno.
+- `runtime/`: ejecucion en vivo. Abre la camara, invoca `VisionPipeline`,
+  convierte snapshots segun la fase actual y expone `VisionRuntimeState` a GUI
+  o CLI.
+
+Esta separacion permite probar la logica de sincronizacion sin camara, y a la
+vez mantener aislada la parte operativa del bucle en vivo.
+
 
 ## Idea central de la integracion
 
@@ -59,25 +72,27 @@ El flujo objetivo deberia ser este:
 12. Espera a que el tablero fisico coincida con ese estado esperado.
 13. Una vez confirmado, avanza al siguiente turno.
 
-## Bloques que faltan por construir
+## Bloques principales de la integracion
 
-### 1. Orquestador de partida con vision
+### 1. Runtime de partida con vision
 
-Hace falta una nueva capa, separada del CLI actual, responsable de:
+La ejecucion en vivo esta concentrada en `runtime/`.
+
+Esta capa, separada del CLI y de la GUI, es responsable de:
 
 - capturar frames,
 - invocar `VisionPipeline`,
-- estabilizar lecturas,
-- validar transiciones,
-- llamar a la IA,
-- mostrar la jugada elegida,
-- y controlar el ciclo completo del turno.
+- convertir snapshots visuales en estados candidatos,
+- alimentar la sesion logica,
+- gestionar errores recuperables o fatales,
+- y producir un estado consumible por la interfaz.
 
-Esta capa sera el verdadero "pegamento" del sistema.
+No decide por si misma si una jugada es legal: delega esa parte en
+`integration/`.
 
 ### 2. Estabilizacion temporal
 
-El PDF del proyecto lo marca como elemento clave y ahora mismo no forma parte del flujo principal.
+La estabilizacion temporal vive en `integration/stabilizer.py`.
 
 La idea minima necesaria es:
 
@@ -89,7 +104,8 @@ Sin esta capa, la integracion completa sera fragil aunque la vision individual f
 
 ### 3. Sincronizador entre estados observados y estados legales
 
-Este es el nucleo de la integracion.
+El sincronizador vive en `integration/synchronizer.py` y es el nucleo logico de
+la integracion.
 
 El sistema debe trabajar siempre con:
 
@@ -124,6 +140,10 @@ Una vez aceptado el nuevo estado del jugador humano:
 - se calcula el estado esperado tras esa accion,
 - y el sistema espera a que el tablero fisico refleje ese estado.
 
+Esta responsabilidad esta en `integration/session.py`: la sesion conoce el
+estado confirmado, solicita la accion al controlador de IA y guarda el estado
+esperado tras esa accion.
+
 ### 6. Flujo de UX minimo
 
 El sistema final deberia manejar estados de interfaz simples pero claros:
@@ -138,6 +158,10 @@ El sistema final deberia manejar estados de interfaz simples pero claros:
 - partida terminada.
 
 No hace falta una interfaz compleja al principio, pero si un flujo claro para no perder el control de la sesion.
+
+En la implementacion actual, `runtime/vision_models.py` define el estado que
+consume la GUI (`VisionRuntimeState`) y `gui/view_logic.py` traduce ese estado a
+mensajes de interfaz.
 
 ### 7. Logging y depuracion
 
@@ -166,7 +190,7 @@ La webcam en vivo debe llegar despues, no antes.
 
 ## Orden recomendado de implementacion
 
-El orden que tiene mas sentido es este:
+El orden historico recomendado para construir esta fase fue:
 
 1. Orquestador de partida en modo offline.
 2. Sincronizador de estados legales.
@@ -178,11 +202,11 @@ El orden que tiene mas sentido es este:
 
 ## Primer MVP recomendado
 
-El primer MVP serio de la integracion deberia centrarse en construir este bloque:
+El primer MVP serio de la integracion se centro en construir este bloque:
 
-- `VisionGameSession` o clase equivalente como orquestador principal.
+- `VisionGameSession` como sesion logica principal.
 - `StateStabilizer` para confirmar estados repetidos.
-- `GameStateSynchronizer` para comparar observaciones con sucesores legales.
+- `match_observed_state` para comparar observaciones con sucesores legales.
 - un nuevo comando de entrada, por ejemplo `python -m onitama.cli.vision_play`.
 
 Ese MVP ya permitiria validar la arquitectura completa sin meter todavia toda la complejidad del modo en vivo definitivo.
@@ -199,15 +223,26 @@ La razon es simple:
 
 Por tanto, la nueva logica debe vivir sobre todo en una capa de coordinacion, no repartida de forma difusa por todo el proyecto.
 
+En el codigo final, esa coordinacion queda repartida de forma intencionada:
+
+- `integration/` contiene la coordinacion logica, testeable sin camara.
+- `runtime/` contiene la coordinacion operativa del bucle en vivo.
+
+La frontera entre ambas evita mezclar validacion de turnos con detalles de
+camara, lectura de frames o estado de interfaz.
+
 ## Resumen ejecutivo
 
 La fase final del proyecto consiste en transformar una pipeline de vision que ya produce estados utiles en un sistema jugable de extremo a extremo.
 
-La pieza principal que falta no es la deteccion visual en si, sino una capa de control de partida que:
+La pieza principal no es la deteccion visual en si, sino una capa de control de partida que:
 
 - estabilice observaciones,
 - valide legalidad con el motor,
 - sincronice turnos reales,
 - y conecte esas transiciones con la toma de decisiones de la IA.
 
-Si esa capa se construye bien, el proyecto pasa de tener piezas tecnicas solidas por separado a tener un sistema completo y demostrable.
+En la estructura final, esa capa de control se divide en logica de sesion
+(`integration/`) y ejecucion en vivo (`runtime/`). Con esa separacion, el
+proyecto pasa de tener piezas tecnicas solidas por separado a tener un sistema
+completo y demostrable.

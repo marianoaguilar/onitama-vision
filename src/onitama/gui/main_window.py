@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
 from onitama.engine.moves import Move
 from onitama.engine.pieces import Player
 from onitama.gui.camera_window import CameraWindow

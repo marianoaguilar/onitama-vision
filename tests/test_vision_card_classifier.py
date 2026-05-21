@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from onitama.app.errors import VisionObservationError, VisionObservationKind
+from onitama.errors import VisionObservationError, VisionObservationKind
 from onitama.vision.card_classifier import (
     CardClassificationResult,
     CardSlotPrediction,

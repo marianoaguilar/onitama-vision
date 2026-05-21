@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from onitama.ai.evaluate import EVALUATORS
-from onitama.app.vision_models import VisionRuntimeConfig, VisionRuntimeState
-from onitama.app.vision_runtime import VisionGameRuntime
+from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.runtime.vision_runtime import VisionGameRuntime
 from onitama.cli.prompts import prompt_choice, prompt_int
 from onitama.cli.render import format_action, render_state
 from onitama.engine.pieces import Player

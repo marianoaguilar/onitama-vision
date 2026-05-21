@@ -59,6 +59,14 @@ Se encarga de:
 
 Es el puente entre la GUI y la capa de vision/integracion.
 
+Mas concretamente, la GUI no llama directamente a la camara ni al pipeline de
+vision. `RuntimeWorker` ejecuta `VisionGameRuntime`, y este runtime conecta:
+
+- `vision/`: reconstruccion visual desde frames,
+- `integration/`: flujo logico de sesion, estabilidad y validacion legal,
+- `ai/`: seleccion de la jugada de la IA,
+- `gui/`: estado final que se muestra en pantalla.
+
 ### `src/onitama/gui/view_logic.py`
 Traduce el estado interno del runtime a mensajes claros para la interfaz.
 
@@ -79,7 +87,7 @@ Ahora mismo incluye:
 - `CardWidget`: dibuja una carta,
 - `MessageBanner`: muestra el mensaje superior de estado.
 
-No controla el flujo de la app. Solo representa datos.
+No controla el flujo de la aplicacion. Solo representa datos.
 
 ### `src/onitama/gui/camera_window.py`
 Es una ventana auxiliar independiente.
@@ -175,7 +183,7 @@ Si el usuario pulsa `Camara`:
 ### 8. Reinicio o fin
 - `Reiniciar` pide al runtime que se reinicie.
 - `Finalizar partida` detiene el worker y vuelve al setup.
-- al cerrar la app, `MainWindow` intenta parar el worker y cerrar dialogos abiertos.
+- al cerrar la aplicacion, `MainWindow` intenta parar el worker y cerrar dialogos abiertos.
 
 ## Resumen corto de responsabilidades
 
@@ -187,3 +195,15 @@ Si el usuario pulsa `Camara`:
 - `widgets.py`: renderizado reutilizable
 - `camera_window.py`: visor auxiliar de camara
 - `gui/calibration/`: calibracion integrada
+
+## Relacion con las capas internas
+
+La GUI se apoya en dos capas distintas:
+
+- `runtime/`: ejecucion en vivo. Abre la camara, llama a `VisionPipeline`,
+  alimenta la sesion y devuelve `VisionRuntimeState`.
+- `integration/`: logica de partida asistida. Gestiona fases, observaciones
+  estables, sucesores legales y confirmacion de la jugada de la IA.
+
+Esta separacion evita que la interfaz tenga que conocer los detalles de vision,
+validacion legal o control de turnos.

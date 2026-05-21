@@ -24,7 +24,8 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 - Complete Onitama rules engine with immutable game state, official card handling, and legal move generation.
 - Search-based AI opponent with negamax, alpha-beta pruning, quiescence search, transposition tables, iterative deepening, aspiration windows, and move ordering heuristics.
 - Vision pipeline that detects board pieces, classifies the five visible cards, and reconstructs a snapshot from camera frames.
-- Integration layer that stabilizes repeated observations, validates legal one-ply transitions, and coordinates turns.
+- Logical integration layer that stabilizes repeated observations, validates legal one-ply transitions, and coordinates human/AI turn phases.
+- Live runtime layer that opens the camera, runs the vision pipeline, feeds the integration layer, and exposes state to the GUI/CLI.
 - Desktop GUI with integrated board calibration, card-ROI calibration, live board/card rendering, status feedback, and optional camera preview.
 - Auxiliary tooling for automated tests, vision debugging, data capture, tournaments, and search benchmarking.
 
@@ -129,13 +130,14 @@ python scripts/bench_search.py --help
 ```text
 TFG-Onitama/
 ├── src/onitama/
-│   ├── engine/        # Game rules, state, cards, pieces, actions
-│   ├── ai/            # Negamax search, pruning/ordering, evaluation, AI controllers
-│   ├── vision/        # Board detection, card classification, snapshots
-│   ├── integration/   # Stabilization and legality synchronization
+│   ├── engine/        # Pure game state, cards, pieces, actions and rules
+│   ├── ai/            # Search, evaluation and AI controllers
+│   ├── vision/        # Frame processing, board detection, card classification and snapshots
+│   ├── integration/   # Logical game-session flow, stabilization and legality synchronization
+│   ├── runtime/       # Live camera/pipeline runtime and frontend-facing state models
 │   ├── gui/           # Desktop application
 │   ├── cli/           # Auxiliary terminal interfaces
-│   └── app/           # Shared runtime models and orchestration
+│   └── errors.py      # Shared exception types for vision-assisted play
 ├── scripts/           # Calibration, debugging, tournaments, benchmarks
 ├── tests/             # Automated test suite
 ├── models/            # Trained vision models

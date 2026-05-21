@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from onitama.app.errors import VisionInternalError
+from onitama.errors import VisionInternalError
 from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal
 from onitama.engine.state import GameState
 
