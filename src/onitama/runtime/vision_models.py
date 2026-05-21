@@ -6,7 +6,7 @@ from onitama.errors import VisionConfigurationError, VisionObservationKind
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action
 from onitama.engine.state import GameState
-from onitama.integration.session import SessionOutcome, SessionPhase
+from onitama.session.vision_session import SessionOutcome, SessionPhase
 
 
 @dataclass(frozen=True)

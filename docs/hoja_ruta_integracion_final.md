@@ -31,7 +31,7 @@ El proyecto ya tiene una separacion bastante buena:
 En la implementacion final, esta integracion no vive en un unico archivo. Se
 divide en dos capas:
 
-- `integration/`: logica pura de la partida asistida. Trabaja con estados ya
+- `session/`: logica pura de la partida asistida. Trabaja con estados ya
   observados, estabiliza lecturas, valida sucesores legales y gestiona fases de
   turno.
 - `runtime/`: ejecucion en vivo. Abre la camara, invoca `VisionPipeline`,
@@ -88,11 +88,11 @@ Esta capa, separada del CLI y de la GUI, es responsable de:
 - y producir un estado consumible por la interfaz.
 
 No decide por si misma si una jugada es legal: delega esa parte en
-`integration/`.
+`session/`.
 
 ### 2. Estabilizacion temporal
 
-La estabilizacion temporal vive en `integration/stabilizer.py`.
+La estabilizacion temporal vive en `session/stabilizer.py`.
 
 La idea minima necesaria es:
 
@@ -104,7 +104,7 @@ Sin esta capa, la integracion completa sera fragil aunque la vision individual f
 
 ### 3. Sincronizador entre estados observados y estados legales
 
-El sincronizador vive en `integration/synchronizer.py` y es el nucleo logico de
+El sincronizador vive en `session/synchronizer.py` y es el nucleo logico de
 la integracion.
 
 El sistema debe trabajar siempre con:
@@ -140,7 +140,7 @@ Una vez aceptado el nuevo estado del jugador humano:
 - se calcula el estado esperado tras esa accion,
 - y el sistema espera a que el tablero fisico refleje ese estado.
 
-Esta responsabilidad esta en `integration/session.py`: la sesion conoce el
+Esta responsabilidad esta en `session/vision_session.py`: la sesion conoce el
 estado confirmado, solicita la accion al controlador de IA y guarda el estado
 esperado tras esa accion.
 
@@ -225,7 +225,7 @@ Por tanto, la nueva logica debe vivir sobre todo en una capa de coordinacion, no
 
 En el codigo final, esa coordinacion queda repartida de forma intencionada:
 
-- `integration/` contiene la coordinacion logica, testeable sin camara.
+- `session/` contiene la coordinacion logica, testeable sin camara.
 - `runtime/` contiene la coordinacion operativa del bucle en vivo.
 
 La frontera entre ambas evita mezclar validacion de turnos con detalles de
@@ -243,6 +243,6 @@ La pieza principal no es la deteccion visual en si, sino una capa de control de 
 - y conecte esas transiciones con la toma de decisiones de la IA.
 
 En la estructura final, esa capa de control se divide en logica de sesion
-(`integration/`) y ejecucion en vivo (`runtime/`). Con esa separacion, el
+(`session/`) y ejecucion en vivo (`runtime/`). Con esa separacion, el
 proyecto pasa de tener piezas tecnicas solidas por separado a tener un sistema
 completo y demostrable.

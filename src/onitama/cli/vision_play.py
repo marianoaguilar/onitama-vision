@@ -6,7 +6,7 @@ from onitama.runtime.vision_runtime import VisionGameRuntime
 from onitama.cli.prompts import prompt_choice, prompt_int
 from onitama.engine.formatting import format_action, render_state
 from onitama.engine.pieces import Player
-from onitama.integration.session import SessionOutcome, SessionPhase
+from onitama.session.vision_session import SessionOutcome, SessionPhase
 
 VISIBLE_OUTCOMES = {
     SessionOutcome.BOOTSTRAPPED,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from onitama.errors import VisionObservationKind
 from onitama.engine.formatting import format_action
 from onitama.engine.pieces import Player
-from onitama.integration.session import SessionOutcome, SessionPhase
+from onitama.session.vision_session import SessionOutcome, SessionPhase
 from onitama.runtime.vision_models import VisionRuntimeState
 
 

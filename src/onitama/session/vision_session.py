@@ -8,8 +8,8 @@ from onitama.errors import VisionConfigurationError, VisionInternalError
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action, apply_action, winner
 from onitama.engine.state import GameState
-from onitama.integration.stabilizer import StateStabilizer
-from onitama.integration.synchronizer import SyncStatus, match_observed_state
+from onitama.session.stabilizer import StateStabilizer
+from onitama.session.synchronizer import SyncStatus, match_observed_state
 
 
 class SessionPhase(str, Enum):

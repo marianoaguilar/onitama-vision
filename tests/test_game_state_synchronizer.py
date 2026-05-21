@@ -4,7 +4,7 @@ from onitama.engine.cards import ALL_CARDS
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.synchronizer import SyncStatus, match_observed_state
+from onitama.session.synchronizer import SyncStatus, match_observed_state
 from onitama.errors import VisionInternalError
 
 

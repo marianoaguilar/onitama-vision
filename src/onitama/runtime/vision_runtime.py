@@ -16,12 +16,12 @@ from onitama.engine.cards import CARD_BY_NAME
 from onitama.engine.pieces import Player
 from onitama.engine.rules import winner
 from onitama.engine.state import GameState
-from onitama.integration.session import (
+from onitama.session.vision_session import (
     SessionOutcome,
     SessionPhase,
     VisionGameSession,
 )
-from onitama.integration.stabilizer import StateStabilizer
+from onitama.session.stabilizer import StateStabilizer
 from onitama.vision.snapshot import VisionSnapshot
 from onitama.vision.vision_pipeline import VisionPipeline
 

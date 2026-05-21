@@ -9,8 +9,8 @@ from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
 from onitama.gui.view_logic import build_status_view
-from onitama.integration.session import SessionPhase, VisionGameSession
-from onitama.integration.stabilizer import StateStabilizer
+from onitama.session.vision_session import SessionPhase, VisionGameSession
+from onitama.session.stabilizer import StateStabilizer
 from onitama.vision.snapshot import VisionSnapshot
 
 

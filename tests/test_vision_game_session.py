@@ -4,8 +4,8 @@ from onitama.engine.moves import Move
 from onitama.engine.pieces import Piece, PieceType, Player
 from onitama.engine.rules import Action, apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.session import SessionOutcome, SessionPhase, VisionGameSession
-from onitama.integration.stabilizer import StateStabilizer
+from onitama.session.vision_session import SessionOutcome, SessionPhase, VisionGameSession
+from onitama.session.stabilizer import StateStabilizer
 
 
 class StubAIController(AIController):

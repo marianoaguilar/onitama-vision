@@ -63,7 +63,7 @@ Mas concretamente, la GUI no llama directamente a la camara ni al pipeline de
 vision. `RuntimeWorker` ejecuta `VisionGameRuntime`, y este runtime conecta:
 
 - `vision/`: reconstruccion visual desde frames,
-- `integration/`: flujo logico de sesion, estabilidad y validacion legal,
+- `session/`: flujo logico de sesion, estabilidad y validacion legal,
 - `ai/`: seleccion de la jugada de la IA,
 - `gui/`: estado final que se muestra en pantalla.
 
@@ -202,7 +202,7 @@ La GUI se apoya en dos capas distintas:
 
 - `runtime/`: ejecucion en vivo. Abre la camara, llama a `VisionPipeline`,
   alimenta la sesion y devuelve `VisionRuntimeState`.
-- `integration/`: logica de partida asistida. Gestiona fases, observaciones
+- `session/`: logica de partida asistida. Gestiona fases, observaciones
   estables, sucesores legales y confirmacion de la jugada de la IA.
 
 Esta separacion evita que la interfaz tenga que conocer los detalles de vision,

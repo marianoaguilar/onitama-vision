@@ -133,7 +133,7 @@ TFG-Onitama/
 │   ├── engine/        # Pure game state, cards, pieces, actions and rules
 │   ├── ai/            # Search, evaluation and AI controllers
 │   ├── vision/        # Frame processing, board detection, card classification and snapshots
-│   ├── integration/   # Logical game-session flow, stabilization and legality synchronization
+│   ├── session/       # Vision game-session flow, stabilization and legality synchronization
 │   ├── runtime/       # Live camera/pipeline runtime and frontend-facing state models
 │   ├── gui/           # Desktop application
 │   ├── cli/           # Auxiliary terminal interfaces

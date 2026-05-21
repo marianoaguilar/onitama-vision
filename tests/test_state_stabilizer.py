@@ -1,6 +1,6 @@
 from onitama.engine.rules import apply_action, generate_legal_actions
 from onitama.engine.state import GameState
-from onitama.integration.stabilizer import StateStabilizer
+from onitama.session.stabilizer import StateStabilizer
 
 
 def test_stabilizer_does_not_confirm_before_threshold():
