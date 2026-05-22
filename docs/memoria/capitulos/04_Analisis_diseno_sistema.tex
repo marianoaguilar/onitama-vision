@@ -234,22 +234,93 @@ La Figura~\ref{fig:casos-uso} resume gráficamente los principales casos de uso 
     \caption{Diagrama de casos de uso principales del sistema.}
     \label{fig:casos-uso}
 \end{figure}
+\vspace{0.3cm}
 
 
 \section{Arquitectura del sistema}
 \label{sec:arquitectura-sistema}
 
+El sistema se organiza mediante una arquitectura modular orientada a separar las principales responsabilidades de la aplicación. Esta división permite tratar de forma independiente la representación lógica de la partida, la percepción del entorno físico, la toma de decisiones automática, la coordinación de la sesión y la interacción con el usuario.
 
-\section{Modelo de datos del dominio}
-\label{sec:modelo-datos-dominio}
+Esta separación resulta especialmente importante en un sistema que combina una partida física con un modelo digital del juego. La información obtenida mediante la cámara no debe incorporarse directamente como estado válido, sino que debe pasar por una serie de componentes encargados de convertirla, coordinarla y contrastarla con la lógica interna de la partida.
+
+La Figura~\ref{fig:arquitectura-sistema} muestra una vista general de esta organización. El jugador humano y la cámara se representan como elementos externos al sistema, mientras que los bloques internos corresponden a los principales componentes software. Las flechas indican relaciones principales de uso o dependencia entre componentes, no el flujo completo de datos durante la ejecución.
+
+\vspace{0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{imagenes/arquitectura_sistema.pdf}
+    \caption{Arquitectura general del sistema.}
+    \label{fig:arquitectura-sistema}
+\end{figure}
+\vspace{0.5cm}
+
+\paragraph{Interfaz gráfica.}
+
+Constituye el punto de contacto entre el jugador humano y el sistema. Desde ella se configura la partida, se accede a las calibraciones, se inicia o finaliza la sesión y se visualiza la información necesaria para seguir el estado del juego.
+
+\paragraph{Control de ejecución.}
+
+Actúa como capa operativa de la aplicación durante una partida asistida por cámara. Conecta la interfaz con la cámara, el módulo de visión y la capa de sesión, manteniendo activa la ejecución del sistema mientras la partida está en curso.
+
+\paragraph{Visión por computador.}
+
+Transforma las imágenes capturadas en una observación estructurada del tablero físico y de las cartas visibles. Su papel dentro de la arquitectura es convertir la información visual en datos interpretables por el resto del sistema.
+
+\paragraph{Sesión y sincronización.}
+
+Mantiene la coherencia entre la partida lógica y la partida física observada. Para ello, compara los estados observados con el estado confirmado, valida las transiciones detectadas y coordina las fases de la sesión entre el jugador humano y la inteligencia artificial.
+
+\paragraph{Motor de juego.}
+
+Representa el núcleo lógico de la aplicación. Define el estado de una partida de Onitama, genera las acciones legales, aplica los movimientos, actualiza las cartas y determina la finalización de la partida según las reglas del juego.
+
+\paragraph{Agente de inteligencia artificial.}
+
+Selecciona la acción que debe realizar el sistema cuando le corresponde jugar. Para ello, analiza el estado lógico confirmado de la partida y utiliza el motor de juego para explorar las acciones legales disponibles.
+
+
+% \section{Modelo de datos del dominio}
+% \label{sec:modelo-datos-dominio}
+
+% Demasiado repetitivo explicar otra vez el modelo de datos del dominio,
+% que viene a ser el estado del juego y se ha explicado en diversas ocasiones.
+
 
 
 \section{Flujo de funcionamiento}
 \label{sec:flujo-funcionamiento}
 
+Una vez definida la arquitectura del sistema, resulta necesario describir cómo se desarrolla una partida desde el punto de vista dinámico. Mientras que la sección anterior muestra los componentes principales y sus relaciones, en esta sección se representa el comportamiento del sistema durante una sesión completa de juego.
+
+El flujo se describe en tres niveles. En primer lugar, se presenta una visión general de la partida, desde la configuración inicial hasta la finalización. A continuación, se detallan por separado los dos ciclos más relevantes del sistema: el turno del jugador humano y el turno de la inteligencia artificial.
+
+
+\subsection{Flujo general de la partida}
+
+La Figura~\ref{fig:flujo-general-partida} muestra el flujo general seguido durante una partida física asistida por cámara. Este diagrama representa el funcionamiento global de la sesión sin mostrar todavía los módulos internos que intervienen en cada paso.
+
+Tras configurar la partida, el sistema comprueba si existen calibraciones válidas para el tablero y las cartas. Una vez iniciada la sesión, se obtiene un estado inicial válido a partir de la observación del entorno físico. A partir de ese momento comienza el ciclo principal de juego, en el que el flujo se bifurca en función de si el turno corresponde al jugador humano o a la inteligencia artificial.
+
+En ambos casos, el turno solo se considera completado cuando el cambio observado en el tablero puede aceptarse como una evolución válida de la partida. Después de actualizar el estado, el sistema comprueba si se ha alcanzado una condición de victoria. Si la partida no ha finalizado, el flujo vuelve al ciclo principal para procesar el siguiente turno.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{imagenes/flujo_general_partida.pdf}
+    \caption{Flujo general de funcionamiento de una partida.}
+    \label{fig:flujo-general-partida}
+\end{figure}
+
+
+\subsection{Turno del jugador humano}
+
+\subsection{Turno de la inteligencia artificial}
+
 
 \section{Metodología y estrategia de desarrollo}
 \label{sec:metodologia-desarrollo}
+
+% REVISAR
 
 El desarrollo del proyecto se llevó a cabo mediante una estrategia iterativa e incremental, alineada con principios propios de las metodologías ágiles. Esta forma de trabajo permitió construir el sistema de manera progresiva, incorporando nuevas funcionalidades sobre componentes previamente validados y adaptando las decisiones de diseño a los resultados obtenidos durante el desarrollo.
 
