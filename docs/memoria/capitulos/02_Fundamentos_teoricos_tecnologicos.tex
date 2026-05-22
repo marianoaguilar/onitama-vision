@@ -457,12 +457,12 @@ La Figura~\ref{fig:clasificacion-imagenes-cnn} resume de forma esquemática este
         % 1. Imagen o recorte
         % -------------------------------------------------
         \fill[gray!5, rounded corners] (0,0) rectangle (2.4,2.4);
-        \draw[black!75, rounded corners, thick] (0,0) rectangle (2.4,2.4);
+        \draw[black, rounded corners, thick] (0,0) rectangle (2.4,2.4);
         \foreach \x in {0.48,0.96,1.44,1.92} {
-            \draw[gray!55] (\x,0) -- (\x,2.4);
+            \draw[gray] (\x,0) -- (\x,2.4);
         }
         \foreach \y in {0.48,0.96,1.44,1.92} {
-            \draw[gray!55] (0,\y) -- (2.4,\y);
+            \draw[gray] (0,\y) -- (2.4,\y);
         }
         \node[label] at (1.2,\LabelY) {Imagen o recorte};
 
@@ -472,9 +472,9 @@ La Figura~\ref{fig:clasificacion-imagenes-cnn} resume de forma esquemática este
         % -------------------------------------------------
         % 2. Red convolucional
         % -------------------------------------------------
-        \draw[rounded corners, fill=gray!35, draw=black!70, thick] (4.20,0.30) rectangle (5.75,1.85);
-        \draw[rounded corners, fill=gray!25, draw=black!70, thick] (4.40,0.45) rectangle (5.95,2.00);
-        \draw[rounded corners, fill=gray!10, draw=black!75, thick] (4.60,0.60) rectangle (6.15,2.15);
+        \draw[rounded corners, fill=gray!35, draw=black, thick] (4.20,0.30) rectangle (5.75,1.85);
+        \draw[rounded corners, fill=gray!25, draw=black, thick] (4.40,0.45) rectangle (5.95,2.00);
+        \draw[rounded corners, fill=gray!10, draw=black, thick] (4.60,0.60) rectangle (6.15,2.15);
 
         \node[label] at (5.18,\LabelY) {Red neuronal convolucional};
 
@@ -485,7 +485,7 @@ La Figura~\ref{fig:clasificacion-imagenes-cnn} resume de forma esquemática este
         % 3. Puntuaciones por clase
         % -------------------------------------------------
         \fill[gray!5, rounded corners] (7.55,0.40) rectangle (9.45,2.00);
-        \draw[black!75, rounded corners, thick] (7.55,0.40) rectangle (9.45,2.00);
+        \draw[black, rounded corners, thick] (7.55,0.40) rectangle (9.45,2.00);
 
         % Barras centradas dentro del recuadro
         \draw[fill=gray!35, draw=black!70, thick] (7.82,0.65) rectangle (8.08,1.55);
@@ -502,7 +502,7 @@ La Figura~\ref{fig:clasificacion-imagenes-cnn} resume de forma esquemática este
         % 4. Predicción final
         % -------------------------------------------------
         \fill[gray!10, rounded corners] (10.85,0.75) rectangle (12.65,1.65);
-        \draw[black!75, rounded corners, thick] (10.85,0.75) rectangle (12.65,1.65);
+        \draw[black, rounded corners, thick] (10.85,0.75) rectangle (12.65,1.65);
         \node[font=\small\bfseries, text=black!85] at (11.75,1.2) {Clase};
 
         \node[label] at (11.75,\LabelY) {Predicción final};
@@ -612,4 +612,3 @@ Por ello, la información reconstruida desde la imagen puede requerir etapas pos
 % Para esta última seccion quizas se puede meter algo así como ejemplos de 
 % proyectos similares o aplicaciones concretas de visión por computador en juegos de tablero. 
 % Como el AlphaGo.
-
