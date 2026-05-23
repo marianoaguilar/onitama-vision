@@ -287,34 +287,45 @@ Selecciona la acción que debe realizar el sistema cuando le corresponde jugar. 
 % que viene a ser el estado del juego y se ha explicado en diversas ocasiones.
 
 
-
 \section{Flujo de funcionamiento}
 \label{sec:flujo-funcionamiento}
 
-Una vez definida la arquitectura del sistema, resulta necesario describir cómo se desarrolla una partida desde el punto de vista dinámico. Mientras que la sección anterior muestra los componentes principales y sus relaciones, en esta sección se representa el comportamiento del sistema durante una sesión completa de juego.
-
-El flujo se describe en tres niveles. En primer lugar, se presenta una visión general de la partida, desde la configuración inicial hasta la finalización. A continuación, se detallan por separado los dos ciclos más relevantes del sistema: el turno del jugador humano y el turno de la inteligencia artificial.
-
+Una vez definida la arquitectura del sistema, esta sección describe el comportamiento de la aplicación durante una sesión completa de juego. Para ello, se representa primero el flujo general de una partida y, posteriormente, se detallan los dos ciclos principales: el turno del jugador humano y el turno de la inteligencia artificial.
 
 \subsection{Flujo general de la partida}
 
-La Figura~\ref{fig:flujo-general-partida} muestra el flujo general seguido durante una partida física asistida por cámara. Este diagrama representa el funcionamiento global de la sesión sin mostrar todavía los módulos internos que intervienen en cada paso.
-
-Tras configurar la partida, el sistema comprueba si existen calibraciones válidas para el tablero y las cartas. Una vez iniciada la sesión, se obtiene un estado inicial válido a partir de la observación del entorno físico. A partir de ese momento comienza el ciclo principal de juego, en el que el flujo se bifurca en función de si el turno corresponde al jugador humano o a la inteligencia artificial.
-
-En ambos casos, el turno solo se considera completado cuando el cambio observado en el tablero puede aceptarse como una evolución válida de la partida. Después de actualizar el estado, el sistema comprueba si se ha alcanzado una condición de victoria. Si la partida no ha finalizado, el flujo vuelve al ciclo principal para procesar el siguiente turno.
+La Figura~\ref{fig:flujo-general-partida} resume el funcionamiento global de una partida física asistida por cámara, desde la configuración inicial hasta su finalización.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{imagenes/flujo_general_partida.pdf}
+    \includegraphics[width=0.63\textwidth]{imagenes/flujo_general_partida.pdf}
     \caption{Flujo general de funcionamiento de una partida.}
     \label{fig:flujo-general-partida}
 \end{figure}
 
-
 \subsection{Turno del jugador humano}
 
+La Figura~\ref{fig:flujo-general-partida} resume el funcionamiento global de una partida física asistida por cámara, desde la configuración inicial hasta su finalización.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{imagenes/flujo_turno_humano.pdf}
+    \caption{Flujo de validación del turno del jugador humano.}
+    \label{fig:flujo-turno-humano}
+\end{figure}
+
 \subsection{Turno de la inteligencia artificial}
+
+La Figura~\ref{fig:flujo-turno-ia} muestra el ciclo correspondiente al turno de la inteligencia artificial. Este diagrama permite distinguir entre la selección lógica de la jugada por parte del agente y su posterior ejecución física sobre el tablero por parte del jugador humano.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{imagenes/flujo_turno_ia.pdf}
+    \caption{Flujo de ejecución y confirmación del turno de la inteligencia artificial.}
+    \label{fig:flujo-turno-ia}
+\end{figure}
 
 
 \section{Metodología y estrategia de desarrollo}
