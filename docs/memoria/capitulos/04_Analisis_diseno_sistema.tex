@@ -35,12 +35,12 @@ El objetivo general del proyecto es, por tanto, desarrollar un sistema inteligen
 \section{Requisitos del sistema}
 \label{sec:requisitos-sistema}
 
-A partir de los objetivos definidos anteriormente, se identifican los requisitos que debe satisfacer el sistema desarrollado. Estos requisitos concretan las capacidades funcionales de la aplicación, las propiedades de calidad esperadas y las restricciones derivadas del uso de un tablero físico observado mediante cámara. Para facilitar su lectura, se agrupan en requisitos funcionales, requisitos no funcionales y restricciones o supuestos de diseño.
+A partir de los objetivos definidos anteriormente, esta sección recoge los requisitos que guían el diseño del sistema. Se agrupan en requisitos funcionales, requisitos no funcionales y restricciones o supuestos de diseño, atendiendo a las capacidades de la aplicación, las propiedades esperadas y las condiciones impuestas por el uso de un tablero físico observado mediante cámara.
 
 
 \subsection{Requisitos funcionales}
 
-Los requisitos funcionales describen las capacidades que debe proporcionar el sistema para permitir el desarrollo de una partida física de Onitama asistida por inteligencia artificial y visión por computador.
+Los requisitos funcionales se organizan según las principales responsabilidades del sistema: motor de juego, inteligencia artificial, visión por computador, integración e interfaz de usuario.
 
 \paragraph{Motor de juego}
 
@@ -103,7 +103,7 @@ Los requisitos funcionales describen las capacidades que debe proporcionar el si
 
 \subsection{Requisitos no funcionales}
 
-Los requisitos no funcionales recogen propiedades de calidad que condicionan el diseño del sistema, aunque no describen una funcionalidad concreta de la aplicación.
+Los requisitos no funcionales recogen las propiedades que condicionan la calidad y evolución del sistema, especialmente en términos de modularidad, robustez, usabilidad, rendimiento y extensibilidad.
 
 \paragraph{Modularidad y mantenibilidad}
 
@@ -144,7 +144,7 @@ Los requisitos no funcionales recogen propiedades de calidad que condicionan el 
 
 \subsection{Restricciones y supuestos de diseño}
 
-Además de los requisitos funcionales y no funcionales, el sistema está condicionado por una serie de restricciones y supuestos derivados del uso de un tablero físico, una cámara y modelos de reconocimiento visual. Estas restricciones delimitan el contexto en el que se espera que la aplicación funcione correctamente y ayudan a precisar el alcance del proyecto.
+Las siguientes restricciones y supuestos delimitan el contexto de uso previsto para el sistema, condicionado por el tablero físico, la cámara, la calibración y los modelos de reconocimiento visual empleados.
 
 \paragraph{Entorno físico}
 
@@ -331,15 +331,19 @@ La Figura~\ref{fig:flujo-turno-ia} muestra el ciclo correspondiente al turno de 
 \section{Metodología y estrategia de desarrollo}
 \label{sec:metodologia-desarrollo}
 
-% REVISAR
+Una vez descritos los requisitos, la arquitectura y los flujos principales del sistema, esta sección resume la estrategia seguida durante el desarrollo del proyecto. El trabajo se organizó de forma coherente con la arquitectura modular planteada en las secciones anteriores, mediante un enfoque iterativo e incremental que permitió construir, validar y ajustar cada parte del sistema antes de avanzar hacia una integración más completa.
 
-El desarrollo del proyecto se llevó a cabo mediante una estrategia iterativa e incremental, alineada con principios propios de las metodologías ágiles. Esta forma de trabajo permitió construir el sistema de manera progresiva, incorporando nuevas funcionalidades sobre componentes previamente validados y adaptando las decisiones de diseño a los resultados obtenidos durante el desarrollo.
+En primer lugar, se desarrollaron los componentes fundamentales del sistema, especialmente el motor de juego y la representación lógica de una partida. Sobre esta base se incorporaron posteriormente el agente de inteligencia artificial, las herramientas de evaluación, el módulo de visión, la lógica de sesión y la aplicación gráfica. Esta secuencia permitió construir el sistema desde los elementos más estables y verificables hacia las partes con mayor dependencia del entorno físico y de la interacción del usuario.
 
-El carácter incremental del proceso se refleja en la construcción gradual del sistema. En lugar de abordar desde el inicio una aplicación completa con todos sus componentes integrados, el trabajo avanzó desde elementos más concretos y verificables hacia componentes de mayor nivel. De este modo, primero se desarrollaron las partes fundamentales sobre las que dependían los módulos posteriores, y posteriormente se fueron incorporando funcionalidades más complejas relacionadas con la toma de decisiones, la percepción visual, la integración entre subsistemas y la interacción con el usuario.
+Cada incremento fue revisado y probado antes de utilizarse como base para la siguiente fase. En el caso del motor de juego, la validación se centró en la correcta aplicación de las reglas, la generación de acciones legales y la detección de condiciones de victoria. En la inteligencia artificial, se compararon distintas configuraciones de búsqueda y evaluación mediante partidas automáticas y pruebas específicas. En la visión por computador, el proceso requirió una validación más experimental, debido a la influencia de la cámara, la iluminación, la calibración y la disposición física del tablero y las cartas.
 
-El carácter iterativo del proceso se manifestó en la revisión y mejora continua de cada incremento. Cada módulo se implementó, se probó y se ajustó antes de utilizarse como base para la siguiente fase del proyecto. Esta estrategia permitió detectar errores en etapas tempranas, reducir la propagación de fallos entre componentes y mantener una evolución controlada del sistema. Además, las tutorías periódicas con el tutor actuaron como puntos de revisión del avance, permitiendo validar el trabajo realizado y orientar las siguientes decisiones de desarrollo.
+Las tutorías periódicas con el tutor sirvieron como puntos de seguimiento del proyecto, permitiendo revisar el avance, detectar problemas de diseño y ajustar las prioridades de desarrollo. Esta forma de trabajo facilitó una evolución controlada del sistema, especialmente en las partes donde era necesario coordinar varios módulos y comprobar su comportamiento sobre una partida física real.
 
-En las partes con mayor incertidumbre técnica se aplicó además una estrategia de prototipado experimental. En el caso de la inteligencia artificial, se probaron distintas funciones heurísticas y configuraciones del agente, comparando su comportamiento mediante enfrentamientos y pruebas específicas hasta seleccionar las alternativas más adecuadas. Del mismo modo, en el módulo de visión por computador fue necesario realizar pruebas sucesivas con el entorno físico, la cámara, la iluminación, la calibración y los modelos de reconocimiento, ya que el rendimiento del sistema dependía de condiciones reales de captura.
+Finalmente, la Figura~\ref{fig:gantt-proyecto} muestra una planificación aproximada del desarrollo mediante un diagrama de Gantt. En él se resumen las principales fases del trabajo, desde el estudio inicial y el diseño del sistema hasta la implementación, experimentación y redacción de la memoria.
 
-*Introducir a continuación Diagrama de Gantt.*
-\vspace{1cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{imagenes/gantt_proyecto.pdf}
+    \caption{Diagrama de Gantt del desarrollo del proyecto.}
+    \label{fig:gantt-proyecto}
+\end{figure}
