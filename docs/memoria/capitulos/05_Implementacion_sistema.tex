@@ -1,3 +1,94 @@
 \chapter{Implementación del sistema}
 \label{chap:implementacion-sistema}
 
+Este capítulo describe cómo se ha implementado el sistema a partir del diseño presentado anteriormente. Para ello, se expone primero el entorno tecnológico empleado y la organización general del repositorio. A continuación, se detalla la implementación de los principales componentes de la aplicación.
+
+%==============================================================================
+% 5.1 Organización general del proyecto
+% =============================================================================
+\section{Organización general del proyecto}
+\label{sec:organizacion-general-proyecto}
+
+\subsection{Tecnologías utilizadas}
+
+Las principales tecnologías utilizadas en la implementación del sistema son las siguientes:
+
+\begin{itemize}
+    \item \textbf{Python}: lenguaje principal del proyecto. Se utiliza para implementar tanto el núcleo lógico del juego como los módulos de inteligencia artificial, visión por computador, sincronización, ejecución en vivo e interfaz.
+
+    \item \textbf{PySide6}: biblioteca utilizada para desarrollar la interfaz gráfica de escritorio. Permite construir las ventanas de la aplicación, los widgets de visualización del tablero y las cartas, y los diálogos de calibración.
+
+    \item \textbf{OpenCV}: biblioteca empleada en el módulo de visión por computador para trabajar con la cámara, procesar imágenes y aplicar transformaciones geométricas sobre el tablero físico.
+
+    \item \textbf{NumPy}: biblioteca utilizada como soporte para la representación y manipulación de imágenes, matrices y estructuras numéricas necesarias en el procesamiento visual.
+
+    \item \textbf{Ultralytics/YOLO}: tecnología utilizada para integrar los modelos de reconocimiento visual. En el proyecto se emplea para la detección de piezas sobre el tablero y para la clasificación de las cartas visibles.
+
+    \item \textbf{pytest}: herramienta utilizada para definir y ejecutar pruebas automatizadas sobre los principales módulos del sistema, especialmente el motor de juego, la visión y la sincronización.
+
+    \item \textbf{Scripts propios}: conjunto de herramientas auxiliares desarrolladas para tareas de calibración, captura de datos, depuración visual, ejecución de torneos entre agentes y medición del rendimiento de la búsqueda.
+\end{itemize}
+
+\subsection{Estructura del repositorio}
+
+El código principal del proyecto se encuentra dentro del paquete \texttt{src/onitama/}. La estructura general del repositorio es la siguiente:
+
+\begin{verbatim}
+TFG-Onitama/
+├── src/onitama/
+│   ├── engine/      # Motor de juego
+│   ├── ai/          # Agente de inteligencia artificial
+│   ├── vision/      # Visión por computador
+│   ├── session/     # Sesión y sincronización
+│   ├── runtime/     # Control de ejecución
+│   ├── gui/         # Interfaz gráfica
+│   ├── cli/         # Interfaz de terminal auxiliar
+│   └── errors.py    # Errores comunes de visión y ejecución
+├── scripts/         # Herramientas auxiliares
+├── tests/           # Pruebas automatizadas
+├── models/          # Modelos entrenados
+└── data/vision/     # Datos de calibración
+\end{verbatim}
+
+En las siguientes secciones se describe cada uno de los componentes principales con mayor detalle, siguiendo un recorrido desde el núcleo lógico del sistema hasta la aplicación final utilizada por el usuario.
+
+
+%==============================================================================
+% 5.2 Motor de juego
+% =============================================================================
+\section{Motor de juego}
+\label{sec:motor-juego}
+
+%==============================================================================
+% 5.3 Agente de inteligencia artificial
+% =============================================================================
+\section{Agente de inteligencia artificial}
+\label{sec:agente-ia}
+
+%==============================================================================
+% 5.4 Visión por computador
+% =============================================================================
+\section{Visión por computador}
+\label{sec:vision-computador}
+
+%==============================================================================
+% 5.5 Integración de componentes
+% =============================================================================
+\section{Integración de componentes}
+\label{sec:integracion-componentes}
+
+\subsection{Sesión y sincronización}
+
+\subsection{Control de ejecución}
+
+%==============================================================================
+% 5.6 Interfaz gráfica
+% =============================================================================
+\section{Interfaz gráfica}
+\label{sec:interfaz-grafica}
+
+%==============================================================================
+% 5.7 Interfaces auxiliares y herramientas de desarrollo
+% =============================================================================
+\section{Interfaces auxiliares y herramientas de desarrollo}
+\label{sec:interfaces-herramientas}
