@@ -14,24 +14,24 @@ Este capítulo describe cómo se ha implementado el sistema a partir del diseño
 Las principales tecnologías utilizadas en la implementación del sistema son las siguientes:
 
 \begin{itemize}
-    \item \textbf{Python}: lenguaje principal del proyecto. Se utiliza para implementar tanto el núcleo lógico del juego como los módulos de inteligencia artificial, visión por computador, sincronización, ejecución en vivo e interfaz.
+    \item \textbf{Python}: lenguaje principal del proyecto. Se ha utilizado por su integración con bibliotecas de inteligencia artificial, visión por computador e interfaces gráficas, así como por su flexibilidad para estructurar el sistema en paquetes independientes.
 
-    \item \textbf{PySide6}: biblioteca utilizada para desarrollar la interfaz gráfica de escritorio. Permite construir las ventanas de la aplicación, los widgets de visualización del tablero y las cartas, y los diálogos de calibración.
+    \item \textbf{PySide6}: biblioteca utilizada para desarrollar la interfaz gráfica de escritorio. Forma parte del proyecto \textit{Qt for Python} y permite utilizar Qt6 desde aplicaciones Python \cite{pyside6_docs}.
 
-    \item \textbf{OpenCV}: biblioteca empleada en el módulo de visión por computador para trabajar con la cámara, procesar imágenes y aplicar transformaciones geométricas sobre el tablero físico.
+    \item \textbf{OpenCV}: biblioteca empleada para la captura de cámara, el procesamiento de imágenes y la aplicación de transformaciones geométricas en el módulo de visión por computador \cite{opencv_docs}.
 
-    \item \textbf{NumPy}: biblioteca utilizada como soporte para la representación y manipulación de imágenes, matrices y estructuras numéricas necesarias en el procesamiento visual.
+    \item \textbf{NumPy}: biblioteca utilizada como soporte para la representación y manipulación de matrices, imágenes y datos numéricos \cite{numpy_docs}.
 
-    \item \textbf{Ultralytics/YOLO}: tecnología utilizada para integrar los modelos de reconocimiento visual. En el proyecto se emplea para la detección de piezas sobre el tablero y para la clasificación de las cartas visibles.
+    \item \textbf{Ultralytics/YOLO}: tecnología utilizada para integrar los modelos de reconocimiento visual, tanto en la detección de piezas como en la clasificación de cartas \cite{ultralytics_docs}.
 
-    \item \textbf{pytest}: herramienta utilizada para definir y ejecutar pruebas automatizadas sobre los principales módulos del sistema, especialmente el motor de juego, la visión y la sincronización.
+    \item \textbf{pytest}: herramienta empleada para definir y ejecutar pruebas automatizadas sobre los principales módulos del sistema \cite{pytest_docs}.
 
-    \item \textbf{Scripts propios}: conjunto de herramientas auxiliares desarrolladas para tareas de calibración, captura de datos, depuración visual, ejecución de torneos entre agentes y medición del rendimiento de la búsqueda.
+    \item \textbf{Scripts propios}: conjunto de herramientas auxiliares desarrolladas para tareas de calibración, captura de datos, depuración visual, torneos entre agentes y medición del rendimiento de la búsqueda.
 \end{itemize}
 
 \subsection{Estructura del repositorio}
 
-El código principal del proyecto se encuentra dentro del paquete \texttt{src/onitama/}. La estructura general del repositorio es la siguiente:
+El código principal del proyecto se ubica en el paquete \texttt{src/onitama/}. La estructura general del repositorio es la siguiente:
 
 \begin{verbatim}
 TFG-Onitama/
@@ -59,17 +59,242 @@ En las siguientes secciones se describe cada uno de los componentes principales 
 \section{Motor de juego}
 \label{sec:motor-juego}
 
+El paquete \texttt{onitama.engine} concentra la implementación del estado de partida y de las reglas legales del juego. Sus módulos principales son \texttt{state.py}, \texttt{pieces.py}, \texttt{cards.py}, \texttt{moves.py} y \texttt{rules.py}.
+
+\subsection{Estado y acciones}
+\label{subsec:estado-acciones}
+
+La representación central del motor es \texttt{GameState}. Se define como una \texttt{dataclass} inmutable mediante \texttt{@dataclass(frozen=True)}, de forma que cada posición de la partida se trata como un valor independiente. Esto resulta especialmente útil para la búsqueda de la inteligencia artificial, donde se generan muchos estados sucesores y es importante evitar modificaciones accidentales sobre estados ya explorados.
+
+Un \texttt{GameState} almacena la información necesaria para reconstruir una posición completa:
+
+\begin{itemize}
+    \item \texttt{board}: tablero de 5 x 5, representado como una tupla de tuplas.
+    \item \texttt{to\_move}: jugador al que corresponde mover.
+    \item \texttt{red\_cards} y \texttt{blue\_cards}: cartas activas de cada jugador.
+    \item \texttt{side\_card}: carta lateral disponible para el intercambio.
+    \item \texttt{red\_master\_pos} y \texttt{blue\_master\_pos}: posiciones cacheadas de los maestros.
+\end{itemize}
+
+Las posiciones de los maestros se almacenan explícitamente para evitar recorrer el tablero cada vez que se necesita conocer su ubicación. Esta decisión simplifica y acelera operaciones frecuentes, como la comprobación de victoria, la evaluación heurística de posiciones o la generación de información para la inteligencia artificial.
+
+Los elementos básicos del juego se modelan mediante tipos sencillos y separados:
+
+\begin{itemize}
+    \item \texttt{Player}, \texttt{PieceType} y \texttt{Piece}, definidos en \texttt{pieces.py}.
+    \item \texttt{Card}, \texttt{ALL\_CARDS} y \texttt{CARD\_BY\_NAME}, definidos en \texttt{cards.py}.
+    \item \texttt{Move} y \texttt{Pass}, definidos en \texttt{moves.py}.
+\end{itemize}
+
+El pase se representa como una acción propia mediante \texttt{Pass}. De esta forma, incluso cuando un jugador no puede desplazar ninguna pieza, el turno sigue pasando por el mismo flujo de aplicación de reglas: se elige una carta, se intercambia con la carta lateral y cambia el jugador activo.
+
+Las cartas se definen internamente desde la perspectiva del jugador rojo. Para obtener sus movimientos desde la perspectiva del jugador azul, el método \texttt{Card.deltas\_for(player)} rota los desplazamientos 180 grados. Además, \texttt{rules.py} precalcula una tabla de movimientos por jugador, carta y casilla, evitando recalcular orientación y límites del tablero en cada llamada a la generación de acciones.
+
+\subsection{Aplicación de reglas}
+\label{subsec:aplicacion-reglas}
+
+La aplicación de reglas se centraliza en \texttt{rules.py}. El flujo principal del motor se organiza alrededor de las siguientes operaciones:
+
+\begin{enumerate}
+    \item A partir de un \texttt{GameState}, la función \texttt{generate\_legal\_actions(state)} obtiene las acciones disponibles para el jugador activo. Para ello, recorre sus piezas, consulta los destinos permitidos por sus dos cartas y descarta los movimientos que salen del tablero o terminan sobre una pieza propia.
+
+    \item Si no existe ningún desplazamiento legal, se generan las dos acciones de pase posibles, \texttt{Pass(0)} y \texttt{Pass(1)}. Esto permite mantener el pase dentro del mismo modelo de acciones que los movimientos ordinarios.
+
+    \item Una acción seleccionada se aplica mediante \texttt{apply\_action(state, action)}, que devuelve siempre un nuevo \texttt{GameState}. En una acción \texttt{Move}, se actualiza el tablero, se resuelven posibles capturas, se actualizan las posiciones cacheadas de los maestros si procede, se intercambia la carta utilizada con la carta lateral y se cambia el turno. En una acción \texttt{Pass}, el tablero no cambia, pero se realiza igualmente el intercambio de cartas y el cambio de jugador.
+
+    \item Tras cada transición, las funciones \texttt{winner(state)} e \texttt{is\_terminal(state)} permiten comprobar si la partida ha finalizado por alguna de las condiciones de victoria.
+\end{enumerate}
+
+Esta organización hace que el motor funcione como una fuente única de verdad para las reglas del juego. La inteligencia artificial utiliza sus sucesores legales para buscar jugadas, la sesión los emplea para validar movimientos observados en el tablero físico y las interfaces se apoyan en el mismo estado para mostrar la evolución de la partida.
+
+
 %==============================================================================
 % 5.3 Agente de inteligencia artificial
 % =============================================================================
 \section{Agente de inteligencia artificial}
 \label{sec:agente-ia}
 
+El agente de inteligencia artificial se implementa en el paquete \texttt{onitama.ai}. El código se divide en varios módulos con responsabilidades diferenciadas:
+
+\begin{itemize}
+    \item \texttt{agent.py}: selección de acciones mediante \texttt{choose\_action()}.
+    \item \texttt{search.py}: búsqueda adversarial y optimizaciones.
+    \item \texttt{evaluate.py}: funciones heurísticas de evaluación.
+    \item \texttt{types.py}: tipos compartidos para evaluadores y tabla de transposición.
+    \item \texttt{controllers.py}: adaptación del agente mediante \texttt{AIController}.
+\end{itemize}
+
+\subsection{Selección de acciones}
+\label{subsec:seleccion-acciones-ia}
+
+El punto de entrada del agente es \texttt{choose\_action()}. Esta función recibe un \texttt{GameState} y devuelve una acción legal, de tipo \texttt{Move} o \texttt{Pass}. Su flujo principal es el siguiente:
+
+\begin{enumerate}
+    \item Comprueba si el estado recibido es terminal mediante \texttt{is\_terminal()}.
+    \item Obtiene las acciones legales con \texttt{generate\_legal\_actions()}.
+    \item Fija como perspectiva de evaluación el jugador que debe mover.
+    \item Ordena las acciones iniciales, priorizando victorias inmediatas y capturas.
+    \item Aplica cada acción con \texttt{apply\_action()} para construir los estados sucesores.
+    \item Evalúa los sucesores mediante búsqueda y devuelve la acción mejor valorada.
+\end{enumerate}
+
+La búsqueda trabaja siempre sobre sucesores creados con \texttt{apply\_action()}, por lo que cada nodo explorado corresponde a un estado legal generado por el motor.
+
+La clase \texttt{AIController} permite utilizar el agente dentro del mismo protocolo que el resto de controladores del sistema. Almacena la profundidad de búsqueda, el nombre del evaluador y una tabla de transposición propia. Su método \texttt{select\_action()} obtiene el evaluador configurado y delega la decisión en \texttt{choose\_action()}.
+
+\subsection{Búsqueda y evaluación}
+\label{subsec:busqueda-evaluacion-ia}
+
+La búsqueda se implementa principalmente en \texttt{search.py}, mediante la función \texttt{alphabeta()}. Esta función recibe el estado, la profundidad restante, los valores \texttt{alpha} y \texttt{beta}, la perspectiva del jugador raíz, el evaluador y las estructuras auxiliares de búsqueda.
+
+En la implementación se han incorporado varias optimizaciones, aplicadas directamente sobre el recorrido del árbol:
+
+\begin{itemize}
+    \item \textbf{Tabla de transposición}: definida como \texttt{dict[GameState, TTEntry]}. Cada entrada almacena profundidad, valor, tipo de cota y mejor acción encontrada.
+    \item \textbf{Ordenación de acciones}: combina la mejor acción almacenada en la tabla de transposición, capturas, \textit{killer moves} e historial de movimientos.
+    \item \textbf{Profundización iterativa}: \texttt{choose\_action()} puede lanzar búsquedas de profundidad creciente hasta alcanzar el límite configurado.
+    \item \textbf{Ventanas de aspiración}: a partir de la puntuación de la profundidad anterior, se intenta primero una búsqueda con una ventana más estrecha.
+    \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis únicamente sobre acciones de captura.
+\end{itemize}
+
+Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, como \texttt{depth}, \texttt{use\_tt}, \texttt{use\_iterative\_deepening}, \texttt{aspiration\_window} y \texttt{q\_depth}. Esta organización permite activar, desactivar o ajustar partes de la búsqueda desde herramientas de evaluación sin modificar el motor.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REVISAR ESTA PARTE Y ACTUALIZAR CUANDO TENGAMOS BIEN DEFINIDOS LOS NIVELES DE DIFICULTAD Y LOS PERFILES DE CONFIGURACIÓN.
+% QUIZÁ ME GUSTARIA EXPLICAR UN POCO MÁS LA DIFERENCIA ENTRE LAS HEURÍSTICAS.
+Las funciones de evaluación se definen en \texttt{evaluate.py}. Todas cumplen el contrato \texttt{Evaluator}, es decir, reciben un \texttt{GameState} y un jugador de referencia, y devuelven una puntuación entera desde esa perspectiva. El módulo incluye tres versiones principales, \texttt{evaluate\_v1()}, \texttt{evaluate\_v2()} y \texttt{evaluate\_v3()}, registradas en \texttt{EVALUATORS} y accesibles mediante \texttt{get\_evaluator()}.
+
+Estas versiones reflejan la evolución seguida durante el desarrollo de la heurística. La primera versión parte de criterios básicos como material, avance del maestro y amenazas directas. Las versiones posteriores incorporan pesos configurables, movilidad, centralidad, avance de estudiantes y tablas posicionales dependientes de la fase de partida.
+
+En la memoria no se interpretan estas tres heurísticas como niveles definitivos de dificultad, sino como versiones de evaluación disponibles en el código. Los perfiles finales de dificultad pueden definirse combinando evaluador, profundidad de búsqueda y parámetros como \texttt{q\_depth} o el uso de tabla de transposición. La comparación entre configuraciones se reserva para el capítulo de experimentación.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %==============================================================================
 % 5.4 Visión por computador
 % =============================================================================
 \section{Visión por computador}
 \label{sec:vision-computador}
+
+La implementación del módulo de visión se encuentra en el paquete \texttt{onitama.vision}. Su función dentro del código es transformar un frame de cámara en una observación estructurada del tablero y de las cartas, sin decidir todavía si dicha observación corresponde a una jugada legal.
+
+\subsection{Pipeline visual}
+\label{subsec:pipeline-visual}
+
+El punto de entrada principal es la clase \texttt{VisionPipeline}, definida en \texttt{vision\_pipeline.py}. Su método \texttt{snapshot\_from\_frame(frame)} coordina el procesamiento completo de una imagen capturada por la cámara.
+
+El flujo implementado se apoya en dos ficheros de calibración:
+
+\begin{itemize}
+    \item \texttt{data/vision/calibration.json}: almacena los puntos del tablero, el tamaño de salida de la vista rectificada y la rotación aplicada.
+    \item \texttt{data/vision/card\_rois.json}: almacena las cinco regiones de interés correspondientes a las cartas visibles.
+\end{itemize}
+
+A partir de estos datos, el pipeline procesa el frame en dos ramas: una para el tablero y otra para las cartas. La primera rectifica la zona del tablero y detecta las piezas; la segunda extrae las regiones de cartas y clasifica cada una de ellas. Finalmente, ambas salidas se combinan en un \texttt{VisionSnapshot}.
+
+\vspace{0.5cm}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    block/.style={
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=3.0cm,
+        minimum height=0.75cm
+    },
+    arrow/.style={-latex}
+]
+
+\node[block] (frame) at (0, 0) {Frame de cámara};
+
+\node[block] (homography) at (-3.05, -1.7) {Homografía\\del tablero};
+\node[block] (rois)       at ( 3.05, -1.7) {ROIs\\de cartas};
+
+\node[block] (pieces) at (-3.05, -3.35) {Detección\\de piezas};
+\node[block] (cards)  at ( 3.05, -3.35) {Clasificación\\de cartas};
+
+\node[block] (vboard)     at (-3.05, -5.0) {\texttt{VisionBoard}};
+\node[block] (cardresult) at ( 3.05, -5.0) {\texttt{CardClassificationResult}};
+
+\node[block] (snapshot) at (0, -6.55) {\texttt{VisionSnapshot}};
+
+\draw[arrow] (frame) -- (homography);
+\draw[arrow] (frame) -- (rois);
+
+\draw[arrow] (homography) -- (pieces);
+\draw[arrow] (rois) -- (cards);
+
+\draw[arrow] (pieces) -- (vboard);
+\draw[arrow] (cards) -- (cardresult);
+
+\draw[arrow] (vboard) -- (snapshot);
+\draw[arrow] (cardresult) -- (snapshot);
+
+\end{tikzpicture}
+\vspace{0.2cm}
+\caption{Flujo de procesamiento del módulo de visión por computador.}
+\label{fig:pipeline-vision}
+\end{figure}
+
+
+\subsection{Piezas y cartas}
+\label{subsec:piezas-cartas-vision}
+
+El reconocimiento de piezas parte de la calibración del tablero implementada en \texttt{homography.py}. A partir de \texttt{data/vision/calibration.json}, se cargan los cuatro puntos del tablero, el tamaño de salida y la rotación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del tablero, lo que permite conservar piezas que sobresalen parcialmente del área estricta de juego.
+
+Sobre la imagen rectificada actúa \texttt{YoloPieceDetector}, definido en \\ \texttt{piece\_detector.py}. El modelo utilizado se carga desde:
+
+\begin{center}
+\texttt{models/pieces\_yolov8s\_640\_best.pt}
+\end{center}
+
+Después de la detección, cada caja se asocia a una celda \texttt{(row, col)} mediante un punto de anclaje calculado sobre la propia detección. Las clases reconocidas por el detector son:
+
+\begin{center}
+\texttt{red\_master}, \texttt{red\_student}, \texttt{blue\_master}, \texttt{blue\_student}
+\end{center}
+
+Cada detección se representa mediante \texttt{PieceDetection}, que almacena la clase predicha, la confianza, la caja delimitadora, el punto de anclaje y la celda asociada. Finalmente, \texttt{detections\_to\_board()} construye un \texttt{VisionBoard}. Si varias detecciones caen en la misma casilla, se conserva la de mayor confianza; las detecciones fuera del tablero o con clase no reconocida se descartan.
+
+\vspace{0.4cm}
+En el caso de las cartas, las regiones de interés se gestionan en \texttt{card\_rois.py}. Estas regiones se cargan desde \texttt{data/vision/card\_rois.json} y corresponden a cinco posiciones fijas:
+
+\begin{center}
+\texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0}, \texttt{blue\_1}
+\end{center}
+
+Cada ROI se recorta del frame original, se enmascara si es necesario y se prepara como una imagen cuadrada antes de enviarla al clasificador. La clasificación se realiza mediante \texttt{YoloCardClassifier}, definido en \texttt{card\_classifier.py}, utilizando el modelo:
+
+\begin{center}
+\texttt{models/cards\_yolo11n-cls\_320\_best.pt}
+\end{center}
+
+Este modelo clasifica cada recorte como una de las 16 cartas oficiales del juego base. La predicción individual se representa con \texttt{CardSlotPrediction}, que incluye el slot, la clase predicha y la confianza. El resultado conjunto se agrupa en \texttt{CardClassificationResult}, desde donde se recuperan las dos cartas rojas, las dos cartas azules y la carta lateral.
+
+
+\subsection{Snapshot visual}
+\label{subsec:snapshot-visual}
+
+La salida principal del módulo de visión es \texttt{VisionSnapshot}, definido en \texttt{snapshot.py}. Esta estructura combina:
+
+\begin{itemize}
+    \item un \texttt{VisionBoard} con la disposición detectada de las piezas;
+    \item las dos cartas visibles del jugador rojo;
+    \item las dos cartas visibles del jugador azul;
+    \item la carta lateral.
+\end{itemize}
+
+El snapshot representa una observación visual completa, pero todavía no contiene toda la información necesaria para ser un estado lógico de partida. En concreto, la cámara puede detectar piezas y cartas, pero no determina por sí misma a qué jugador le corresponde mover. Por ese motivo, la conversión mediante \texttt{to\_game\_state(to\_move)} recibe el turno como parámetro externo.
+
+Durante esta conversión se transforman las piezas visuales en piezas del motor, se resuelven los nombres de cartas mediante \texttt{CARD\_BY\_NAME} y se aplican validaciones básicas: límites de piezas por jugador, existencia de como máximo un maestro por color y unicidad de las cinco cartas visibles. Si estas comprobaciones se cumplen, se construye un \texttt{GameState} compatible con el motor.
+
+Esta separación permite mantener dos niveles distintos: 
+\begin{itemize}
+    \item \texttt{VisionSnapshot} como representación de lo observado en la imagen, con información visual y posibles inconsistencias.
+    \item \texttt{GameState} como representación lógica de una posición de partida, que solo se construye si la observación es coherente.
+\end{itemize}
+
 
 %==============================================================================
 % 5.5 Integración de componentes
