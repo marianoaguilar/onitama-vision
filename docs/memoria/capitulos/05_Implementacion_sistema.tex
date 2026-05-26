@@ -302,9 +302,112 @@ Esta separación permite mantener dos niveles distintos:
 \section{Integración de componentes}
 \label{sec:integracion-componentes}
 
+La integración se organiza en dos niveles. La sesión mantiene la coherencia entre las observaciones estabilizadas y el estado lógico de la partida, mientras que el control de ejecución coordina cámara, visión, sesión e interfaz durante la ejecución en vivo.
+
 \subsection{Sesión y sincronización}
+\label{subsec:sesion-sincronizacion}
+
+La capa de sesión se implementa en el paquete \texttt{onitama.session} y trabaja sobre objetos \texttt{GameState} ya construidos a partir de la observación visual. 
+
+Su implementación se reparte en tres módulos: \texttt{stabilizer.py}, encargado de estabilizar observaciones repetidas; \texttt{synchronizer.py}, encargado de compararlas con estados legales del motor; y \texttt{vision\_session.py}, donde se coordina la evolución de la partida asistida por visión.
+
+\subsubsection{Estabilización de observaciones}
+
+El módulo \texttt{stabilizer.py} define \texttt{StateStabilizer}, encargado de filtrar observaciones visuales inestables. Para ello, recibe estados observados mediante \texttt{push(observed\_state)} y mantiene internamente un estado candidato junto con el número de veces que se ha repetido de forma consecutiva.
+
+Si la observación cambia, el candidato se sustituye y el contador vuelve a empezar. Si se repite, el contador aumenta. Cuando se alcanza el umbral \texttt{required\_repeats}, el estado se considera estable y puede pasar a la fase de sincronización. Este mecanismo reduce el efecto de lecturas aisladas, oclusiones breves o movimientos físicos todavía incompletos.
+
+\subsubsection{Validación de sucesores legales}
+
+El módulo \texttt{synchronizer.py} se encarga de comprobar si una observación estable puede aceptarse como evolución válida de la partida. La función principal es \texttt{match\_observed\_state(previous\_state, observed\_state)}, que compara el estado observado con el estado confirmado y devuelve un resultado de sincronización.
+
+El criterio aplicado es el siguiente:
+
+\begin{center}
+\begin{tabular}{ll}
+\texttt{observed\_state == previous\_state} & \texttt{UNCHANGED} \\
+\texttt{observed\_state} es sucesor legal & \texttt{ACCEPTED} \\
+ninguna de las anteriores & \texttt{REJECTED}
+\end{tabular}
+\end{center}
+
+Para comprobar el caso de aceptación, se generan las posiciones alcanzables desde \texttt{previous\_state} mediante \texttt{legal\_successors(previous\_state)}, que internamente utiliza \texttt{generate\_legal\_actions()} y \texttt{apply\_action()} del motor.
+
+\subsubsection{Coordinación de la partida asistida}
+
+La coordinación de la partida asistida se implementa en \texttt{VisionGameSession}, definida en \texttt{vision\_session.py}. Esta clase concentra el estado de la sesión y decide cómo debe interpretarse cada observación estable según la fase actual de la partida.
+
+Los elementos principales que mantiene son:
+
+\begin{itemize}
+    \item \texttt{current\_state}: último estado confirmado de la partida.
+    \item \texttt{phase}: fase actual de la sesión.
+    \item \texttt{human\_player} y \texttt{ai\_player}: jugadores asignados al humano y a la IA.
+    \item \texttt{ai\_controller}: controlador encargado de seleccionar la acción de la IA.
+    \item \texttt{stabilizer}: filtro temporal de observaciones.
+    \item \texttt{last\_ai\_action}: última acción seleccionada por la IA, pendiente de ejecución física.
+    \item \texttt{expected\_state}: estado que debería observarse tras ejecutar físicamente la acción de la IA.
+\end{itemize}
+
+El método principal es \texttt{process\_observation(observed\_state)}. Cada observación recibida se pasa primero por el estabilizador; si todavía no se ha repetido lo suficiente, la sesión continúa esperando. Cuando se obtiene un estado estable, el comportamiento depende de la fase actual:
+
+\begin{description}
+    \item[\texttt{BOOTSTRAP}] Inicializa la sesión. El primer estado estable se adopta como \texttt{current\_state} y, a partir de él, se determina si debe mover el jugador humano, la inteligencia artificial o si la partida ya está finalizada.
+
+    \item[\texttt{WAITING\_HUMAN\_MOVE}] Espera una jugada física del jugador humano. El estado observado se compara con \texttt{current\_state} y con sus sucesores legales. Si coincide con un sucesor, se acepta como nuevo estado confirmado; si no, se rechaza sin modificar la partida.
+
+    \item[\texttt{READY\_FOR\_AI}] Solicita la acción de la inteligencia artificial mediante \texttt{run\_ai\_turn()}. Este método llama al \texttt{AIController}, calcula \texttt{expected\_state} con \texttt{apply\_action()} y guarda la acción en \texttt{last\_ai\_action}.
+
+    \item[\texttt{WAITING\_AI\_EXECUTION}] Espera la ejecución física de la jugada indicada por la IA. Si la observación coincide con \texttt{expected\_state}, se confirma la jugada; si coincide con \texttt{current\_state}, la sesión sigue esperando; si no coincide con ninguno de los dos, se considera una discrepancia de ejecución.
+
+    \item[\texttt{FINISHED}] La partida ha terminado. El estado final queda fijado y no se aceptan nuevas transiciones.
+\end{description}
+
 
 \subsection{Control de ejecución}
+\label{subsec:control-ejecucion}
+
+El control de ejecución se implementa en el paquete \texttt{onitama.runtime}. Esta capa conecta la cámara, el pipeline de visión, la conversión a \texttt{GameState} y la sesión de juego, descrita anteriormente, generando un estado preparado para ser consumido por la interfaz gráfica o por herramientas de terminal.
+
+\subsubsection{Configuración y estado expuesto}
+
+La configuración del runtime se representa mediante \texttt{VisionRuntimeConfig}. Esta estructura agrupa los parámetros necesarios para iniciar una partida asistida por visión:
+
+\begin{itemize}
+    \item jugador humano seleccionado;
+    \item número de repeticiones necesarias para estabilizar una observación;
+    \item profundidad y evaluador del agente de IA;
+    \item dispositivo de cámara, resolución y tasa de frames.
+\end{itemize}
+
+A partir de esta configuración, el runtime construye internamente los componentes necesarios: cámara, \texttt{VisionPipeline}, \texttt{VisionGameSession} y \texttt{AIController}.
+
+El estado expuesto hacia las interfaces se representa con \texttt{VisionRuntimeState}. Esta estructura contiene la información que la GUI o la CLI necesitan mostrar sin acceder directamente a los detalles internos de sesión o visión: si el runtime está activo, la fase actual, el último resultado producido, el estado confirmado, la jugada pendiente de la IA, posibles errores y el ganador si la partida ha terminado.
+
+\subsubsection{Bucle de ejecución}
+
+La clase principal es \texttt{VisionGameRuntime}. Sus métodos básicos son \texttt{start()}, \texttt{stop()}, \texttt{reset()} y \texttt{step()}.
+
+\begin{itemize}
+    \item \texttt{start()}: abre la cámara y deja el runtime preparado para procesar frames.
+    \item \texttt{stop()}: libera la cámara y detiene la ejecución.
+    \item \texttt{reset()}: reconstruye la sesión y limpia errores, avisos y resultados anteriores.
+    \item \texttt{step()}: ejecuta una iteración del sistema.
+\end{itemize}
+
+El método más importante es \texttt{step()}, ya que concentra la coordinación entre componentes. Su comportamiento depende del estado de la sesión:
+
+\begin{enumerate}
+    \item Si el runtime no está activo, devuelve el estado actual sin procesar nuevos datos.
+    \item Si la partida ha terminado, no lee más frames de cámara.
+    \item Si la sesión está en fase \texttt{READY\_FOR\_AI}, ejecuta \texttt{run\_ai\_turn()} sin consultar la cámara.
+    \item En el resto de fases, lee un frame, obtiene un \texttt{VisionSnapshot} con \texttt{snapshot\_from\_frame(frame)}, lo convierte a \texttt{GameState} y lo entrega a \texttt{process\_observation()}.
+\end{enumerate}
+
+La conversión de \texttt{VisionSnapshot} a \texttt{GameState} depende de la fase de la sesión. Durante el arranque, el jugador inicial se obtiene a partir del sello de la carta lateral. Durante la partida, el runtime interpreta la observación usando el turno del estado confirmado o del estado esperado, según corresponda. Esta lógica es necesaria porque el módulo de visión reconoce piezas y cartas, pero no controla por sí mismo el turno actual de la partida.
+
+Además, el runtime centraliza los errores y avisos que pueden aparecer durante la ejecución, como problemas de cámara, modelos o calibración, así como observaciones visuales inválidas. Estos datos se incorporan a \texttt{VisionRuntimeState} para que la interfaz pueda informar al usuario sin acceder directamente a las capas internas.
+
 
 %==============================================================================
 % 5.6 Interfaz gráfica
@@ -312,8 +415,100 @@ Esta separación permite mantener dos niveles distintos:
 \section{Interfaz gráfica}
 \label{sec:interfaz-grafica}
 
+La interfaz gráfica se implementa en el paquete \texttt{onitama.gui} mediante PySide6. Esta capa consume el estado proporcionado por el runtime y lo traduce en elementos visuales e interacciones de usuario.
+
+\subsection{Estructura de la aplicación}
+\label{subsec:estructura-gui}
+
+El punto de entrada de la aplicación es \texttt{vision\_app.py}, asociado al ejecutable \texttt{onitama-vision}. Este módulo crea la aplicación Qt, instancia \texttt{MainWindow} y muestra la ventana principal.
+
+La ventana principal se implementa en \texttt{main\_window.py}. Su estructura se basa en un \texttt{QStackedWidget}, que permite alternar entre la pantalla inicial de configuración y la vista de partida asistida por visión. Cuando se inicia una partida, \texttt{MainWindow} valida la configuración, construye el \texttt{VisionRuntimeConfig}, cambia a la vista de juego y arranca la ejecución mediante un worker en segundo plano.
+
+Los componentes principales de la interfaz se reparten de la siguiente forma:
+
+\begin{itemize}
+    \item \texttt{setup\_page.py}: pantalla inicial de configuración.
+    \item \texttt{runtime\_worker.py}: adaptación del runtime al modelo de hilos y señales de Qt.
+    \item \texttt{widgets.py}: widgets personalizados para tablero, cartas y mensajes.
+    \item \texttt{view\_logic.py}: traducción del estado del runtime a mensajes de interfaz.
+    \item \texttt{camera\_window.py}: ventana auxiliar para visualizar el último frame de cámara.
+    \item \texttt{gui/calibration/}: diálogos integrados de calibración del tablero y de las cartas.
+\end{itemize}
+
+Esta organización permite que \texttt{MainWindow} actúe como coordinador de la interfaz, mientras que la lógica de ejecución, la representación visual, los mensajes y la calibración se mantienen en componentes separados.
+
+\subsection{Configuración y calibración}
+\label{subsec:configuracion-calibracion-gui}
+
+La pantalla inicial se define en \texttt{SetupPage}. Desde ella se selecciona el color del jugador humano y el perfil de inteligencia artificial disponible. Internamente, la configuración se obtiene a partir de \texttt{Player} y de los evaluadores registrados en el módulo de IA.
+
+Además, esta pantalla permite acceder a las dos calibraciones necesarias para una partida asistida por visión:
+
+\begin{itemize}
+    \item calibración del tablero;
+    \item calibración de las regiones de cartas.
+\end{itemize}
+
+Antes de habilitar el inicio de partida, la interfaz comprueba que existan y sean válidos los ficheros de calibración requeridos: \texttt{data/vision/calibration.json} y \texttt{data/vision/card\_rois.json}.
+
+La calibración no se realiza mediante los scripts externos del proyecto, sino mediante diálogos integrados en Qt. \texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la calibración geométrica. Por su parte, \texttt{CardRoisCalibrationDialog} permite definir las cinco regiones correspondientes a las cartas visibles: \texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0} y \texttt{blue\_1}.
+
+Ambos diálogos utilizan captura de cámara propia, permiten congelar la imagen y editar puntos de forma interactiva antes de guardar la configuración. De este modo, la calibración queda integrada en el flujo normal de uso de la aplicación.
+
+\vspace{0.3cm}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{imagenes/gui_setup.png}
+\caption{Pantalla de configuración inicial de la aplicación.}
+\label{fig:gui-setup}
+\end{figure}
+
+\subsection{Vista de partida y actualización en vivo}
+\label{subsec:vista-partida-gui}
+
+La vista de partida muestra el estado reconstruido del juego a partir de los datos recibidos desde el runtime. El tablero se representa mediante \texttt{BoardWidget}, que dibuja la cuadrícula, los templos, las piezas y, cuando existe, la jugada pendiente de la inteligencia artificial. Las cartas se representan mediante \texttt{CardWidget}, mostrando su nombre, sello de color y patrón de movimientos. Los mensajes de estado se presentan mediante \texttt{MessageBanner}.
+
+La ejecución en vivo no se realiza en el hilo principal de la interfaz. Para evitar bloqueos durante la captura de cámara, inferencia visual, estabilización y cálculo de la IA, la GUI utiliza \texttt{RuntimeWorker}, implementado como un \texttt{QThread}. Este worker encapsula \texttt{VisionGameRuntime} y emite señales hacia la ventana principal:
+
+\begin{itemize}
+    \item \texttt{state\_changed}: nuevo \texttt{VisionRuntimeState}.
+    \item \texttt{frame\_changed}: nuevo frame convertido a \texttt{QImage}.
+    \item \texttt{failed}: error producido durante la ejecución.
+\end{itemize}
+
+La ventana principal no accede directamente a \texttt{VisionGameSession} ni a \texttt{VisionPipeline}. En su lugar, recibe objetos \texttt{VisionRuntimeState} y actualiza la interfaz mediante \texttt{\_apply\_state()}. Esta estructura mantiene separada la presentación visual de la lógica interna de captura, visión y sincronización.
+
+La traducción de fases, resultados y errores a mensajes comprensibles para el usuario se concentra en \texttt{view\_logic.py}. La función \texttt{build\_status\_view()} recibe un \texttt{VisionRuntimeState} y produce un \texttt{StatusView}, compuesto por título, detalle y tono visual. De esta forma, los mensajes mostrados por la interfaz se mantienen separados de la lógica de sesión.
+
+La aplicación también puede abrir una ventana secundaria de cámara mediante \texttt{CameraWindow}. Esta vista permite observar el último frame capturado sin mezclar la representación de cámara con la vista principal de partida.
+
+\vspace{0.3cm}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{imagenes/gui_partida.png}
+\caption{Vista principal de partida asistida por visión.}
+\label{fig:gui-partida}
+\end{figure}
+
 %==============================================================================
 % 5.7 Interfaces auxiliares y herramientas de desarrollo
 % =============================================================================
 \section{Interfaces auxiliares y herramientas de desarrollo}
 \label{sec:interfaces-herramientas}
+
+Además de la aplicación gráfica principal, el proyecto incluye interfaces y herramientas auxiliares destinadas a ejecutar, depurar y evaluar componentes de forma independiente.
+
+El paquete \texttt{onitama.cli} proporciona interfaces de terminal para dos escenarios principales:
+
+\begin{itemize}
+    \item \texttt{play.py}: ejecución de partidas locales sin visión, con modos humano contra humano, humano contra IA, IA contra humano e IA contra IA.
+    \item \texttt{vision\_play.py}: ejecución por terminal del flujo asistido por visión, utilizando \texttt{VisionGameRuntime}.
+\end{itemize}
+
+Estas interfaces permiten probar el motor, la inteligencia artificial y la integración con visión sin depender necesariamente de la interfaz gráfica.
+
+La carpeta \texttt{scripts} reúne herramientas de apoyo al desarrollo. Entre ellas se incluyen scripts de calibración, previsualización, captura de datos, depuración del pipeline visual, construcción de snapshots, torneos entre agentes y medición del rendimiento de la búsqueda. Estas utilidades no forman parte del flujo principal de uso, pero han sido importantes para ajustar y validar los distintos módulos durante el desarrollo.
+
+Por último, la carpeta \texttt{tests} contiene pruebas automatizadas ejecutadas con \texttt{pytest}. Estas pruebas cubren aspectos como las reglas del motor, la orientación de cartas, la aplicación de acciones, las condiciones de victoria, la conversión entre visión y motor, la estabilización de observaciones, la sincronización y partes del runtime.
+
+En conjunto, estas interfaces y herramientas han servido como soporte para construir el sistema de forma incremental, facilitar la detección de errores y preparar la evaluación experimental que se aborda en el capítulo siguiente.
