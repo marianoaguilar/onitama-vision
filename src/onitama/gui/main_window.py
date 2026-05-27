@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
                 color: {theme.TEXT};
             }}
             QPushButton {{
-                background: {theme.BUTTON_DARK};
+                background: {theme.TEXT};
                 color: {theme.WHITE};
                 border: 0;
                 border-radius: 7px;
@@ -415,7 +415,7 @@ class MainWindow(QMainWindow):
         if self._calibration_dialog is not None:
             return False
         if self._worker is not None:
-            self._message.apply(StatusView("Para la partida primero", "No se puede calibrar mientras la vision esta activa.", "warning"))
+            self._message.apply(StatusView("Para la partida primero", "No se puede calibrar mientras la visión está activa.", "warning"))
             return False
         return True
 

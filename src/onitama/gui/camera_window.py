@@ -14,7 +14,7 @@ class CameraWindow(QMainWindow):
         self.setWindowTitle("Camara de Onitama")
         self.resize(900, 520)
 
-        self._label = QLabel("Todavia no hay imagen de la camara")
+        self._label = QLabel("Todavía no hay imagen de la cámara")
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setStyleSheet(f"background: {theme.CAMERA_BG}; color: {theme.WHITE};")
         self.setCentralWidget(self._label)

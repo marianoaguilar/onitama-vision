@@ -41,6 +41,14 @@ def observation_detail(kind: VisionObservationKind) -> str:
     return OBSERVATION_DETAILS.get(kind, OBSERVATION_DETAILS[VisionObservationKind.GENERIC])
 
 
+def winner_reason_label(reason: str | None) -> str:
+    if reason == "Capture of Master":
+        return "Captura del maestro"
+    if reason == "Reach Temple":
+        return "Llegada al templo"
+    return reason or "Partida terminada"
+
+
 def build_status_view(state: VisionRuntimeState | None) -> StatusView:
     """Translate raw runtime state into one clear UI message."""
     if state is None:
@@ -55,7 +63,7 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
 
     if state.phase is SessionPhase.FINISHED:
         winner = player_label(state.winner_player)
-        reason = state.winner_reason or "partida terminada"
+        reason = winner_reason_label(state.winner_reason)
         return StatusView(
             title=f"¡Partida terminada: gana {winner}!",
             detail=reason,

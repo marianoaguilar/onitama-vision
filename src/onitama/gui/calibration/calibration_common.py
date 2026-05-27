@@ -46,7 +46,7 @@ class CameraCaptureThread(QThread):
         if not cap.isOpened():
             cap = cv2.VideoCapture(0)
         if not cap.isOpened():
-            self.failed.emit("No se pudo abrir la camara 0.")
+            self.failed.emit("No se pudo abrir la cámara 0.")
             return
 
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
@@ -58,7 +58,7 @@ class CameraCaptureThread(QThread):
             while not self._stop_requested:
                 ok, frame = cap.read()
                 if not ok:
-                    self.failed.emit("No se pudo leer una imagen de la camara.")
+                    self.failed.emit("No se pudo leer una imagen de la cámara.")
                     break
                 self.frame_changed.emit(frame.copy())
                 self.msleep(33)
@@ -239,7 +239,7 @@ class CalibrationDialogBase(QDialog):
         self._feedback_timer.setSingleShot(True)
 
         self._camera = CameraCaptureThread(self)
-        self._view = CameraImageView("Abriendo camara...")
+        self._view = CameraImageView("Abriendo cámara...")
         self._freeze_button = QPushButton(self.freeze_capture_text)
         self._close_button = QPushButton("Cerrar")
         self._feedback_label = QLabel()
@@ -504,30 +504,30 @@ def dialog_stylesheet() -> str:
         QPushButton {{
             background: {theme.SURFACE};
             color: {theme.TEXT};
-            border: 1px solid {theme.BORDER};
+            border: 1px solid {theme.TEXT_MUTED};
             border-radius: 7px;
             padding: 10px 14px;
             font-weight: 800;
             font-size: 15px;
         }}
         QPushButton:checked {{
-            background: {theme.BLUE_ACTION};
-            color: {theme.TEXT_INVERTED};
+            background: {theme.BLUE};
+            color: {theme.SURFACE};
         }}
         QPushButton#redCardSlot:checked {{
-            background: {theme.RED_ACTION};
-            color: {theme.TEXT_INVERTED};
-            border-color: {theme.RED_DEEP};
+            background: {theme.RED};
+            color: {theme.SURFACE};
+            border-color: {theme.RED_DARK};
         }}
         QPushButton#sideCardSlot:checked {{
             background: {theme.LINE};
-            color: {theme.TEXT_INVERTED};
-            border-color: {theme.BORDER};
+            color: {theme.SURFACE};
+            border-color: {theme.TEXT_MUTED};
         }}
         QPushButton#blueCardSlot:checked {{
-            background: {theme.BLUE_ACTION};
-            color: {theme.TEXT_INVERTED};
-            border-color: {theme.BLUE_DEEP};
+            background: {theme.BLUE};
+            color: {theme.SURFACE};
+            border-color: {theme.BLUE_DARK};
         }}
         QPushButton:disabled {{
             background: {theme.SURFACE_ALT};

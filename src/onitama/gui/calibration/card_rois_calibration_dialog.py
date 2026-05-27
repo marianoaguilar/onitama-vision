@@ -26,7 +26,7 @@ from onitama.vision.card_rois import SLOT_ORDER, SlotName, load_card_rois, save_
 
 class CardRoisCalibrationDialog(CalibrationDialogBase):
     saved = Signal()
-    frame_title = "Calibracion de cartas"
+    frame_title = "Calibración de cartas"
     header_text = "Selecciona una carta y marca 4 puntos."
 
     def __init__(self, rois_path: Path, parent: QWidget | None = None) -> None:

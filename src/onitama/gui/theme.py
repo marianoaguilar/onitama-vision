@@ -4,53 +4,45 @@ from __future__ import annotations
 APP_BG = "#f6f0e4"
 SURFACE = "#fffaf0"
 SURFACE_ALT = "#f2ead8"
-PAPER = "#fff7df"
 TEXT = "#1f2933"
-TEXT_INVERTED = "#fffaf0"
-TEXT_MUTED = "#8a6b3f"
-TEXT_SUBTLE = "#5f4c2d"
+TEXT_MUTED = "#7f6642"
+TEXT_SUBTLE = "#5f4a2f"
 TRANSPARENT = "transparent"
 WHITE = "white"
 
 # Brand and player colors.
-RED = "#c2413b"
-RED_ACTION = "#c72920"
-RED_ACTION_HOVER = "#a7251d"
-RED_DARK = "#7f1d1d"
-RED_DEEP = "#8b1f18"
-RED_BORDER = "#d32920"
-BLUE = "#2563eb"
-BLUE_ACTION = "#2b5d8a"
-BLUE_DARK = "#1e3a8a"
-BLUE_DEEP = "#17385e"
-BLUE_SOFT = "#eef5fb"
+RED = "#c34a3e"
+RED_ACTION_HOVER = "#ad3a31"
+RED_DARK = "#8f2b23"
+RED_SOFT = "#f7dbd6"
+BLUE = "#2f7bb8"
+BLUE_DARK = "#245789"
+BLUE_SOFT = "#d3ebfa"
 
 # Lines, borders, and neutral UI colors.
-BORDER = "#8a6b3f"
-LINE = "#b08a4d"
-BOARD_LINE = "#6f4e2c"
-BOARD_LABEL = "#4b3621"
-BUTTON_DARK = "#1f2933"
+LINE = "#aa8350"
+BOARD_LINE = "#6a4a2c"
+BOARD_LABEL = "#4a321f"
 BUTTON_SECONDARY = "#6b7280"
 DISABLED = "#9ca3af"
-EMPTY_TEXT = "#6b7280"
 CARD_CENTER = "#374151"
-MOVE_TARGET = "#f8d36a"
-HIGHLIGHT = "#f59e0b"
+MOVE_TARGET = "#d8b46a"
+HIGHLIGHT = "#2f8f5a"
+HIGHLIGHT_SOFT = "#d8efe1"
 CAMERA_BG = "#111827"
 
 # Board colors.
-BOARD_LIGHT = "#f2dfb3"
-BOARD_DARK = "#d6b479"
-RED_TEMPLE_RGBA = (194, 65, 59, 55)
-BLUE_TEMPLE_RGBA = (37, 99, 235, 55)
-HIGHLIGHT_RGBA = (245, 158, 11, 55)
+BOARD_LIGHT = "#f6e7c5"
+BOARD_DARK = "#dfc38a"
+RED_TEMPLE_RGBA = (221, 102, 83, 82)
+BLUE_TEMPLE_RGBA = (76, 149, 207, 82)
+HIGHLIGHT_RGBA = (122, 201, 157, 135)
 SHADOW_RGBA = (75, 54, 33, 70)
 
 # Status colors.
-SUCCESS_TEXT = "#24513a"
-SUCCESS_BG = "#dcefe2"
-SUCCESS_BORDER = "#9cc8ad"
+SUCCESS_TEXT = "#1f6a43"
+SUCCESS_BG = "#cfe8d7"
+SUCCESS_BORDER = "#78b08d"
 SUCCESS_SOFT_BG = "#ecfdf5"
 SUCCESS_STRONG = "#059669"
 INFO_BG = "#dbeafe"
@@ -66,16 +58,16 @@ ERROR_SOFT_BG = "#fef2f2"
 ERROR_STRONG = "#dc2626"
 
 # Calibration overlay colors use OpenCV BGR tuples.
-BOARD_LINE_BGR = (88, 185, 240)
-BOARD_POINT_BGR = (74, 86, 224)
+BOARD_LINE_BGR = (11, 158, 245)
+BOARD_POINT_BGR = (49, 58, 173)
 CARD_MARGIN_BGR = (185, 200, 210)
-OVERLAY_WHITE_BGR = (246, 244, 238)
-OVERLAY_DARK_BGR = (58, 62, 70)
+OVERLAY_WHITE_BGR = (240, 250, 255)
+OVERLAY_DARK_BGR = (81, 65, 55)
 CARD_ACTIVE_COLOR_BGR: dict[str, tuple[int, int, int]] = {
-    "red_0": (78, 88, 218),
-    "red_1": (78, 88, 218),
-    "side": (74, 174, 224),
-    "blue_0": (190, 122, 50),
-    "blue_1": (190, 122, 50),
+    "red_0": (49, 58, 173),
+    "red_1": (49, 58, 173),
+    "side": (11, 158, 245),
+    "blue_0": (184, 123, 47),
+    "blue_1": (184, 123, 47),
 }
-CARD_INACTIVE_BGR = (164, 166, 170)
+CARD_INACTIVE_BGR = (175, 163, 156)

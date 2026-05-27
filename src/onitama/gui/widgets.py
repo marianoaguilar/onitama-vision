@@ -21,7 +21,7 @@ BLUE_TEMPLE = QColor(*theme.BLUE_TEMPLE_RGBA)
 BOARD_LIGHT = QColor(theme.BOARD_LIGHT)
 BOARD_DARK = QColor(theme.BOARD_DARK)
 BOARD_LINE = QColor(theme.BOARD_LINE)
-PAPER = QColor(theme.PAPER)
+SURFACE = QColor(theme.SURFACE)
 TEXT = QColor(theme.TEXT)
 
 
@@ -135,20 +135,26 @@ class BoardWidget(QWidget):
 
                 cx = board_rect.left() + visual_col * cell + cell / 2
                 cy = board_rect.top() + visual_row * cell + cell / 2
-                radius = cell * 0.32
+                is_master = piece.kind is PieceType.MASTER
+                radius = cell * (0.39 if is_master else 0.32)
                 color = RED if piece.owner is Player.RED else BLUE
                 outline = RED_DARK if piece.owner is Player.RED else BLUE_DARK
 
-                painter.setPen(QPen(outline, 3))
+                painter.setPen(QPen(outline, 4 if is_master else 3))
                 painter.setBrush(color)
                 painter.drawEllipse(QPointF(cx, cy), radius, radius)
 
+                if is_master:
+                    painter.setPen(QPen(outline, 2))
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
+                    painter.drawEllipse(QPointF(cx, cy), radius * 0.66, radius * 0.66)
+
                 painter.setPen(QPen(QColor(theme.WHITE)))
                 font = QFont(self.font())
-                font.setPointSize(max(12, int(cell * 0.18)))
+                font.setPointSize(max(12, int(cell * (0.2 if is_master else 0.18))))
                 font.setBold(True)
                 painter.setFont(font)
-                label = "M" if piece.kind is PieceType.MASTER else "S"
+                label = "M" if is_master else "S"
                 painter.drawText(
                     QRectF(cx - radius, cy - radius, radius * 2, radius * 2),
                     Qt.AlignmentFlag.AlignCenter,
@@ -157,7 +163,7 @@ class BoardWidget(QWidget):
 
     def _draw_empty_hint(self, painter: QPainter, board_rect: QRectF) -> None:
         painter.save()
-        painter.setPen(QPen(QColor(theme.EMPTY_TEXT)))
+        painter.setPen(QPen(QColor(theme.BUTTON_SECONDARY)))
         font = QFont(self.font())
         font.setPointSize(14)
         font.setBold(True)
@@ -200,10 +206,11 @@ class CardWidget(QFrame):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = self.rect().adjusted(4, 4, -4, -4)
-        border_color = QColor(theme.HIGHLIGHT) if self._highlighted else QColor(theme.BORDER)
+        border_color = QColor(theme.HIGHLIGHT) if self._highlighted else QColor(theme.TEXT_MUTED)
+        fill_color = QColor(theme.HIGHLIGHT_SOFT) if self._highlighted else SURFACE
         border_width = 4 if self._highlighted else 2
         painter.setPen(QPen(border_color, border_width))
-        painter.setBrush(PAPER)
+        painter.setBrush(fill_color)
         painter.drawRoundedRect(rect, 8, 8)
         content_y_offset = -8.0
 
@@ -259,13 +266,13 @@ class CardWidget(QFrame):
         left = rect.center().x() - cell * 2.5
         top = rect.center().y() - cell * 2.5
 
-        painter.setPen(QPen(QColor(theme.BORDER), 1))
+        painter.setPen(QPen(QColor(theme.TEXT_MUTED), 1))
         painter.setBrush(QColor(theme.APP_BG))
         for r in range(5):
             for c in range(5):
                 painter.drawRect(QRectF(left + c * cell, top + r * cell, cell, cell))
 
-        painter.setPen(QPen(QColor(theme.BORDER), 1))
+        painter.setPen(QPen(QColor(theme.TEXT_MUTED), 1))
         painter.setBrush(QColor(theme.CARD_CENTER))
         painter.drawRect(QRectF(left + 2 * cell, top + 2 * cell, cell, cell))
 
@@ -327,7 +334,7 @@ class MessageBanner(QFrame):
         self._title.setText(view.title)
         self._detail.setText(view.detail)
         colors = {
-            "neutral": (theme.PAPER, theme.BORDER),
+            "neutral": (theme.SURFACE, theme.TEXT_MUTED),
             "success": (theme.SUCCESS_SOFT_BG, theme.SUCCESS_STRONG),
             "warning": (theme.WARNING_SOFT_BG, theme.WARNING_STRONG),
             "error": (theme.ERROR_SOFT_BG, theme.ERROR_STRONG),

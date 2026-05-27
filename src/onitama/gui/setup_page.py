@@ -22,9 +22,9 @@ from onitama.gui import theme
 
 
 _DIFFICULTIES = (
-    ("Facil", "v1"),
+    ("Fácil", "v1"),
     ("Media", "v2"),
-    ("Dificil", "v3"),
+    ("Difícil", "v3"),
 )
 
 _STATUS_BASE_STYLE = """
@@ -130,13 +130,13 @@ class SetupPage(QWidget):
         self._calibration_status.setText("Calibracion en curso")
         self._calibration_status.setStyleSheet(
             _STATUS_BASE_STYLE
-            + f"color: {theme.BLUE_DEEP}; background: {theme.INFO_BG}; border: 1px solid {theme.INFO_BORDER};"
+            + f"color: {theme.BLUE_DARK}; background: {theme.INFO_BG}; border: 1px solid {theme.INFO_BORDER};"
         )
         self._calibration_detail.setText(f"Ejecutando {script.name}. Cierra la ventana de OpenCV al terminar.")
         self._start_button.setEnabled(False)
 
     def set_calibration_script_missing(self, script: Path) -> None:
-        self._calibration_status.setText("No se encontro el script de calibracion")
+        self._calibration_status.setText("No se encontró el script de calibración")
         self._calibration_status.setStyleSheet(
             _STATUS_BASE_STYLE
             + f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; border: 1px solid {theme.ERROR_BORDER};"
@@ -145,10 +145,10 @@ class SetupPage(QWidget):
         self._start_button.setEnabled(False)
 
     def set_calibration_exit_error(self, exit_code: int, stderr: str) -> None:
-        self._calibration_detail.setText(f"La calibracion termino con codigo {exit_code}.\n{stderr}")
+        self._calibration_detail.setText(f"La calibración terminó con código {exit_code}.\n{stderr}")
 
     def set_calibration_error(self, message: str) -> None:
-        self._calibration_status.setText("La calibracion fallo")
+        self._calibration_status.setText("La calibración falló")
         self._calibration_status.setStyleSheet(
             _STATUS_BASE_STYLE
             + f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; border: 1px solid {theme.ERROR_BORDER};"
@@ -166,11 +166,11 @@ class SetupPage(QWidget):
             }}
             QFrame#setupPanel {{
                 background: {theme.SURFACE_ALT};
-                border: 2px solid {theme.BORDER};
+                border: 2px solid {theme.TEXT_MUTED};
                 border-radius: 18px;
             }}
             QLabel#headerKicker {{
-                color: {theme.RED_DEEP};
+                color: {theme.RED_DARK};
                 font-size: 24px;
                 font-weight: 900;
             }}
@@ -181,7 +181,7 @@ class SetupPage(QWidget):
             }}
             QLabel#stepBadge {{
                 background: {theme.RED_ACTION_HOVER};
-                color: {theme.TEXT_INVERTED};
+                color: {theme.SURFACE};
                 border-radius: 17px;
                 font-size: 18px;
                 font-weight: 900;
@@ -211,12 +211,12 @@ class SetupPage(QWidget):
             }}
             QPushButton#redChoice:checked {{
                 color: {theme.RED_ACTION_HOVER};
-                border-color: {theme.RED_BORDER};
-                background: {theme.SURFACE};
+                border-color: {theme.RED};
+                background: {theme.RED_SOFT};
             }}
             QPushButton#blueChoice:checked {{
-                color: {theme.BLUE_DEEP};
-                border-color: {theme.BLUE_DEEP};
+                color: {theme.BLUE_DARK};
+                border-color: {theme.BLUE_DARK};
                 background: {theme.BLUE_SOFT};
             }}
             QPushButton#choiceButton {{
@@ -230,19 +230,19 @@ class SetupPage(QWidget):
                 min-height: 42px;
             }}
             QPushButton#choiceButton:checked {{
-                background: {theme.BLUE_ACTION};
-                color: {theme.TEXT_INVERTED};
+                background: {theme.BLUE};
+                color: {theme.SURFACE};
                 border-radius: 21px;
             }}
             QFrame#segmentedControl {{
                 background: {theme.SURFACE};
-                border: 1px solid {theme.BORDER};
+                border: 1px solid {theme.TEXT_MUTED};
                 border-radius: 23px;
             }}
             QPushButton {{
                 background: {theme.SURFACE};
                 color: {theme.TEXT};
-                border: 1px solid {theme.BORDER};
+                border: 1px solid {theme.TEXT_MUTED};
                 border-radius: 7px;
                 padding: 12px 16px;
                 font-weight: 900;
@@ -258,7 +258,7 @@ class SetupPage(QWidget):
             QPushButton#quietAction:hover,
             QPushButton#refreshAction:hover {{
                 background: {theme.LINE};
-                color: {theme.TEXT_INVERTED};
+                color: {theme.SURFACE};
             }}
             QPushButton#redChoice:hover {{
                 background: {theme.SURFACE};
@@ -266,13 +266,14 @@ class SetupPage(QWidget):
             }}
             QPushButton#redChoice:checked:hover {{
                 color: {theme.RED_ACTION_HOVER};
+                background: {theme.RED_SOFT};
             }}
             QPushButton#blueChoice:hover {{
                 background: {theme.SURFACE};
                 color: {theme.TEXT};
             }}
             QPushButton#blueChoice:checked:hover {{
-                color: {theme.BLUE_DEEP};
+                color: {theme.BLUE_DARK};
                 background: {theme.BLUE_SOFT};
             }}
             QPushButton#choiceButton:hover {{
@@ -280,25 +281,25 @@ class SetupPage(QWidget):
                 color: {theme.TEXT};
             }}
             QPushButton#choiceButton:checked:hover {{
-                background: {theme.BLUE_ACTION};
-                color: {theme.TEXT_INVERTED};
+                background: {theme.BLUE};
+                color: {theme.SURFACE};
             }}
             QPushButton#primaryAction {{
-                background: {theme.RED_ACTION};
-                color: {theme.TEXT_INVERTED};
-                border: 2px solid {theme.RED_DEEP};
+                background: {theme.RED};
+                color: {theme.SURFACE};
+                border: 2px solid {theme.RED_DARK};
                 border-radius: 14px;
                 font-size: 22px;
                 padding: 16px 24px;
             }}
             QPushButton#primaryAction:hover {{
                 background: {theme.RED_ACTION_HOVER};
-                color: {theme.TEXT_INVERTED};
+                color: {theme.SURFACE};
             }}
             QPushButton#quietAction {{
                 background: {theme.SURFACE};
                 color: {theme.TEXT_MUTED};
-                border: 1px solid {theme.BORDER};
+                border: 1px solid {theme.TEXT_MUTED};
             }}
             QPushButton#refreshAction {{
                 background: {theme.SURFACE};
@@ -322,7 +323,7 @@ class SetupPage(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(title)
 
-        kicker = QLabel("Configuracion de partida")
+        kicker = QLabel("Configuración de partida")
         kicker.setObjectName("headerKicker")
         kicker.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(kicker)
@@ -335,9 +336,9 @@ class SetupPage(QWidget):
         controls.setMaximumWidth(1000)
         controls.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         shadow = QGraphicsDropShadowEffect(controls)
-        shadow.setBlurRadius(26)
+        shadow.setBlurRadius(40)
         shadow.setColor(QColor(*theme.SHADOW_RGBA))
-        shadow.setOffset(0, 8)
+        shadow.setOffset(0, 12)
         controls.setGraphicsEffect(shadow)
 
         controls_layout = QVBoxLayout(controls)
@@ -441,7 +442,7 @@ class SetupPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        header = self._build_step_header("3", "Calibracion")
+        header = self._build_step_header("3", "Calibración")
         header.addStretch(1)
         self._calibration_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._calibration_status.setStyleSheet(_STATUS_BASE_STYLE)
