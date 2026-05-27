@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
 
         self._finish_button = QPushButton("Finalizar partida")
         self._reset_button = QPushButton("Reiniciar")
-        self._camera_button = QPushButton("Camara")
+        self._camera_button = QPushButton("Cámara")
         self._game_quit_button = QPushButton("Salir")
         
         self._game_quit_button.setStyleSheet(

@@ -76,13 +76,13 @@ Un \texttt{GameState} almacena la información necesaria para reconstruir una po
     \item \texttt{red\_master\_pos} y \texttt{blue\_master\_pos}: posiciones cacheadas de los maestros.
 \end{itemize}
 
-Las posiciones de los maestros se almacenan explícitamente para evitar recorrer el tablero cada vez que se necesita conocer su ubicación. Esta decisión simplifica y acelera operaciones frecuentes, como la comprobación de victoria, la evaluación heurística de posiciones o la generación de información para la inteligencia artificial.
+Las posiciones de los maestros se almacenan explícitamente para evitar recorrer el tablero cada vez que se necesita conocer su ubicación. Esta decisión simplifica y acelera operaciones frecuentes, como la comprobación de victoria o la evaluación heurística de posiciones durante la búsqueda de la inteligencia artificial.
 
 Los elementos básicos del juego se modelan mediante tipos sencillos y separados:
 
 \begin{itemize}
     \item \texttt{Player}, \texttt{PieceType} y \texttt{Piece}, definidos en \texttt{pieces.py}.
-    \item \texttt{Card}, \texttt{ALL\_CARDS} y \texttt{CARD\_BY\_NAME}, definidos en \texttt{cards.py}.
+    \item \texttt{Card}, definida en \texttt{cards.py}, junto con el conjunto de cartas oficiales.
     \item \texttt{Move} y \texttt{Pass}, definidos en \texttt{moves.py}.
 \end{itemize}
 
@@ -114,13 +114,12 @@ Esta organización hace que el motor funcione como una fuente única de verdad p
 \section{Agente de inteligencia artificial}
 \label{sec:agente-ia}
 
-El agente de inteligencia artificial se implementa en el paquete \texttt{onitama.ai}. El código se divide en varios módulos con responsabilidades diferenciadas:
+El agente de inteligencia artificial se implementa en el paquete \texttt{onitama.ai}. La implementación se reparte en varios módulos principales:
 
 \begin{itemize}
     \item \texttt{agent.py}: selección de acciones mediante \texttt{choose\_action()}.
     \item \texttt{search.py}: búsqueda adversarial y optimizaciones.
     \item \texttt{evaluate.py}: funciones heurísticas de evaluación.
-    \item \texttt{types.py}: tipos compartidos para evaluadores y tabla de transposición.
     \item \texttt{controllers.py}: adaptación del agente mediante \texttt{AIController}.
 \end{itemize}
 
@@ -279,10 +278,10 @@ Este modelo clasifica cada recorte como una de las 16 cartas oficiales del juego
 La salida principal del módulo de visión es \texttt{VisionSnapshot}, definido en \texttt{snapshot.py}. Esta estructura combina:
 
 \begin{itemize}
-    \item un \texttt{VisionBoard} con la disposición detectada de las piezas;
-    \item las dos cartas visibles del jugador rojo;
-    \item las dos cartas visibles del jugador azul;
-    \item la carta lateral.
+    \item \texttt{board}: objeto \texttt{VisionBoard} con la disposición detectada de las piezas.
+    \item \texttt{red\_cards}: nombres de las dos cartas visibles del jugador rojo.
+    \item \texttt{blue\_cards}: nombres de las dos cartas visibles del jugador azul.
+    \item \texttt{side\_card}: nombre de la carta lateral.
 \end{itemize}
 
 El snapshot representa una observación visual completa, pero todavía no contiene toda la información necesaria para ser un estado lógico de partida. En concreto, la cámara puede detectar piezas y cartas, pero no determina por sí misma a qué jugador le corresponde mover. Por ese motivo, la conversión mediante \texttt{to\_game\_state(to\_move)} recibe el turno como parámetro externo.
@@ -374,10 +373,10 @@ El control de ejecución se implementa en el paquete \texttt{onitama.runtime}. E
 La configuración del runtime se representa mediante \texttt{VisionRuntimeConfig}. Esta estructura agrupa los parámetros necesarios para iniciar una partida asistida por visión:
 
 \begin{itemize}
-    \item jugador humano seleccionado;
-    \item número de repeticiones necesarias para estabilizar una observación;
-    \item profundidad y evaluador del agente de IA;
-    \item dispositivo de cámara, resolución y tasa de frames.
+    \item Jugador humano seleccionado.
+    \item Número de repeticiones necesarias para estabilizar una observación.
+    \item Profundidad y evaluador del agente de IA.
+    \item Dispositivo de cámara, resolución y tasa de frames.
 \end{itemize}
 
 A partir de esta configuración, el runtime construye internamente los componentes necesarios: cámara, \texttt{VisionPipeline}, \texttt{VisionGameSession} y \texttt{AIController}.
@@ -440,20 +439,18 @@ Esta organización permite que \texttt{MainWindow} actúe como coordinador de la
 \subsection{Configuración y calibración}
 \label{subsec:configuracion-calibracion-gui}
 
-La pantalla inicial se define en \texttt{SetupPage}. Desde ella se selecciona el color del jugador humano y el perfil de inteligencia artificial disponible. Internamente, la configuración se obtiene a partir de \texttt{Player} y de los evaluadores registrados en el módulo de IA.
+La pantalla inicial se define en \texttt{SetupPage} y reúne las decisiones previas a la partida: el color del jugador humano, el nivel de dificultad del agente de inteligencia artificial y el estado de la calibración visual.
 
-Además, esta pantalla permite acceder a las dos calibraciones necesarias para una partida asistida por visión:
+El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. Por su parte, la calibración visual depende de dos ficheros requeridos por el módulo de visión:
 
 \begin{itemize}
-    \item calibración del tablero;
-    \item calibración de las regiones de cartas.
+    \item \texttt{data/vision/calibration.json}: calibración geométrica del tablero.
+    \item \texttt{data/vision/card\_rois.json}: regiones de interés de las cartas.
 \end{itemize}
 
-Antes de habilitar el inicio de partida, la interfaz comprueba que existan y sean válidos los ficheros de calibración requeridos: \texttt{data/vision/calibration.json} y \texttt{data/vision/card\_rois.json}.
+Antes de habilitar el inicio de partida, la interfaz comprueba que ambos ficheros existan y sean válidos. Si falta alguno de ellos, el usuario puede generarlo desde la propia aplicación mediante diálogos integrados en Qt.
 
-La calibración no se realiza mediante los scripts externos del proyecto, sino mediante diálogos integrados en Qt. \texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la calibración geométrica. Por su parte, \texttt{CardRoisCalibrationDialog} permite definir las cinco regiones correspondientes a las cartas visibles: \texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0} y \texttt{blue\_1}.
-
-Ambos diálogos utilizan captura de cámara propia, permiten congelar la imagen y editar puntos de forma interactiva antes de guardar la configuración. De este modo, la calibración queda integrada en el flujo normal de uso de la aplicación.
+\texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la transformación geométrica. \texttt{CardRoisCalibrationDialog} permite definir las regiones \texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0} y \texttt{blue\_1}. Ambos diálogos utilizan captura de cámara propia, permiten congelar la imagen y editar los puntos de forma interactiva antes de guardar la configuración.
 
 \vspace{0.3cm}
 \begin{figure}[H]
@@ -509,6 +506,6 @@ Estas interfaces permiten probar el motor, la inteligencia artificial y la integ
 
 La carpeta \texttt{scripts} reúne herramientas de apoyo al desarrollo. Entre ellas se incluyen scripts de calibración, previsualización, captura de datos, depuración del pipeline visual, construcción de snapshots, torneos entre agentes y medición del rendimiento de la búsqueda. Estas utilidades no forman parte del flujo principal de uso, pero han sido importantes para ajustar y validar los distintos módulos durante el desarrollo.
 
-Por último, la carpeta \texttt{tests} contiene pruebas automatizadas ejecutadas con \texttt{pytest}. Estas pruebas cubren aspectos como las reglas del motor, la orientación de cartas, la aplicación de acciones, las condiciones de victoria, la conversión entre visión y motor, la estabilización de observaciones, la sincronización y partes del runtime.
+Por último, la carpeta \texttt{tests} contiene pruebas automatizadas ejecutadas con \texttt{pytest}. Estas pruebas cubren aspectos como las reglas del motor, la aplicación de acciones, las condiciones de victoria, la conversión entre visión y motor, la estabilización de observaciones, la sincronización y partes del runtime.
 
 En conjunto, estas interfaces y herramientas han servido como soporte para construir el sistema de forma incremental, facilitar la detección de errores y preparar la evaluación experimental que se aborda en el capítulo siguiente.
