@@ -8,20 +8,21 @@ from onitama.engine.cards import Card
 from onitama.engine.moves import Move
 from onitama.engine.pieces import PieceType, Player
 from onitama.engine.state import GameState
+from onitama.gui import theme
 from onitama.gui.view_logic import INITIAL_STATUS, StatusView
 
 
-RED = QColor("#c2413b")
-RED_DARK = QColor("#7f1d1d")
-RED_TEMPLE = QColor(194, 65, 59, 55)
-BLUE = QColor("#2563eb")
-BLUE_DARK = QColor("#1e3a8a")
-BLUE_TEMPLE = QColor(37, 99, 235, 55)
-BOARD_LIGHT = QColor("#f2dfb3")
-BOARD_DARK = QColor("#d6b479")
-BOARD_LINE = QColor("#6f4e2c")
-PAPER = QColor("#fff7df")
-TEXT = QColor("#1f2933")
+RED = QColor(theme.RED)
+RED_DARK = QColor(theme.RED_DARK)
+RED_TEMPLE = QColor(*theme.RED_TEMPLE_RGBA)
+BLUE = QColor(theme.BLUE)
+BLUE_DARK = QColor(theme.BLUE_DARK)
+BLUE_TEMPLE = QColor(*theme.BLUE_TEMPLE_RGBA)
+BOARD_LIGHT = QColor(theme.BOARD_LIGHT)
+BOARD_DARK = QColor(theme.BOARD_DARK)
+BOARD_LINE = QColor(theme.BOARD_LINE)
+PAPER = QColor(theme.PAPER)
+TEXT = QColor(theme.TEXT)
 
 
 class BoardWidget(QWidget):
@@ -46,7 +47,7 @@ class BoardWidget(QWidget):
         del event
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), QColor("#f6f0e4"))
+        painter.fillRect(self.rect(), QColor(theme.APP_BG))
 
         side = min(self.width(), self.height()) - 48
         side = max(120, side)
@@ -80,7 +81,7 @@ class BoardWidget(QWidget):
 
     def _draw_labels(self, painter: QPainter, board_rect: QRectF, cell: float) -> None:
         painter.save()
-        painter.setPen(QPen(QColor("#4b3621")))
+        painter.setPen(QPen(QColor(theme.BOARD_LABEL)))
         font = QFont(self.font())
         font.setPointSize(max(9, min(16, int(cell * 0.16))))
         font.setBold(True)
@@ -104,8 +105,8 @@ class BoardWidget(QWidget):
             return
 
         painter.save()
-        painter.setPen(QPen(QColor("#f59e0b"), 4))
-        painter.setBrush(QColor(245, 158, 11, 55))
+        painter.setPen(QPen(QColor(theme.HIGHLIGHT), 4))
+        painter.setBrush(QColor(*theme.HIGHLIGHT_RGBA))
         for pos in (self._highlight_move.from_pos, self._highlight_move.to_pos):
             visual_row, visual_col = _canonical_to_visual(pos)
             painter.drawRoundedRect(
@@ -142,7 +143,7 @@ class BoardWidget(QWidget):
                 painter.setBrush(color)
                 painter.drawEllipse(QPointF(cx, cy), radius, radius)
 
-                painter.setPen(QPen(QColor("white")))
+                painter.setPen(QPen(QColor(theme.WHITE)))
                 font = QFont(self.font())
                 font.setPointSize(max(12, int(cell * 0.18)))
                 font.setBold(True)
@@ -156,7 +157,7 @@ class BoardWidget(QWidget):
 
     def _draw_empty_hint(self, painter: QPainter, board_rect: QRectF) -> None:
         painter.save()
-        painter.setPen(QPen(QColor("#6b7280")))
+        painter.setPen(QPen(QColor(theme.EMPTY_TEXT)))
         font = QFont(self.font())
         font.setPointSize(14)
         font.setBold(True)
@@ -199,7 +200,7 @@ class CardWidget(QFrame):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = self.rect().adjusted(4, 4, -4, -4)
-        border_color = QColor("#f59e0b") if self._highlighted else QColor("#8a6b3f")
+        border_color = QColor(theme.HIGHLIGHT) if self._highlighted else QColor(theme.BORDER)
         border_width = 4 if self._highlighted else 2
         painter.setPen(QPen(border_color, border_width))
         painter.setBrush(PAPER)
@@ -207,7 +208,7 @@ class CardWidget(QFrame):
         content_y_offset = -8.0
 
         if self._card is None:
-            painter.setPen(QPen(QColor("#9ca3af")))
+            painter.setPen(QPen(QColor(theme.DISABLED)))
             painter.drawText(rect.adjusted(8, 36, -8, -8), Qt.AlignmentFlag.AlignCenter, "Sin carta")
             return
 
@@ -258,17 +259,17 @@ class CardWidget(QFrame):
         left = rect.center().x() - cell * 2.5
         top = rect.center().y() - cell * 2.5
 
-        painter.setPen(QPen(QColor("#8a6b3f"), 1))
-        painter.setBrush(QColor("#f6f0e4"))
+        painter.setPen(QPen(QColor(theme.BORDER), 1))
+        painter.setBrush(QColor(theme.APP_BG))
         for r in range(5):
             for c in range(5):
                 painter.drawRect(QRectF(left + c * cell, top + r * cell, cell, cell))
 
-        painter.setPen(QPen(QColor("#8a6b3f"), 1))
-        painter.setBrush(QColor("#374151"))
+        painter.setPen(QPen(QColor(theme.BORDER), 1))
+        painter.setBrush(QColor(theme.CARD_CENTER))
         painter.drawRect(QRectF(left + 2 * cell, top + 2 * cell, cell, cell))
 
-        painter.setBrush(QColor("#f8d36a"))
+        painter.setBrush(QColor(theme.MOVE_TARGET))
         player = self._owner or Player.RED
         for dr, dc in self._card.deltas:
             r = 2 + dr
@@ -326,10 +327,10 @@ class MessageBanner(QFrame):
         self._title.setText(view.title)
         self._detail.setText(view.detail)
         colors = {
-            "neutral": ("#fff7df", "#8a6b3f"),
-            "success": ("#ecfdf5", "#059669"),
-            "warning": ("#fffbeb", "#d97706"),
-            "error": ("#fef2f2", "#dc2626"),
+            "neutral": (theme.PAPER, theme.BORDER),
+            "success": (theme.SUCCESS_SOFT_BG, theme.SUCCESS_STRONG),
+            "warning": (theme.WARNING_SOFT_BG, theme.WARNING_STRONG),
+            "error": (theme.ERROR_SOFT_BG, theme.ERROR_STRONG),
         }
         bg, border = colors.get(view.tone, colors["neutral"])
         self.setStyleSheet(
@@ -340,7 +341,7 @@ class MessageBanner(QFrame):
                 border-radius: 10px;
             }}
             QLabel {{
-                color: #1f2933;
+                color: {theme.TEXT};
             }}
             """
         )

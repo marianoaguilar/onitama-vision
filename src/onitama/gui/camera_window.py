@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel, QMainWindow
 
+from onitama.gui import theme
+
 
 class CameraWindow(QMainWindow):
     def __init__(self, parent=None) -> None:
@@ -14,7 +16,7 @@ class CameraWindow(QMainWindow):
 
         self._label = QLabel("Todavia no hay imagen de la camara")
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._label.setStyleSheet("background: #111827; color: white;")
+        self._label.setStyleSheet(f"background: {theme.CAMERA_BG}; color: {theme.WHITE};")
         self.setCentralWidget(self._label)
 
     def set_frame(self, image: QImage) -> None:

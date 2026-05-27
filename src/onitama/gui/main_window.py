@@ -27,6 +27,7 @@ from onitama.gui.calibration.board_calibration_dialog import BoardCalibrationDia
 from onitama.gui.calibration.card_rois_calibration_dialog import CardRoisCalibrationDialog
 from onitama.gui.runtime_worker import RuntimeWorker
 from onitama.gui.setup_page import SetupPage
+from onitama.gui import theme
 from onitama.gui.view_logic import StatusView, build_status_view
 from onitama.gui.widgets import BoardWidget, CardWidget, MessageBanner
 
@@ -56,10 +57,10 @@ class MainWindow(QMainWindow):
         self._game_quit_button = QPushButton("Salir")
         
         self._game_quit_button.setStyleSheet(
-            """
-            QPushButton {
-                background: #6b7280;
-            }
+            f"""
+            QPushButton {{
+                background: {theme.BUTTON_SECONDARY};
+            }}
             """
         )
 
@@ -84,25 +85,25 @@ class MainWindow(QMainWindow):
         root = QWidget()
         root.setObjectName("root")
         root.setStyleSheet(
-            """
-            QWidget#root {
-                background: #f6f0e4;
-            }
-            QLabel {
-                color: #1f2933;
-            }
-            QPushButton {
-                background: #1f2933;
-                color: white;
+            f"""
+            QWidget#root {{
+                background: {theme.APP_BG};
+            }}
+            QLabel {{
+                color: {theme.TEXT};
+            }}
+            QPushButton {{
+                background: {theme.BUTTON_DARK};
+                color: {theme.WHITE};
                 border: 0;
                 border-radius: 7px;
                 padding: 12px 18px;
                 font-weight: 700;
                 font-size: 15px;
-            }
-            QPushButton:disabled {
-                background: #9ca3af;
-            }
+            }}
+            QPushButton:disabled {{
+                background: {theme.DISABLED};
+            }}
             """
         )
         self.setCentralWidget(root)

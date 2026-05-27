@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from onitama.ai.evaluate import EVALUATORS
 from onitama.engine.pieces import Player
+from onitama.gui import theme
 
 
 _DIFFICULTIES = (
@@ -33,11 +34,11 @@ padding: 8px 14px;
 border-radius: 14px;
 """
 
-_DETAIL_STYLE = """
+_DETAIL_STYLE = f"""
 font-size: 16px;
 font-weight: 700;
-color: #8a6b3f;
-background: transparent;
+color: {theme.TEXT_MUTED};
+background: {theme.TRANSPARENT};
 border: 0;
 padding: 6px 0;
 """
@@ -114,9 +115,9 @@ class SetupPage(QWidget):
         self._calibration_status.setStyleSheet(
             _STATUS_BASE_STYLE
             + (
-                "color: #24513a; background: #dcefe2; border: 1px solid #9cc8ad;"
+                f"color: {theme.SUCCESS_TEXT}; background: {theme.SUCCESS_BG}; border: 1px solid {theme.SUCCESS_BORDER};"
                 if ready
-                else "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+                else f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; border: 1px solid {theme.ERROR_BORDER};"
             )
         )
         self._calibration_detail.setText(
@@ -128,7 +129,8 @@ class SetupPage(QWidget):
     def set_calibration_running(self, script: Path) -> None:
         self._calibration_status.setText("Calibracion en curso")
         self._calibration_status.setStyleSheet(
-            _STATUS_BASE_STYLE + "color: #17385e; background: #dbeafe; border: 1px solid #93c5fd;"
+            _STATUS_BASE_STYLE
+            + f"color: {theme.BLUE_DEEP}; background: {theme.INFO_BG}; border: 1px solid {theme.INFO_BORDER};"
         )
         self._calibration_detail.setText(f"Ejecutando {script.name}. Cierra la ventana de OpenCV al terminar.")
         self._start_button.setEnabled(False)
@@ -136,7 +138,8 @@ class SetupPage(QWidget):
     def set_calibration_script_missing(self, script: Path) -> None:
         self._calibration_status.setText("No se encontro el script de calibracion")
         self._calibration_status.setStyleSheet(
-            _STATUS_BASE_STYLE + "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+            _STATUS_BASE_STYLE
+            + f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; border: 1px solid {theme.ERROR_BORDER};"
         )
         self._calibration_detail.setText(f"No se encuentra {script.name}")
         self._start_button.setEnabled(False)
@@ -147,159 +150,160 @@ class SetupPage(QWidget):
     def set_calibration_error(self, message: str) -> None:
         self._calibration_status.setText("La calibracion fallo")
         self._calibration_status.setStyleSheet(
-            _STATUS_BASE_STYLE + "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;"
+            _STATUS_BASE_STYLE
+            + f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; border: 1px solid {theme.ERROR_BORDER};"
         )
         self._calibration_detail.setText(message)
 
     def _build_layout(self) -> None:
         self.setStyleSheet(
-            """
-            QWidget#setupPage {
-                background: #f6f0e4;
-            }
-            QFrame#pageHeader {
-                background: transparent;
-            }
-            QFrame#setupPanel {
-                background: #f2ead8;
-                border: 2px solid #8a6b3f;
+            f"""
+            QWidget#setupPage {{
+                background: {theme.APP_BG};
+            }}
+            QFrame#pageHeader {{
+                background: {theme.TRANSPARENT};
+            }}
+            QFrame#setupPanel {{
+                background: {theme.SURFACE_ALT};
+                border: 2px solid {theme.BORDER};
                 border-radius: 18px;
-            }
-            QLabel#headerKicker {
-                color: #8b1f18;
+            }}
+            QLabel#headerKicker {{
+                color: {theme.RED_DEEP};
                 font-size: 24px;
                 font-weight: 900;
-            }
-            QLabel#headerTitle {
-                color: #1f2933;
+            }}
+            QLabel#headerTitle {{
+                color: {theme.TEXT};
                 font-size: 76px;
                 font-weight: 900;
-            }
-            QLabel#stepBadge {
-                background: #a7251d;
-                color: #fffaf0;
+            }}
+            QLabel#stepBadge {{
+                background: {theme.RED_ACTION_HOVER};
+                color: {theme.TEXT_INVERTED};
                 border-radius: 17px;
                 font-size: 18px;
                 font-weight: 900;
                 min-width: 34px;
                 min-height: 34px;
-            }
-            QLabel#fieldLabel {
-                color: #1f2933;
+            }}
+            QLabel#fieldLabel {{
+                color: {theme.TEXT};
                 font-size: 22px;
                 font-weight: 900;
-            }
-            QFrame#line {
-                background: #b08a4d;
+            }}
+            QFrame#line {{
+                background: {theme.LINE};
                 max-height: 1px;
-            }
+            }}
             QPushButton#redChoice,
-            QPushButton#blueChoice {
-                background: #fffaf0;
-                color: #1f2933;
-                border: 2px solid #b08a4d;
+            QPushButton#blueChoice {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT};
+                border: 2px solid {theme.LINE};
                 border-radius: 12px;
                 padding: 14px 18px;
                 font-size: 20px;
                 font-weight: 900;
                 text-align: center;
                 min-height: 52px;
-            }
-            QPushButton#redChoice:checked {
-                color: #a7251d;
-                border-color: #d32920;
-                background: #fffaf0;
-            }
-            QPushButton#blueChoice:checked {
-                color: #17385e;
-                border-color: #17385e;
-                background: #eef5fb;
-            }
-            QPushButton#choiceButton {
-                background: transparent;
-                color: #1f2933;
+            }}
+            QPushButton#redChoice:checked {{
+                color: {theme.RED_ACTION_HOVER};
+                border-color: {theme.RED_BORDER};
+                background: {theme.SURFACE};
+            }}
+            QPushButton#blueChoice:checked {{
+                color: {theme.BLUE_DEEP};
+                border-color: {theme.BLUE_DEEP};
+                background: {theme.BLUE_SOFT};
+            }}
+            QPushButton#choiceButton {{
+                background: {theme.TRANSPARENT};
+                color: {theme.TEXT};
                 border: 0;
                 border-radius: 21px;
                 padding: 12px 20px;
                 font-size: 20px;
                 font-weight: 900;
                 min-height: 42px;
-            }
-            QPushButton#choiceButton:checked {
-                background: #2b5d8a;
-                color: #fffaf0;
+            }}
+            QPushButton#choiceButton:checked {{
+                background: {theme.BLUE_ACTION};
+                color: {theme.TEXT_INVERTED};
                 border-radius: 21px;
-            }
-            QFrame#segmentedControl {
-                background: #fffaf0;
-                border: 1px solid #8a6b3f;
+            }}
+            QFrame#segmentedControl {{
+                background: {theme.SURFACE};
+                border: 1px solid {theme.BORDER};
                 border-radius: 23px;
-            }
-            QPushButton {
-                background: #fffaf0;
-                color: #1f2933;
-                border: 1px solid #8a6b3f;
+            }}
+            QPushButton {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT};
+                border: 1px solid {theme.BORDER};
                 border-radius: 7px;
                 padding: 12px 16px;
                 font-weight: 900;
                 font-size: 18px;
-            }
-            QPushButton:disabled {
-                background: #f2ead8;
-                color: #8a6b3f;
-                border-color: #b08a4d;
-            }
+            }}
+            QPushButton:disabled {{
+                background: {theme.SURFACE_ALT};
+                color: {theme.TEXT_MUTED};
+                border-color: {theme.LINE};
+            }}
             QPushButton:hover,
             QPushButton#primaryAction:hover,
             QPushButton#quietAction:hover,
-            QPushButton#refreshAction:hover {
-                background: #b08a4d;
-                color: #fffaf0;
-            }
-            QPushButton#redChoice:hover {
-                background: #fffaf0;
-                color: #1f2933;
-            }
-            QPushButton#redChoice:checked:hover {
-                color: #a7251d;
-            }
-            QPushButton#blueChoice:hover {
-                background: #fffaf0;
-                color: #1f2933;
-            }
-            QPushButton#blueChoice:checked:hover {
-                color: #17385e;
-                background: #eef5fb;
-            }
-            QPushButton#choiceButton:hover {
-                background: transparent;
-                color: #1f2933;
-            }
-            QPushButton#choiceButton:checked:hover {
-                background: #2b5d8a;
-                color: #fffaf0;
-            }
-            QPushButton#primaryAction {
-                background: #c72920;
-                color: #fffaf0;
-                border: 2px solid #8b1f18;
+            QPushButton#refreshAction:hover {{
+                background: {theme.LINE};
+                color: {theme.TEXT_INVERTED};
+            }}
+            QPushButton#redChoice:hover {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT};
+            }}
+            QPushButton#redChoice:checked:hover {{
+                color: {theme.RED_ACTION_HOVER};
+            }}
+            QPushButton#blueChoice:hover {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT};
+            }}
+            QPushButton#blueChoice:checked:hover {{
+                color: {theme.BLUE_DEEP};
+                background: {theme.BLUE_SOFT};
+            }}
+            QPushButton#choiceButton:hover {{
+                background: {theme.TRANSPARENT};
+                color: {theme.TEXT};
+            }}
+            QPushButton#choiceButton:checked:hover {{
+                background: {theme.BLUE_ACTION};
+                color: {theme.TEXT_INVERTED};
+            }}
+            QPushButton#primaryAction {{
+                background: {theme.RED_ACTION};
+                color: {theme.TEXT_INVERTED};
+                border: 2px solid {theme.RED_DEEP};
                 border-radius: 14px;
                 font-size: 22px;
                 padding: 16px 24px;
-            }
-            QPushButton#primaryAction:hover {
-                background: #a7251d;
-                color: #fffaf0;
-            }
-            QPushButton#quietAction {
-                background: #fffaf0;
-                color: #8a6b3f;
-                border: 1px solid #8a6b3f;
-            }
-            QPushButton#refreshAction {
-                background: #fffaf0;
-                color: #8a6b3f;
-            }
+            }}
+            QPushButton#primaryAction:hover {{
+                background: {theme.RED_ACTION_HOVER};
+                color: {theme.TEXT_INVERTED};
+            }}
+            QPushButton#quietAction {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT_MUTED};
+                border: 1px solid {theme.BORDER};
+            }}
+            QPushButton#refreshAction {{
+                background: {theme.SURFACE};
+                color: {theme.TEXT_MUTED};
+            }}
             """
         )
 
@@ -332,7 +336,7 @@ class SetupPage(QWidget):
         controls.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         shadow = QGraphicsDropShadowEffect(controls)
         shadow.setBlurRadius(26)
-        shadow.setColor(QColor(75, 54, 33, 70))
+        shadow.setColor(QColor(*theme.SHADOW_RGBA))
         shadow.setOffset(0, 8)
         controls.setGraphicsEffect(shadow)
 

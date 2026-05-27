@@ -6,28 +6,23 @@ from PySide6.QtCore import QPoint, QRect, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPixmap, QWheelEvent
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
+from onitama.gui import theme
 from onitama.vision.card_rois import Quad, SlotName
 
 
 CAMERA_WIDTH = 1280
 CAMERA_HEIGHT = 720
 CAMERA_FPS = 30
-BOARD_LINE_BGR = (88, 185, 240)
-BOARD_POINT_BGR = (74, 86, 224)
+BOARD_LINE_BGR = theme.BOARD_LINE_BGR
+BOARD_POINT_BGR = theme.BOARD_POINT_BGR
 BOARD_DEFAULT_ROTATION = 90
 CARD_VERTEX_PICK_RADIUS = 24.0
 CARD_CANVAS_PADDING = 80
-CARD_MARGIN_BGR = (185, 200, 210)
-OVERLAY_WHITE_BGR = (246, 244, 238)
-OVERLAY_DARK_BGR = (58, 62, 70)
-CARD_ACTIVE_COLOR_BGR: dict[SlotName, tuple[int, int, int]] = {
-    "red_0": (78, 88, 218),
-    "red_1": (78, 88, 218),
-    "side": (74, 174, 224),
-    "blue_0": (190, 122, 50),
-    "blue_1": (190, 122, 50),
-}
-CARD_INACTIVE_BGR = (164, 166, 170)
+CARD_MARGIN_BGR = theme.CARD_MARGIN_BGR
+OVERLAY_WHITE_BGR = theme.OVERLAY_WHITE_BGR
+OVERLAY_DARK_BGR = theme.OVERLAY_DARK_BGR
+CARD_ACTIVE_COLOR_BGR = theme.CARD_ACTIVE_COLOR_BGR
+CARD_INACTIVE_BGR = theme.CARD_INACTIVE_BGR
 SLOT_DISPLAY_LABEL: dict[SlotName, str] = {
     "red_0": "Roja Arriba",
     "red_1": "Roja Abajo",
@@ -85,7 +80,7 @@ class CameraImageView(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumSize(900, 520)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.setStyleSheet("background: transparent; color: #1f2933;")
+        self.setStyleSheet(f"background: {theme.TRANSPARENT}; color: {theme.TEXT};")
         self._image = QImage()
         self._pixmap = QPixmap()
         self._zoom = 1.0
@@ -103,7 +98,7 @@ class CameraImageView(QLabel):
             super().paintEvent(event)
             return
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#f6f0e4"))
+        painter.fillRect(self.rect(), QColor(theme.APP_BG))
         painter.drawPixmap(self._pixmap_rect().topLeft(), self._pixmap)
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
@@ -315,9 +310,18 @@ class CalibrationDialogBase(QDialog):
 
     def _show_feedback(self, text: str, *, tone: str = "success", timeout_ms: int = 2200) -> None:
         styles = {
-            "success": "color: #24513a; background: #dcefe2; border: 1px solid #9cc8ad;",
-            "warning": "color: #8a5a10; background: #fff4d6; border: 1px solid #e6c77a;",
-            "error": "color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5;",
+            "success": (
+                f"color: {theme.SUCCESS_TEXT}; background: {theme.SUCCESS_BG}; "
+                f"border: 1px solid {theme.SUCCESS_BORDER};"
+            ),
+            "warning": (
+                f"color: {theme.WARNING_TEXT}; background: {theme.WARNING_BG}; "
+                f"border: 1px solid {theme.WARNING_BORDER};"
+            ),
+            "error": (
+                f"color: {theme.RED_DARK}; background: {theme.ERROR_BG}; "
+                f"border: 1px solid {theme.ERROR_BORDER};"
+            ),
         }
         self._feedback_timer.stop()
         self._feedback_label.setText(text)
@@ -484,53 +488,53 @@ def qimage_from_bgr_frame(frame: np.ndarray) -> QImage:
 
 
 def dialog_stylesheet() -> str:
-    return """
-        QDialog {
-            background: #f6f0e4;
-        }
-        QLabel {
-            color: #1f2933;
+    return f"""
+        QDialog {{
+            background: {theme.APP_BG};
+        }}
+        QLabel {{
+            color: {theme.TEXT};
             font-size: 15px;
-        }
-        QLabel#helpText {
+        }}
+        QLabel#helpText {{
             font-size: 17px;
             font-weight: 700;
-            color: #5f4c2d;
-        }
-        QPushButton {
-            background: #fffaf0;
-            color: #1f2933;
-            border: 1px solid #8a6b3f;
+            color: {theme.TEXT_SUBTLE};
+        }}
+        QPushButton {{
+            background: {theme.SURFACE};
+            color: {theme.TEXT};
+            border: 1px solid {theme.BORDER};
             border-radius: 7px;
             padding: 10px 14px;
             font-weight: 800;
             font-size: 15px;
-        }
-        QPushButton:checked {
-            background: #2b5d8a;
-            color: #fffaf0;
-        }
-        QPushButton#redCardSlot:checked {
-            background: #c72920;
-            color: #fffaf0;
-            border-color: #8b1f18;
-        }
-        QPushButton#sideCardSlot:checked {
-            background: #b08a4d;
-            color: #fffaf0;
-            border-color: #8a6b3f;
-        }
-        QPushButton#blueCardSlot:checked {
-            background: #2b5d8a;
-            color: #fffaf0;
-            border-color: #17385e;
-        }
-        QPushButton:disabled {
-            background: #f2ead8;
-            color: #8a6b3f;
-        }
-        QLabel#feedbackLabel {
+        }}
+        QPushButton:checked {{
+            background: {theme.BLUE_ACTION};
+            color: {theme.TEXT_INVERTED};
+        }}
+        QPushButton#redCardSlot:checked {{
+            background: {theme.RED_ACTION};
+            color: {theme.TEXT_INVERTED};
+            border-color: {theme.RED_DEEP};
+        }}
+        QPushButton#sideCardSlot:checked {{
+            background: {theme.LINE};
+            color: {theme.TEXT_INVERTED};
+            border-color: {theme.BORDER};
+        }}
+        QPushButton#blueCardSlot:checked {{
+            background: {theme.BLUE_ACTION};
+            color: {theme.TEXT_INVERTED};
+            border-color: {theme.BLUE_DEEP};
+        }}
+        QPushButton:disabled {{
+            background: {theme.SURFACE_ALT};
+            color: {theme.TEXT_MUTED};
+        }}
+        QLabel#feedbackLabel {{
             margin-top: 2px;
             margin-bottom: 2px;
-        }
+        }}
     """
