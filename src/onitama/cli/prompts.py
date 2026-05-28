@@ -22,7 +22,7 @@ def prompt_int(prompt: str, default: int, lo: int, hi: int) -> int:
 def prompt_choice(prompt: str, options: list[str], default_index: int = 0) -> str:
     assert options, "Options must not be empty."
     while True:
-        print(prompt)
+        print(f"\n{prompt}")
         for index, option in enumerate(options, start=1):
             mark = " (default)" if (index - 1) == default_index else ""
             print(f"  {index}) {option}{mark}")

@@ -14,11 +14,18 @@ from onitama.engine.state import GameState
 class AIController(Controller):
     depth: int
     evaluator_name: str
+    q_depth: int = 2
     # One TT per controller instance (no shared mutable default).
     tt: TranspositionTable = field(default_factory=dict)
 
     def select_action(self, state: GameState) -> Action:
         evaluator: Evaluator = get_evaluator(self.evaluator_name)
-        action = choose_action(state, depth=self.depth, evaluator=evaluator, tt=self.tt)
+        action = choose_action(
+            state,
+            depth=self.depth,
+            evaluator=evaluator,
+            q_depth=self.q_depth,
+            tt=self.tt,
+        )
         assert action is not None, "AIController was asked to move in a terminal state."
         return action

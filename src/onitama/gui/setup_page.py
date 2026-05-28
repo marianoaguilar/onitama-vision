@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -16,16 +17,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from onitama.ai.evaluate import EVALUATORS
+from onitama.ai.profiles import AI_PROFILES, DEFAULT_AI_PROFILE_ID
 from onitama.engine.pieces import Player
 from onitama.gui import theme
 
-
-_DIFFICULTIES = (
-    ("Fácil", "v1"),
-    ("Media", "v2"),
-    ("Difícil", "v3"),
-)
 
 _STATUS_BASE_STYLE = """
 font-size: 18px;
@@ -56,10 +51,8 @@ class SetupPage(QWidget):
         self.setObjectName("setupPage")
 
         self._human_player = Player.RED
-        self._evaluator_options = [(label, name) for label, name in _DIFFICULTIES if name in EVALUATORS]
-        if not self._evaluator_options:
-            self._evaluator_options = [(name, name) for name in sorted(EVALUATORS.keys())]
-        self._ai_evaluator = self._evaluator_options[-1][1]
+        self._profile_options = [(profile.label, profile.id) for profile in AI_PROFILES.values()]
+        self._ai_profile_id = DEFAULT_AI_PROFILE_ID
 
         self._color_group = QButtonGroup(self)
         self._color_group.setExclusive(True)
@@ -91,8 +84,8 @@ class SetupPage(QWidget):
     def human_player(self) -> Player:
         return self._human_player
 
-    def ai_evaluator(self) -> str:
-        return self._ai_evaluator
+    def ai_profile_id(self) -> str:
+        return self._ai_profile_id
 
     def set_controls_enabled(self, enabled: bool) -> None:
         for button in self._color_buttons + self._difficulty_buttons:
@@ -425,15 +418,23 @@ class SetupPage(QWidget):
         layout.setSpacing(0)
 
         self._difficulty_buttons = []
-        for index, (label, evaluator_name) in enumerate(self._evaluator_options):
+        for index, (label, profile_id) in enumerate(self._profile_options):
             button = self._build_choice_button(label, "choiceButton")
             self._difficulty_group.addButton(button, index)
-            button.clicked.connect(lambda _checked=False, name=evaluator_name: self._set_ai_evaluator(name))
+            button.clicked.connect(partial(self._set_ai_profile, profile_id))
             self._difficulty_buttons.append(button)
             layout.addWidget(button)
 
-        if self._difficulty_buttons:
-            self._difficulty_buttons[-1].setChecked(True)
+        default_index = next(
+            (
+                index
+                for index, (_label, profile_id) in enumerate(self._profile_options)
+                if profile_id == DEFAULT_AI_PROFILE_ID
+            ),
+            len(self._difficulty_buttons) - 1,
+        )
+        if 0 <= default_index < len(self._difficulty_buttons):
+            self._difficulty_buttons[default_index].setChecked(True)
         return frame
 
     def _build_calibration_card(self) -> QWidget:
@@ -486,8 +487,8 @@ class SetupPage(QWidget):
     def _set_human_player(self, player: Player) -> None:
         self._human_player = player
 
-    def _set_ai_evaluator(self, evaluator_name: str) -> None:
-        self._ai_evaluator = evaluator_name
+    def _set_ai_profile(self, profile_id: str, _checked: bool = False) -> None:
+        self._ai_profile_id = profile_id
 
     def _separator(self) -> QFrame:
         line = QFrame()

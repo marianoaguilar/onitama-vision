@@ -164,7 +164,11 @@ class VisionGameRuntime:
         return self._latest_frame
 
     def _build_session(self, config: VisionRuntimeConfig) -> VisionGameSession:
-        ai_controller = AIController(depth=config.ai_depth, evaluator_name=config.ai_evaluator)
+        ai_controller = AIController(
+            depth=config.ai_depth,
+            evaluator_name=config.ai_evaluator,
+            q_depth=config.ai_q_depth,
+        )
         return VisionGameSession(
             human_player=config.human_player,
             ai_player=config.ai_player,

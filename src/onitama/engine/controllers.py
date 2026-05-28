@@ -9,7 +9,7 @@ from onitama.engine.state import GameState
 class Controller(Protocol):
     """
     A controller decides an action given the current state.
-    This keeps the game loop decoupled from CLI / AI / vision.
+    This keeps the game loop decoupled from CLI and AI.
     """
 
     def select_action(self, state: GameState) -> Action:

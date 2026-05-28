@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from onitama.runtime.vision_models import VisionRuntimeConfig, VisionRuntimeState
+from onitama.ai.profiles import get_ai_profile
 from onitama.engine.moves import Move
 from onitama.engine.pieces import Player
 from onitama.gui.camera_window import CameraWindow
@@ -36,7 +37,6 @@ _CALIBRATION_PATH = Path("data/vision/calibration.json")
 _CARD_ROIS_PATH = Path("data/vision/card_rois.json")
 _CARD_ROI_SLOTS = ("red_0", "red_1", "side", "blue_0", "blue_1")
 _DEFAULT_REQUIRED_REPEATS = 3
-_DEFAULT_AI_DEPTH = 5
 
 
 class MainWindow(QMainWindow):
@@ -224,11 +224,13 @@ class MainWindow(QMainWindow):
         worker.start()
 
     def _build_config(self) -> VisionRuntimeConfig:
+        ai_profile = get_ai_profile(self._setup_page.ai_profile_id())
         return VisionRuntimeConfig(
             human_player=self._setup_page.human_player(),
             required_repeats=_DEFAULT_REQUIRED_REPEATS,
-            ai_depth=_DEFAULT_AI_DEPTH,
-            ai_evaluator=self._setup_page.ai_evaluator(),
+            ai_depth=ai_profile.depth,
+            ai_evaluator=ai_profile.evaluator_name,
+            ai_q_depth=ai_profile.q_depth,
         )
 
     def _update_card_column_labels(self) -> None:

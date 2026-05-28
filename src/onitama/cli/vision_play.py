@@ -29,13 +29,14 @@ def prompt_vision_config() -> VisionRuntimeConfig:
     required_repeats = prompt_int("Stable repeats required", default=4, lo=1, hi=10)
 
     human_choice = prompt_choice(
-        "\nHuman side:",
+        "Human side:",
         options=["RED", "BLUE"],
         default_index=0,
     )
     human_player = Player.RED if human_choice == "RED" else Player.BLUE
 
     ai_depth = prompt_int("AI depth", default=5, lo=1, hi=8)
+    ai_q_depth = prompt_int("AI quiescence depth", default=2, lo=0, hi=6)
     eval_names = sorted(EVALUATORS.keys())
     default_eval_index = min(2, len(eval_names) - 1)
     ai_evaluator = prompt_choice(
@@ -49,6 +50,7 @@ def prompt_vision_config() -> VisionRuntimeConfig:
     print(f"  AI player    : {human_player.opponent().value}")
     print(f"  Stable reps  : {required_repeats}")
     print(f"  AI depth     : {ai_depth}")
+    print(f"  AI q-depth   : {ai_q_depth}")
     print(f"  AI evaluator : {ai_evaluator}")
     input("\nPress Enter to start vision play...")
 
@@ -57,6 +59,7 @@ def prompt_vision_config() -> VisionRuntimeConfig:
         required_repeats=required_repeats,
         ai_depth=ai_depth,
         ai_evaluator=ai_evaluator,
+        ai_q_depth=ai_q_depth,
     )
 
 

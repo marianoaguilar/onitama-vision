@@ -21,6 +21,7 @@ class GameConfig:
 
 def _prompt_ai_settings(player_name: str) -> AIController:
     depth = prompt_int(f"{player_name} AI depth", default=5, lo=1, hi=8)
+    q_depth = prompt_int(f"{player_name} AI quiescence depth", default=2, lo=0, hi=6)
 
     eval_names = sorted(EVALUATORS.keys())
     eval_name = prompt_choice(
@@ -29,7 +30,7 @@ def _prompt_ai_settings(player_name: str) -> AIController:
         default_index=2,
     )
 
-    return AIController(depth=depth, evaluator_name=eval_name)
+    return AIController(depth=depth, evaluator_name=eval_name, q_depth=q_depth)
 
 
 def prompt_game_config() -> GameConfig:
@@ -58,12 +59,18 @@ def prompt_game_config() -> GameConfig:
 
     print("\nConfiguration:")
     if isinstance(red_controller, AIController):
-        print(f"  RED : AI | depth={red_controller.depth} | eval={red_controller.evaluator_name}")
+        print(
+            f"  RED : AI | depth={red_controller.depth} | "
+            f"q-depth={red_controller.q_depth} | eval={red_controller.evaluator_name}"
+        )
     else:
         print("  RED : Human")
 
     if isinstance(blue_controller, AIController):
-        print(f"  BLUE: AI | depth={blue_controller.depth} | eval={blue_controller.evaluator_name}")
+        print(
+            f"  BLUE: AI | depth={blue_controller.depth} | "
+            f"q-depth={blue_controller.q_depth} | eval={blue_controller.evaluator_name}"
+        )
     else:
         print("  BLUE: Human")
 

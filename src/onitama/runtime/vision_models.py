@@ -21,6 +21,7 @@ class VisionRuntimeConfig:
     required_repeats: int
     ai_depth: int
     ai_evaluator: str
+    ai_q_depth: int = 2
     camera_device: int = 0
     camera_width: int = 1280
     camera_height: int = 720
@@ -35,6 +36,8 @@ class VisionRuntimeConfig:
             raise VisionConfigurationError("required_repeats must be >= 1.")
         if self.ai_depth < 1:
             raise VisionConfigurationError("ai_depth must be >= 1.")
+        if self.ai_q_depth < 0:
+            raise VisionConfigurationError("ai_q_depth must be >= 0.")
         if self.camera_width < 1:
             raise VisionConfigurationError("camera_width must be >= 1.")
         if self.camera_height < 1:
