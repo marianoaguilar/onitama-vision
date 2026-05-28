@@ -17,13 +17,16 @@ class AIController(Controller):
     q_depth: int = 2
     # One TT per controller instance (no shared mutable default).
     tt: TranspositionTable = field(default_factory=dict)
+    evaluator: Evaluator = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.evaluator = get_evaluator(self.evaluator_name)
 
     def select_action(self, state: GameState) -> Action:
-        evaluator: Evaluator = get_evaluator(self.evaluator_name)
         action = choose_action(
             state,
             depth=self.depth,
-            evaluator=evaluator,
+            evaluator=self.evaluator,
             q_depth=self.q_depth,
             tt=self.tt,
         )
