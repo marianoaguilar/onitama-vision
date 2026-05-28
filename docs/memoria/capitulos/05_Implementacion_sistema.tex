@@ -3,6 +3,7 @@
 
 Este capítulo describe cómo se ha implementado el sistema a partir del diseño presentado anteriormente. Para ello, se expone primero el entorno tecnológico empleado y la organización general del repositorio. A continuación, se detalla la implementación de los principales componentes de la aplicación.
 
+
 %==============================================================================
 % 5.1 Organización general del proyecto
 % =============================================================================
@@ -120,6 +121,7 @@ El agente de inteligencia artificial se implementa en el paquete \texttt{onitama
     \item \texttt{agent.py}: selección de acciones mediante \texttt{choose\_action()}.
     \item \texttt{search.py}: búsqueda adversarial y optimizaciones.
     \item \texttt{evaluate.py}: funciones heurísticas de evaluación.
+    \item \texttt{profiles.py}: perfiles de dificultad del agente.
     \item \texttt{controllers.py}: adaptación del agente mediante \texttt{AIController}.
 \end{itemize}
 
@@ -139,14 +141,16 @@ El punto de entrada del agente es \texttt{choose\_action()}. Esta función recib
 
 La búsqueda trabaja siempre sobre sucesores creados con \texttt{apply\_action()}, por lo que cada nodo explorado corresponde a un estado legal generado por el motor.
 
-La clase \texttt{AIController} permite utilizar el agente dentro del mismo protocolo que el resto de controladores del sistema. Almacena la profundidad de búsqueda, el nombre del evaluador y una tabla de transposición propia. Su método \texttt{select\_action()} obtiene el evaluador configurado y delega la decisión en \texttt{choose\_action()}.
+La clase \texttt{AIController} adapta el agente al protocolo común de controladores del sistema. Su configuración incluye la profundidad de búsqueda, el nombre del evaluador y la profundidad quiescente. Durante la inicialización obtiene el evaluador correspondiente mediante \texttt{get\_evaluator()} y mantiene una tabla de transposición propia para reutilizar información entre turnos. En cada llamada a \texttt{select\_action()}, delega la selección en \texttt{choose\_action()}.
 
 \subsection{Búsqueda y evaluación}
 \label{subsec:busqueda-evaluacion-ia}
 
-La búsqueda se implementa principalmente en \texttt{search.py}, mediante la función \texttt{alphabeta()}. Esta función recibe el estado, la profundidad restante, los valores \texttt{alpha} y \texttt{beta}, la perspectiva del jugador raíz, el evaluador y las estructuras auxiliares de búsqueda.
+La búsqueda se implementa en \texttt{search.py} mediante \texttt{alphabeta()}, siguiendo una formulación \textit{negamax} con poda alfa-beta. La función recibe el estado, la profundidad restante, los valores \texttt{alpha} y \texttt{beta}, la perspectiva del jugador raíz, el evaluador y las estructuras auxiliares de búsqueda.
 
-En la implementación se han incorporado varias optimizaciones, aplicadas directamente sobre el recorrido del árbol:
+\subsubsection{Optimización de la búsqueda}
+
+En la implementación se han incorporado varias optimizaciones aplicadas directamente sobre el recorrido del árbol:
 
 \begin{itemize}
     \item \textbf{Tabla de transposición}: definida como \texttt{dict[GameState, TTEntry]}. Cada entrada almacena profundidad, valor, tipo de cota y mejor acción encontrada.
@@ -158,15 +162,42 @@ En la implementación se han incorporado varias optimizaciones, aplicadas direct
 
 Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, como \texttt{depth}, \texttt{use\_tt}, \texttt{use\_iterative\_deepening}, \texttt{aspiration\_window} y \texttt{q\_depth}. Esta organización permite activar, desactivar o ajustar partes de la búsqueda desde herramientas de evaluación sin modificar el motor.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% REVISAR ESTA PARTE Y ACTUALIZAR CUANDO TENGAMOS BIEN DEFINIDOS LOS NIVELES DE DIFICULTAD Y LOS PERFILES DE CONFIGURACIÓN.
-% QUIZÁ ME GUSTARIA EXPLICAR UN POCO MÁS LA DIFERENCIA ENTRE LAS HEURÍSTICAS.
-Las funciones de evaluación se definen en \texttt{evaluate.py}. Todas cumplen el contrato \texttt{Evaluator}, es decir, reciben un \texttt{GameState} y un jugador de referencia, y devuelven una puntuación entera desde esa perspectiva. El módulo incluye tres versiones principales, \texttt{evaluate\_v1()}, \texttt{evaluate\_v2()} y \texttt{evaluate\_v3()}, registradas en \texttt{EVALUATORS} y accesibles mediante \texttt{get\_evaluator()}.
+\subsubsection{Funciones de evaluación}
 
-Estas versiones reflejan la evolución seguida durante el desarrollo de la heurística. La primera versión parte de criterios básicos como material, avance del maestro y amenazas directas. Las versiones posteriores incorporan pesos configurables, movilidad, centralidad, avance de estudiantes y tablas posicionales dependientes de la fase de partida.
+Las funciones de evaluación se definen en \texttt{evaluate.py}. Todas cumplen el contrato \texttt{Evaluator}: reciben un \texttt{GameState} y un jugador de referencia, y devuelven una puntuación entera desde esa perspectiva. El módulo incluye tres versiones principales, registradas en \texttt{EVALUATORS} y accesibles mediante \texttt{get\_evaluator()}.
 
-En la memoria no se interpretan estas tres heurísticas como niveles definitivos de dificultad, sino como versiones de evaluación disponibles en el código. Los perfiles finales de dificultad pueden definirse combinando evaluador, profundidad de búsqueda y parámetros como \texttt{q\_depth} o el uso de tabla de transposición. La comparación entre configuraciones se reserva para el capítulo de experimentación.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{description}
+    \item[\texttt{evaluate\_v1()}] Primera versión de la heurística. Valora la diferencia material, el progreso relativo del maestro hacia el templo rival, las amenazas directas sobre el maestro propio y los estudiantes propios amenazados.
+
+    \item[\texttt{evaluate\_v2()}] Extiende la versión anterior mediante una estructura de pesos configurable, \texttt{EvalWeightsV2}. Añade valoración ofensiva de amenazas sobre piezas rivales, movilidad, centralidad de estudiantes y avance hacia el campo contrario.
+
+    \item[\texttt{evaluate\_v3()}] Incorpora una evaluación dependiente de la fase de partida. Calcula un factor de final de partida a partir del número de estudiantes restantes y lo utiliza para ajustar términos como el progreso del maestro, la movilidad y las tablas posicionales aplicadas a estudiantes y maestros, que sustituyen a la centralidad y avance explícitos de la versión anterior.
+\end{description}
+
+Los valores concretos de los pesos, el proceso de ajuste de la heurística y la comparación entre versiones se abordan en el capítulo de experimentación.
+
+\subsubsection{Perfiles de dificultad}
+
+Los niveles de dificultad no se asocian directamente a las versiones de evaluación. En su lugar, se definen perfiles específicos en \texttt{profiles.py}. Cada perfil establece los parámetros efectivos del agente: evaluador utilizado, profundidad principal de búsqueda y profundidad quiescente.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l l c c}
+\hline
+\textbf{Dificultad} & \textbf{Evaluador} & \textbf{Prof. principal} & \textbf{Prof. quiescente} \\
+\hline
+Fácil & \texttt{v3} & 1 & 0 \\
+Media & \texttt{v3} & 3 & 1 \\
+Difícil & \texttt{v3} & 5 & 2 \\
+\hline
+\end{tabular}
+\caption{Perfiles de dificultad definidos para el agente de inteligencia artificial.}
+\label{tab:perfiles-dificultad-ia}
+\end{table}
+
+Los tres perfiles utilizan el mismo evaluador, \texttt{v3}, y modifican los valores de las profundidades. De esta forma, la dificultad se representa como una configuración del agente, no como una versión distinta de la heurística.
+
+La elección y evaluación de estos perfiles se aborda en el capítulo de experimentación.
 
 
 %==============================================================================
@@ -375,7 +406,7 @@ La configuración del runtime se representa mediante \texttt{VisionRuntimeConfig
 \begin{itemize}
     \item Jugador humano seleccionado.
     \item Número de repeticiones necesarias para estabilizar una observación.
-    \item Profundidad y evaluador del agente de IA.
+    \item Evaluador, profundidad de búsqueda y profundidad de búsqueda quiescente obtenidos a partir del perfil de dificultad seleccionado.
     \item Dispositivo de cámara, resolución y tasa de frames.
 \end{itemize}
 
@@ -455,7 +486,7 @@ Antes de habilitar el inicio de partida, la interfaz comprueba que ambos fichero
 \vspace{0.3cm}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{imagenes/gui_setup.png}
+\includegraphics[width=1\textwidth]{imagenes/gui_setup.png}
 \caption{Pantalla de configuración inicial de la aplicación.}
 \label{fig:gui-setup}
 \end{figure}
@@ -482,10 +513,11 @@ La aplicación también puede abrir una ventana secundaria de cámara mediante \
 \vspace{0.3cm}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{imagenes/gui_partida.png}
+\includegraphics[width=1\textwidth]{imagenes/gui_partida.png}
 \caption{Vista principal de partida asistida por visión.}
 \label{fig:gui-partida}
 \end{figure}
+
 
 %==============================================================================
 % 5.7 Interfaces auxiliares y herramientas de desarrollo
