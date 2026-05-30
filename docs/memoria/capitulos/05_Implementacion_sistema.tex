@@ -160,25 +160,70 @@ En la implementación se han incorporado varias optimizaciones aplicadas directa
     \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis únicamente sobre acciones de captura.
 \end{itemize}
 
-Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, como \texttt{depth}, \texttt{use\_tt}, \texttt{use\_iterative\_deepening}, \texttt{aspiration\_window} y \texttt{q\_depth}. Esta organización permite activar, desactivar o ajustar partes de la búsqueda desde herramientas de evaluación sin modificar el motor.
+Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, como \texttt{depth}, \texttt{use\_tt}, \texttt{use\_iterative\_deepening}, \texttt{aspiration\_window} y \texttt{q\_depth}. De este modo, la misma implementación de búsqueda puede ejecutarse con distintas configuraciones, facilitando su análisis posterior.
+
+La búsqueda determina qué estados se alcanzan durante la exploración, mientras que la función de evaluación determina cómo se valoran los estados situados en la frontera del árbol. Por ello, el evaluador utilizado influye directamente en la acción finalmente seleccionada por el agente.
 
 \subsubsection{Funciones de evaluación}
 
-Las funciones de evaluación se definen en \texttt{evaluate.py}. Todas cumplen el contrato \texttt{Evaluator}: reciben un \texttt{GameState} y un jugador de referencia, y devuelven una puntuación entera desde esa perspectiva. El módulo incluye tres versiones principales, registradas en \texttt{EVALUATORS} y accesibles mediante \texttt{get\_evaluator()}.
+Las funciones de evaluación se definen en \texttt{evaluate.py} y comparten una misma interfaz: reciben un \texttt{GameState} y un jugador de referencia, y devuelven una puntuación entera desde esa perspectiva. Esta interfaz permite ejecutar el algoritmo de búsqueda con distintos evaluadores sin modificar su implementación.
+
+Todos los evaluadores tratan de forma especial los estados terminales: si la posición ya está ganada o perdida, se devuelve un valor absoluto mediante \texttt{WIN\_SCORE}, evitando que cualquier combinación de factores heurísticos tenga prioridad sobre una victoria o derrota real.
+
+En los estados no terminales, las puntuaciones se organizan por escalas: las situaciones decisivas, como las amenazas directas sobre el maestro, reciben valores muy superiores a los criterios posicionales, como movilidad, centralidad o avance. Esta separación evita que pequeñas ventajas estratégicas compensen posiciones tácticamente peligrosas.
+
+Sobre esta base, se implementan las siguientes versiones:
 
 \begin{description}
-    \item[\texttt{evaluate\_v1()}] Primera versión de la heurística. Valora la diferencia material, el progreso relativo del maestro hacia el templo rival, las amenazas directas sobre el maestro propio y los estudiantes propios amenazados.
+    \item[\texttt{evaluate\_v1()}] Constituye la primera versión de la heurística y actúa como referencia inicial. Su evaluación se centra en factores básicos y tácticos:
+    \begin{itemize}
+        \item diferencia material entre estudiantes propios y rivales;
+        \item progreso relativo del maestro hacia el templo contrario, aproximado mediante la distancia \textit{Manhattan};
+        \item penalización de amenazas directas sobre el maestro propio;
+        \item penalización de estudiantes propios situados en casillas atacadas por el rival.
+    \end{itemize}
 
-    \item[\texttt{evaluate\_v2()}] Extiende la versión anterior mediante una estructura de pesos configurable, \texttt{EvalWeightsV2}. Añade valoración ofensiva de amenazas sobre piezas rivales, movilidad, centralidad de estudiantes y avance hacia el campo contrario.
+    El progreso del maestro aproxima la cercanía a una de las condiciones de victoria, mientras que las penalizaciones tácticas evitan valorar positivamente posiciones en las que las piezas propias quedan expuestas.
 
-    \item[\texttt{evaluate\_v3()}] Incorpora una evaluación dependiente de la fase de partida. Calcula un factor de final de partida a partir del número de estudiantes restantes y lo utiliza para ajustar términos como el progreso del maestro, la movilidad y las tablas posicionales aplicadas a estudiantes y maestros, que sustituyen a la centralidad y avance explícitos de la versión anterior.
+    \item[\texttt{evaluate\_v2()}] Extiende la versión anterior mediante una estructura de pesos configurable, \texttt{EvalWeightsV2}. Esta organización permite ajustar la importancia relativa de cada criterio sin modificar la lógica general de la evaluación.
+
+    Además de los factores considerados en \texttt{evaluate\_v1()}, esta versión incorpora:
+    \begin{itemize}
+        \item valoración ofensiva de amenazas sobre el maestro rival;
+        \item penalización y recompensa de estudiantes amenazados en ambos sentidos;
+        \item movilidad, medida a partir de la diferencia de movimientos legales disponibles;
+        \item centralidad de los estudiantes en el tablero;
+        \item avance de las piezas hacia el campo contrario.
+    \end{itemize}
+
+    Con estos cambios, la evaluación incorpora información sobre presión ofensiva, capacidad de acción y ocupación posicional del tablero, además de los criterios tácticos y materiales de la versión inicial.
+
+    \item[\texttt{evaluate\_v3()}] Introduce una evaluación dependiente de la fase de partida. Para ello, estima un factor de final de partida a partir del número total de estudiantes restantes:
+
+    \begin{center}
+    \texttt{total\_students = my\_students + opp\_students}
+
+    \texttt{endgame = 1.0 - (total\_students / 8.0)}
+    \end{center}
+
+    Cuando permanecen los ocho estudiantes sobre el tablero, el valor de \texttt{endgame} es cero; a medida que se capturan estudiantes, el valor aumenta y la evaluación se aproxima a una fase final.
+
+    Esta versión mantiene la valoración material y las amenazas sobre maestros y estudiantes, pero ajusta parte de sus criterios según la fase de partida:
+    \begin{itemize}
+        \item el progreso del maestro gana importancia en fases finales;
+        \item la movilidad tiene más peso en fases iniciales y menos en finales;
+        \item los criterios explícitos de centralidad y avance se sustituyen por tablas posicionales;
+    \end{itemize}
+
+    Las tablas posicionales permiten valorar la ubicación de las piezas según su tipo y su posición relativa en el tablero. En el caso de los estudiantes, favorecen el avance y la ocupación de zonas centrales; en el caso del maestro, aplican una valoración más prudente, evitando empujarlo de forma excesivamente agresiva en fases tempranas.
 \end{description}
 
-Los valores concretos de los pesos, el proceso de ajuste de la heurística y la comparación entre versiones se abordan en el capítulo de experimentación.
+El ajuste de estos criterios y la comparación experimental entre las distintas versiones se abordan en el capítulo de experimentación.
+
 
 \subsubsection{Perfiles de dificultad}
 
-Los niveles de dificultad no se asocian directamente a las versiones de evaluación. En su lugar, se definen perfiles específicos en \texttt{profiles.py}. Cada perfil establece los parámetros efectivos del agente: evaluador utilizado, profundidad principal de búsqueda y profundidad quiescente.
+Los perfiles de dificultad del agente se definen en \texttt{profiles.py} y agrupan los parámetros que determinan su comportamiento durante la búsqueda: evaluador utilizado, profundidad principal y profundidad quiescente.
 
 \begin{table}[H]
 \centering
@@ -195,9 +240,9 @@ Difícil & \texttt{v3} & 5 & 2 \\
 \label{tab:perfiles-dificultad-ia}
 \end{table}
 
-Los tres perfiles utilizan el mismo evaluador, \texttt{v3}, y modifican los valores de las profundidades. De esta forma, la dificultad se representa como una configuración del agente, no como una versión distinta de la heurística.
+Los tres perfiles utilizan el evaluador \texttt{v3} y modifican las profundidades de búsqueda. De esta forma, la dificultad se representa como una configuración del agente basada principalmente en la profundidad de análisis.
 
-La elección y evaluación de estos perfiles se aborda en el capítulo de experimentación.
+La evaluación experimental de estos perfiles se aborda en el capítulo de experimentación.
 
 
 %==============================================================================
@@ -268,8 +313,12 @@ A partir de estos datos, el pipeline procesa el frame en dos ramas: una para el 
 \end{figure}
 
 
-\subsection{Piezas y cartas}
-\label{subsec:piezas-cartas-vision}
+\subsection{Detección de piezas y clasificación de cartas}
+\label{subsec:deteccion-piezas-clasificacion-cartas}
+
+El módulo utiliza estrategias distintas para piezas y cartas porque la información que debe recuperarse en cada caso no es la misma. Las piezas deben identificarse y localizarse sobre el tablero para asignarlas a una casilla concreta, por lo que se emplea detección de objetos. En cambio, las cartas ocupan posiciones fijas en el montaje y se encuentran delimitadas mediante ROIs previamente calibradas, de modo que el problema se reduce a clasificar cada recorte para reconocer su identidad.
+
+\subsubsection{Detección de piezas}
 
 El reconocimiento de piezas parte de la calibración del tablero implementada en \texttt{homography.py}. A partir de \texttt{data/vision/calibration.json}, se cargan los cuatro puntos del tablero, el tamaño de salida y la rotación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del tablero, lo que permite conservar piezas que sobresalen parcialmente del área estricta de juego.
 
@@ -282,16 +331,19 @@ Sobre la imagen rectificada actúa \texttt{YoloPieceDetector}, definido en \\ \t
 Después de la detección, cada caja se asocia a una celda \texttt{(row, col)} mediante un punto de anclaje calculado sobre la propia detección. Las clases reconocidas por el detector son:
 
 \begin{center}
-\texttt{red\_master}, \texttt{red\_student}, \texttt{blue\_master}, \texttt{blue\_student}
+\texttt{red\_master, red\_student, blue\_master, blue\_student}
 \end{center}
 
-Cada detección se representa mediante \texttt{PieceDetection}, que almacena la clase predicha, la confianza, la caja delimitadora, el punto de anclaje y la celda asociada. Finalmente, \texttt{detections\_to\_board()} construye un \texttt{VisionBoard}. Si varias detecciones caen en la misma casilla, se conserva la de mayor confianza; las detecciones fuera del tablero o con clase no reconocida se descartan.
+Cada detección se representa mediante \texttt{PieceDetection}, que almacena la clase predicha, la confianza, la caja delimitadora, el punto de anclaje y la celda asociada. El detector utiliza un umbral de confianza de \texttt{0.50} al ejecutar el modelo YOLO. Las predicciones que no alcanzan este valor no son devueltas por el modelo y, por tanto, no llegan a convertirse en objetos \texttt{PieceDetection}.
 
-\vspace{0.4cm}
+Finalmente, \texttt{detections\_to\_board()} construye un \texttt{VisionBoard}. Durante esta conversión se descartan las detecciones que no caen dentro de ninguna celda del tablero o cuya clase no puede transformarse en una pieza visual válida. Si varias detecciones se asignan a la misma casilla, se conserva únicamente la de mayor confianza.
+
+\subsubsection{Clasificación de cartas}
+
 En el caso de las cartas, las regiones de interés se gestionan en \texttt{card\_rois.py}. Estas regiones se cargan desde \texttt{data/vision/card\_rois.json} y corresponden a cinco posiciones fijas:
 
 \begin{center}
-\texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0}, \texttt{blue\_1}
+\texttt{red\_0, red\_1, side, blue\_0, blue\_1}
 \end{center}
 
 Cada ROI se recorta del frame original, se enmascara si es necesario y se prepara como una imagen cuadrada antes de enviarla al clasificador. La clasificación se realiza mediante \texttt{YoloCardClassifier}, definido en \texttt{card\_classifier.py}, utilizando el modelo:
@@ -300,7 +352,9 @@ Cada ROI se recorta del frame original, se enmascara si es necesario y se prepar
 \texttt{models/cards\_yolo11n-cls\_320\_best.pt}
 \end{center}
 
-Este modelo clasifica cada recorte como una de las 16 cartas oficiales del juego base. La predicción individual se representa con \texttt{CardSlotPrediction}, que incluye el slot, la clase predicha y la confianza. El resultado conjunto se agrupa en \texttt{CardClassificationResult}, desde donde se recuperan las dos cartas rojas, las dos cartas azules y la carta lateral.
+Este modelo clasifica cada recorte como una de las 16 cartas oficiales del juego base. La predicción individual se representa con \texttt{CardSlotPrediction}, que incluye el slot, la clase predicha y la confianza. El clasificador aplica un umbral mínimo de confianza de \texttt{0.50} sobre la clase más probable de cada recorte. Si la confianza es inferior a este valor, se genera un error de observación de tipo \texttt{LOW\_CONFIDENCE\_CARD} y no se construye el resultado completo de clasificación.
+
+El resultado conjunto se agrupa en \texttt{CardClassificationResult}, desde donde se recuperan las dos cartas rojas, las dos cartas azules y la carta lateral.
 
 
 \subsection{Snapshot visual}
@@ -345,7 +399,7 @@ Su implementación se reparte en tres módulos: \texttt{stabilizer.py}, encargad
 
 El módulo \texttt{stabilizer.py} define \texttt{StateStabilizer}, encargado de filtrar observaciones visuales inestables. Para ello, recibe estados observados mediante \texttt{push(observed\_state)} y mantiene internamente un estado candidato junto con el número de veces que se ha repetido de forma consecutiva.
 
-Si la observación cambia, el candidato se sustituye y el contador vuelve a empezar. Si se repite, el contador aumenta. Cuando se alcanza el umbral \texttt{required\_repeats}, el estado se considera estable y puede pasar a la fase de sincronización. Este mecanismo reduce el efecto de lecturas aisladas, oclusiones breves o movimientos físicos todavía incompletos.
+Si la observación cambia, el candidato se sustituye y el contador vuelve a empezar. Si se repite, el contador aumenta. Cuando se alcanza el umbral \texttt{required\_repeats}, cuyo valor por defecto en la aplicación es \texttt{3}, el estado se considera estable y puede pasar a la fase de sincronización. Este mecanismo reduce el efecto de lecturas aisladas, oclusiones breves o movimientos físicos todavía incompletos.
 
 \subsubsection{Validación de sucesores legales}
 
@@ -386,7 +440,7 @@ El método principal es \texttt{process\_observation(observed\_state)}. Cada obs
 
     \item[\texttt{WAITING\_HUMAN\_MOVE}] Espera una jugada física del jugador humano. El estado observado se compara con \texttt{current\_state} y con sus sucesores legales. Si coincide con un sucesor, se acepta como nuevo estado confirmado; si no, se rechaza sin modificar la partida.
 
-    \item[\texttt{READY\_FOR\_AI}] Solicita la acción de la inteligencia artificial mediante \texttt{run\_ai\_turn()}. Este método llama al \texttt{AIController}, calcula \texttt{expected\_state} con \texttt{apply\_action()} y guarda la acción en \texttt{last\_ai\_action}.
+    \item[\texttt{READY\_FOR\_AI}] Solicita una acción al \texttt{AIController} mediante \texttt{run\_ai\_turn()}. A partir de la acción seleccionada, calcula el estado esperado, almacenado en \texttt{expected\_state}, y guarda la acción en \texttt{last\_ai\_action} para comprobar posteriormente su ejecución física.
 
     \item[\texttt{WAITING\_AI\_EXECUTION}] Espera la ejecución física de la jugada indicada por la IA. Si la observación coincide con \texttt{expected\_state}, se confirma la jugada; si coincide con \texttt{current\_state}, la sesión sigue esperando; si no coincide con ninguno de los dos, se considera una discrepancia de ejecución.
 
@@ -416,7 +470,7 @@ El estado expuesto hacia las interfaces se representa con \texttt{VisionRuntimeS
 
 \subsubsection{Bucle de ejecución}
 
-La clase principal es \texttt{VisionGameRuntime}. Sus métodos básicos son \texttt{start()}, \texttt{stop()}, \texttt{reset()} y \texttt{step()}.
+La clase principal es \texttt{VisionGameRuntime}. Sus métodos básicos son:
 
 \begin{itemize}
     \item \texttt{start()}: abre la cámara y deja el runtime preparado para procesar frames.
@@ -431,7 +485,7 @@ El método más importante es \texttt{step()}, ya que concentra la coordinación
     \item Si el runtime no está activo, devuelve el estado actual sin procesar nuevos datos.
     \item Si la partida ha terminado, no lee más frames de cámara.
     \item Si la sesión está en fase \texttt{READY\_FOR\_AI}, ejecuta \texttt{run\_ai\_turn()} sin consultar la cámara.
-    \item En el resto de fases, lee un frame, obtiene un \texttt{VisionSnapshot} con \texttt{snapshot\_from\_frame(frame)}, lo convierte a \texttt{GameState} y lo entrega a \texttt{process\_observation()}.
+    \item En el resto de fases, lee un frame, obtiene un \texttt{VisionSnapshot} mediante \texttt{snapshot\_from\_frame()}, lo convierte a \texttt{GameState} y entrega el estado observado a \texttt{process\_observation()}.
 \end{enumerate}
 
 La conversión de \texttt{VisionSnapshot} a \texttt{GameState} depende de la fase de la sesión. Durante el arranque, el jugador inicial se obtiene a partir del sello de la carta lateral. Durante la partida, el runtime interpreta la observación usando el turno del estado confirmado o del estado esperado, según corresponda. Esta lógica es necesaria porque el módulo de visión reconoce piezas y cartas, pero no controla por sí mismo el turno actual de la partida.
@@ -540,4 +594,4 @@ La carpeta \texttt{scripts} reúne herramientas de apoyo al desarrollo. Entre el
 
 Por último, la carpeta \texttt{tests} contiene pruebas automatizadas ejecutadas con \texttt{pytest}. Estas pruebas cubren aspectos como las reglas del motor, la aplicación de acciones, las condiciones de victoria, la conversión entre visión y motor, la estabilización de observaciones, la sincronización y partes del runtime.
 
-En conjunto, estas interfaces y herramientas han servido como soporte para construir el sistema de forma incremental, facilitar la detección de errores y preparar la evaluación experimental que se aborda en el capítulo siguiente.
+En conjunto, estas interfaces y herramientas han servido como soporte para construir el sistema de forma incremental, facilitar la detección de errores y disponer de una base práctica para la evaluación experimental que se aborda en el capítulo siguiente.

@@ -22,8 +22,6 @@ MASTER_DISTANCE_WEIGHT = 8
 MASTER_THREAT_PENALTY = 8_000
 HANGING_STUDENT_PENALTY = 600
 
-MOBILITY_WEIGHT = 0  # Disabled in V1
-
 # ----------------------------------------------------------------------------
 # V2: generic heuristic with tunable weights
 
@@ -215,15 +213,7 @@ def evaluate_v1(state: GameState, perspective: Player) -> int:
     opp_can_capture_master = any(isinstance(a, Move) and a.to_pos == my_master for a in opp_actions)
     threat_penalty = -MASTER_THREAT_PENALTY if opp_can_capture_master else 0
 
-    # 4) Mobility: legal actions difference.
-    if MOBILITY_WEIGHT != 0:
-        my_moves = len(generate_legal_actions(replace(state, to_move=perspective)))
-        opp_moves = len(opp_actions)
-        mobility_score = (my_moves - opp_moves) * MOBILITY_WEIGHT
-    else:
-        mobility_score = 0
-
-    # 5) Hanging students: penalize own students capturable next move.
+    # 4) Hanging students: penalize own students capturable next move.
     opp_attack_squares: set[tuple[int, int]] = set()
     for a in opp_actions:
         if not isinstance(a, Move):
@@ -232,7 +222,7 @@ def evaluate_v1(state: GameState, perspective: Player) -> int:
     hanging_students = len(my_students_pos & opp_attack_squares)
     hanging_penalty = -hanging_students * HANGING_STUDENT_PENALTY
 
-    return material_score + master_progress_score + threat_penalty + mobility_score + hanging_penalty
+    return material_score + master_progress_score + threat_penalty + hanging_penalty
 
 
 # ----------------------------------------------------------------------------
