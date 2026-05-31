@@ -1,28 +1,18 @@
 from __future__ import annotations
 
-"""Onitama tournament runner (AI vs AI) focused on heuristic evaluation.
+"""Onitama tournament runner for AI heuristic/profile evaluation.
 
-Key features:
-  - Paired seeds + color swap (fair comparison): for each seed we play two games
-    (A as RED vs B as BLUE, then B as RED vs A as BLUE).
-  - CSV export of every game (reproducible experiments).
-  - Optional round-robin across multiple agents.
+The script supports two experiment shapes:
+  - match: head-to-head A vs B.
+  - roundrobin: every configured agent against every other agent.
 
-Examples
---------
-Head-to-head (paired, recommended):
+Agent tokens are explicit in the command line:
+  - v1@3      -> evaluator v1, depth 3, default q-depth.
+  - v3@5q2    -> evaluator v3, depth 5, q-depth 2.
 
-  python scripts/tournament.py match \
-      --a v2b@3 --b v2c@3 \
-      --pairs 200 --seed-start 0 --max-plies 300 \
-      --out results_v2b_vs_v2c.csv
-
-Round-robin:
-
-  python scripts/tournament.py roundrobin \
-      --agents v1@3 v2a@3 v2b@3 v2c@3 \
-      --pairs 150 --seed-start 0 --max-plies 300 \
-      --out rr_depth3.csv
+Every seed is paired with a color swap: A as RED vs B as BLUE, then B as RED
+vs A as BLUE. This keeps heuristic/profile comparisons reproducible and less
+dependent on color assignment.
 """
 
 import argparse
@@ -31,14 +21,10 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from collections.abc import Callable
 from pathlib import Path
-from typing import Iterable, Optional
 
-
-# -----------------------------------------------------------------------------
-# Make running from repo root robust (without requiring editable install)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
@@ -46,66 +32,50 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-# -----------------------------------------------------------------------------
-
 from onitama.ai.agent import choose_action
-from onitama.ai.evaluate import get_evaluator, EVALUATORS
+from onitama.ai.evaluate import EVALUATORS, get_evaluator
 from onitama.ai.types import TranspositionTable
 from onitama.engine.pieces import Player
 from onitama.engine.rules import Action, apply_action, winner
 from onitama.engine.state import GameState
 
 
-# -----------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class AgentSpec:
-    """Configuration for an AI agent."""
-
     label: str
     evaluator_name: str
     depth: int
+    q_depth: int
 
     def validate(self) -> None:
         if self.depth < 1:
             raise ValueError("depth must be >= 1")
-        # This will raise a nice error if unknown.
+        if self.q_depth < 0:
+            raise ValueError("q_depth must be >= 0")
         get_evaluator(self.evaluator_name)
 
 
-@dataclass(frozen=True)
-class SearchConfig:
-    use_tt: bool
-    use_iterative_deepening: bool
-    aspiration_window: int | None
-    q_depth: int
-
-
-@dataclass(frozen=True)
+@dataclass
 class CompiledAgent:
-    """Runtime-ready agent (evaluator cached)."""
-
     label: str
-    depth: int
     evaluator_name: str
+    depth: int
+    q_depth: int
     evaluator: Callable[[GameState, Player], int]
-    search: SearchConfig
     tt: TranspositionTable
 
-    def select_action(self, state: GameState) -> Action:
+    def select_action(self, state: GameState) -> tuple[Action, float]:
+        t0 = time.perf_counter()
         action = choose_action(
             state,
             depth=self.depth,
             evaluator=self.evaluator,
-            use_tt=self.search.use_tt,
+            q_depth=self.q_depth,
             tt=self.tt,
-            use_iterative_deepening=self.search.use_iterative_deepening,
-            aspiration_window=self.search.aspiration_window,
-            q_depth=self.search.q_depth,
         )
+        elapsed = time.perf_counter() - t0
         assert action is not None, "Agent asked to move in a terminal state."
-        return action
+        return action, elapsed
 
 
 @dataclass
@@ -116,10 +86,19 @@ class GameRecord:
     swapped_colors: bool
     red_agent: str
     blue_agent: str
-    winner: str  # "RED" / "BLUE" / "DRAW"
-    reason: str  # winner() reason or "Ply cap"
+    winner: str
+    reason: str
     plies: int
-    starting_player: str  # "RED" or "BLUE" (from side card stamp)
+    starting_player: str
+    elapsed_sec: float
+    red_search_time_sec: float
+    red_decisions: int
+    blue_search_time_sec: float
+    blue_decisions: int
+
+    @property
+    def search_time_sec(self) -> float:
+        return self.red_search_time_sec + self.blue_search_time_sec
 
 
 @dataclass
@@ -128,12 +107,24 @@ class Aggregate:
     wins: int = 0
     losses: int = 0
     draws: int = 0
-    points: float = 0.0  # win=1, draw=0.5
+    points: float = 0.0
     total_plies: int = 0
+    elapsed_sec: float = 0.0
+    search_time_sec: float = 0.0
+    decisions: int = 0
 
-    def add(self, result: str, plies: int) -> None:
+    def add(self, result: str, game: GameRecord, color: str) -> None:
         self.games += 1
-        self.total_plies += plies
+        self.total_plies += game.plies
+        self.elapsed_sec += game.elapsed_sec
+
+        if color == "RED":
+            self.search_time_sec += game.red_search_time_sec
+            self.decisions += game.red_decisions
+        else:
+            self.search_time_sec += game.blue_search_time_sec
+            self.decisions += game.blue_decisions
+
         if result == "WIN":
             self.wins += 1
             self.points += 1.0
@@ -151,76 +142,61 @@ class Aggregate:
     def score_rate(self) -> float:
         return self.points / self.games if self.games else 0.0
 
+    def avg_decision_sec(self) -> float:
+        return self.search_time_sec / self.decisions if self.decisions else 0.0
 
-def _parse_agent_token(token: str, default_depth: int) -> AgentSpec:
-    """Parse strings like:
 
-    - "v2b@3"  -> evaluator=v2b, depth=3, label=v2b@3
-    - "v1"     -> evaluator=v1, depth=default_depth, label=v1@<default>
+def _aggregate_payload(agg: Aggregate) -> dict[str, float | int]:
+    return {
+        "games": agg.games,
+        "wins": agg.wins,
+        "draws": agg.draws,
+        "losses": agg.losses,
+        "points": agg.points,
+        "score_rate": agg.score_rate(),
+        "avg_plies": agg.avg_plies(),
+        "elapsed_sec": agg.elapsed_sec,
+        "search_time_sec": agg.search_time_sec,
+        "decisions": agg.decisions,
+        "avg_decision_sec": agg.avg_decision_sec(),
+    }
 
-    The label is just for reporting.
-    """
+
+def _parse_agent_token(token: str, default_depth: int, default_q_depth: int) -> AgentSpec:
+    """Parse evaluator tokens such as v1, v1@3, or v3@5q2."""
     token = token.strip()
     if not token:
         raise ValueError("Empty agent token")
 
+    q_depth = default_q_depth
     if "@" in token:
-        name, depth_str = token.split("@", 1)
+        name, depth_part = token.split("@", 1)
         name = name.strip()
-        depth = int(depth_str.strip())
+        depth_part = depth_part.strip()
+        if "q" in depth_part:
+            depth_text, q_text = depth_part.split("q", 1)
+            depth = int(depth_text)
+            q_depth = int(q_text)
+        else:
+            depth = int(depth_part)
     else:
         name = token
         depth = default_depth
 
-    label = f"{name}@{depth}"
-    spec = AgentSpec(label=label, evaluator_name=name, depth=depth)
+    label = f"{name}@{depth}q{q_depth}"
+    spec = AgentSpec(label=label, evaluator_name=name, depth=depth, q_depth=q_depth)
     spec.validate()
     return spec
 
 
-def _compile_agent(spec: AgentSpec, search: SearchConfig) -> CompiledAgent:
-    evaluator = get_evaluator(spec.evaluator_name)
+def _compile_agent(spec: AgentSpec) -> CompiledAgent:
     return CompiledAgent(
         label=spec.label,
-        depth=spec.depth,
         evaluator_name=spec.evaluator_name,
-        evaluator=evaluator,
-        search=search,
+        depth=spec.depth,
+        q_depth=spec.q_depth,
+        evaluator=get_evaluator(spec.evaluator_name),
         tt={},
-    )
-
-
-def _update_pair_aggregates(
-    game: GameRecord,
-    left_label: str,
-    right_label: str,
-    left: Aggregate,
-    right: Aggregate,
-) -> None:
-    left_color = "RED" if game.red_agent == left_label else "BLUE"
-    right_color = "RED" if game.red_agent == right_label else "BLUE"
-
-    if game.winner == "DRAW":
-        left.add("DRAW", game.plies)
-        right.add("DRAW", game.plies)
-        return
-
-    left.add("WIN" if game.winner == left_color else "LOSS", game.plies)
-    right.add("WIN" if game.winner == right_color else "LOSS", game.plies)
-
-
-def _build_search_config(args: argparse.Namespace) -> SearchConfig:
-    if args.q_depth < 0:
-        raise ValueError("q_depth must be >= 0")
-    if args.aspiration_window < -1:
-        raise ValueError("aspiration_window must be >= -1")
-
-    aspiration_window = None if args.aspiration_window == -1 else args.aspiration_window
-    return SearchConfig(
-        use_tt=not args.no_tt,
-        use_iterative_deepening=not args.no_iterative_deepening,
-        aspiration_window=aspiration_window,
-        q_depth=args.q_depth,
     )
 
 
@@ -255,50 +231,91 @@ def play_game(
     starting_player = "RED" if state.to_move == Player.RED else "BLUE"
 
     plies = 0
+    red_search_time_sec = 0.0
+    red_decisions = 0
+    blue_search_time_sec = 0.0
+    blue_decisions = 0
+    game_t0 = time.perf_counter()
+
+    def _record(winner_str: str, reason: str) -> GameRecord:
+        return GameRecord(
+            game_id=game_id,
+            pair_id=pair_id,
+            seed=seed,
+            swapped_colors=swapped_colors,
+            red_agent=red.label,
+            blue_agent=blue.label,
+            winner=winner_str,
+            reason=reason,
+            plies=plies,
+            starting_player=starting_player,
+            elapsed_sec=time.perf_counter() - game_t0,
+            red_search_time_sec=red_search_time_sec,
+            red_decisions=red_decisions,
+            blue_search_time_sec=blue_search_time_sec,
+            blue_decisions=blue_decisions,
+        )
+
     while True:
         out = winner(state)
         if out is not None:
             w, reason = out
-            w_str = "RED" if w == Player.RED else "BLUE"
-            return GameRecord(
-                game_id=game_id,
-                pair_id=pair_id,
-                seed=seed,
-                swapped_colors=swapped_colors,
-                red_agent=red.label,
-                blue_agent=blue.label,
-                winner=w_str,
-                reason=reason,
-                plies=plies,
-                starting_player=starting_player,
-            )
+            return _record("RED" if w == Player.RED else "BLUE", reason)
 
         if plies >= max_plies:
-            return GameRecord(
-                game_id=game_id,
-                pair_id=pair_id,
-                seed=seed,
-                swapped_colors=swapped_colors,
-                red_agent=red.label,
-                blue_agent=blue.label,
-                winner="DRAW",
-                reason="Ply cap",
-                plies=plies,
-                starting_player=starting_player,
-            )
+            return _record("DRAW", "Ply cap")
 
         mover = state.to_move
         agent = red if mover == Player.RED else blue
-        action = agent.select_action(state)
+        action, elapsed = agent.select_action(state)
+
+        if mover == Player.RED:
+            red_search_time_sec += elapsed
+            red_decisions += 1
+        else:
+            blue_search_time_sec += elapsed
+            blue_decisions += 1
+
         state = apply_action(state, action)
         plies += 1
+
+
+def _update_pair_aggregates(
+    game: GameRecord,
+    left_label: str,
+    right_label: str,
+    left: Aggregate,
+    right: Aggregate,
+) -> None:
+    left_color = "RED" if game.red_agent == left_label else "BLUE"
+    right_color = "RED" if game.red_agent == right_label else "BLUE"
+
+    if game.winner == "DRAW":
+        left.add("DRAW", game, left_color)
+        right.add("DRAW", game, right_color)
+        return
+
+    left.add("WIN" if game.winner == left_color else "LOSS", game, left_color)
+    right.add("WIN" if game.winner == right_color else "LOSS", game, right_color)
+
+
+def _merge_aggregate(dst: Aggregate, src: Aggregate) -> None:
+    dst.games += src.games
+    dst.wins += src.wins
+    dst.losses += src.losses
+    dst.draws += src.draws
+    dst.points += src.points
+    dst.total_plies += src.total_plies
+    dst.elapsed_sec += src.elapsed_sec
+    dst.search_time_sec += src.search_time_sec
+    dst.decisions += src.decisions
 
 
 def _write_csv(path: Path, records: Iterable[GameRecord]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(
+        writer = csv.writer(f)
+        writer.writerow(
             [
                 "game_id",
                 "pair_id",
@@ -310,10 +327,16 @@ def _write_csv(path: Path, records: Iterable[GameRecord]) -> None:
                 "reason",
                 "plies",
                 "starting_player",
+                "elapsed_sec",
+                "search_time_sec",
+                "red_search_time_sec",
+                "red_decisions",
+                "blue_search_time_sec",
+                "blue_decisions",
             ]
         )
         for r in records:
-            w.writerow(
+            writer.writerow(
                 [
                     r.game_id,
                     r.pair_id,
@@ -325,8 +348,23 @@ def _write_csv(path: Path, records: Iterable[GameRecord]) -> None:
                     r.reason,
                     r.plies,
                     r.starting_player,
+                    f"{r.elapsed_sec:.9f}",
+                    f"{r.search_time_sec:.9f}",
+                    f"{r.red_search_time_sec:.9f}",
+                    r.red_decisions,
+                    f"{r.blue_search_time_sec:.9f}",
+                    r.blue_decisions,
                 ]
             )
+
+
+def _agent_payload(agent: AgentSpec) -> dict[str, int | str]:
+    return {
+        "label": agent.label,
+        "eval": agent.evaluator_name,
+        "depth": agent.depth,
+        "q_depth": agent.q_depth,
+    }
 
 
 def _print_match_summary(
@@ -340,7 +378,7 @@ def _print_match_summary(
     max_plies: int,
     seed_start: int,
 ) -> None:
-    total_games = agg_a.games  # same for both
+    total_games = agg_a.games
     assert total_games == 2 * pairs
 
     print("")
@@ -349,16 +387,12 @@ def _print_match_summary(
     print(f"Seed start  : {seed_start}")
     print(f"Max plies   : {max_plies}")
     print("")
-    print(f"A: {a.label}  (eval={a.evaluator_name}, depth={a.depth})")
-    print(f"B: {b.label}  (eval={b.evaluator_name}, depth={b.depth})")
+    print(f"A: {a.label}  (eval={a.evaluator_name}, depth={a.depth}, q={a.q_depth})")
+    print(f"B: {b.label}  (eval={b.evaluator_name}, depth={b.depth}, q={b.q_depth})")
     print("")
     print("Results (win=1, draw=0.5):")
-    print(
-        f"  A points  : {agg_a.points:.1f} / {total_games}  (rate={agg_a.score_rate():.3f})"
-    )
-    print(
-        f"  B points  : {agg_b.points:.1f} / {total_games}  (rate={agg_b.score_rate():.3f})"
-    )
+    print(f"  A points  : {agg_a.points:.1f} / {total_games}  (rate={agg_a.score_rate():.3f})")
+    print(f"  B points  : {agg_b.points:.1f} / {total_games}  (rate={agg_b.score_rate():.3f})")
     print("")
     print(f"  A W/D/L   : {agg_a.wins}/{agg_a.draws}/{agg_a.losses}")
     print(f"  B W/D/L   : {agg_b.wins}/{agg_b.draws}/{agg_b.losses}")
@@ -366,7 +400,9 @@ def _print_match_summary(
     print(f"Avg plies   : {agg_a.avg_plies():.1f}")
     print(f"Elapsed     : {elapsed:.2f}s")
     if elapsed > 0:
-        print(f"Games/sec   : {total_games/elapsed:.2f}")
+        print(f"Games/sec   : {total_games / elapsed:.2f}")
+    print(f"A search    : {agg_a.search_time_sec:.2f}s  avg decision={agg_a.avg_decision_sec():.4f}s")
+    print(f"B search    : {agg_b.search_time_sec:.2f}s  avg decision={agg_b.avg_decision_sec():.4f}s")
 
 
 def run_match(
@@ -376,17 +412,16 @@ def run_match(
     pairs: int,
     seed_start: int,
     max_plies: int,
-    out_csv: Optional[Path],
-    out_json: Optional[Path],
+    out_csv: Path | None,
+    out_json: Path | None,
     progress_every: int,
-    search: SearchConfig,
     git_commit: str | None,
 ) -> None:
     if pairs < 1:
         raise ValueError("pairs must be >= 1")
 
-    agent_a = _compile_agent(a, search)
-    agent_b = _compile_agent(b, search)
+    agent_a = _compile_agent(a)
+    agent_b = _compile_agent(b)
 
     records: list[GameRecord] = []
     agg_a = Aggregate()
@@ -396,43 +431,38 @@ def run_match(
     game_id = 0
     for pair_idx in range(pairs):
         seed = seed_start + pair_idx
-        pair_id = pair_idx
 
-        # Game 1: A as RED, B as BLUE
         g1 = play_game(
             seed=seed,
             red=agent_a,
             blue=agent_b,
             max_plies=max_plies,
             game_id=game_id,
-            pair_id=pair_id,
+            pair_id=pair_idx,
             swapped_colors=False,
         )
         game_id += 1
 
-        # Game 2: B as RED, A as BLUE
         g2 = play_game(
             seed=seed,
             red=agent_b,
             blue=agent_a,
             max_plies=max_plies,
             game_id=game_id,
-            pair_id=pair_id,
+            pair_id=pair_idx,
             swapped_colors=True,
         )
         game_id += 1
 
         records.extend([g1, g2])
-
-        # Update aggregates (from perspective of A and B)
-        for g in (g1, g2):
-            _update_pair_aggregates(g, agent_a.label, agent_b.label, agg_a, agg_b)
+        for game in (g1, g2):
+            _update_pair_aggregates(game, agent_a.label, agent_b.label, agg_a, agg_b)
 
         if progress_every > 0 and (pair_idx + 1) % progress_every == 0:
             done_pairs = pair_idx + 1
             print(
                 f"Progress: {done_pairs}/{pairs} pairs "
-                f"(games={2*done_pairs}) | A rate={agg_a.score_rate():.3f}"
+                f"(games={2 * done_pairs}) | A rate={agg_a.score_rate():.3f}"
             )
 
     elapsed = time.perf_counter() - t0
@@ -459,34 +489,12 @@ def run_match(
             "pairs": pairs,
             "seed_start": seed_start,
             "max_plies": max_plies,
-            "agent_a": {"label": a.label, "eval": a.evaluator_name, "depth": a.depth},
-            "agent_b": {"label": b.label, "eval": b.evaluator_name, "depth": b.depth},
-            "search": {
-                "use_tt": search.use_tt,
-                "use_iterative_deepening": search.use_iterative_deepening,
-                "aspiration_window": search.aspiration_window,
-                "q_depth": search.q_depth,
-            },
+            "agent_a": _agent_payload(a),
+            "agent_b": _agent_payload(b),
             "git_commit": git_commit,
             "summary": {
-                "a": {
-                    "games": agg_a.games,
-                    "wins": agg_a.wins,
-                    "draws": agg_a.draws,
-                    "losses": agg_a.losses,
-                    "points": agg_a.points,
-                    "score_rate": agg_a.score_rate(),
-                    "avg_plies": agg_a.avg_plies(),
-                },
-                "b": {
-                    "games": agg_b.games,
-                    "wins": agg_b.wins,
-                    "draws": agg_b.draws,
-                    "losses": agg_b.losses,
-                    "points": agg_b.points,
-                    "score_rate": agg_b.score_rate(),
-                    "avg_plies": agg_b.avg_plies(),
-                },
+                "a": _aggregate_payload(agg_a),
+                "b": _aggregate_payload(agg_b),
                 "elapsed_sec": elapsed,
             },
         }
@@ -500,44 +508,42 @@ def run_roundrobin(
     pairs: int,
     seed_start: int,
     max_plies: int,
-    out_csv: Optional[Path],
-    out_json: Optional[Path],
+    out_csv: Path | None,
+    out_json: Path | None,
     progress_every: int,
-    search: SearchConfig,
     git_commit: str | None,
     offset_seeds_by_matchup: bool,
 ) -> None:
     if len(agents) < 2:
         raise ValueError("Need at least 2 agents for round-robin")
-    labels = [a.label for a in agents]
+    labels = [agent.label for agent in agents]
     if len(set(labels)) != len(labels):
-        raise ValueError("Round-robin agents must have unique labels (eval@depth)")
+        raise ValueError("Round-robin agents must have unique labels")
 
-    compiled = {a.label: _compile_agent(a, search) for a in agents}
-    scoreboard: dict[str, Aggregate] = {a.label: Aggregate() for a in agents}
+    compiled = {agent.label: _compile_agent(agent) for agent in agents}
+    scoreboard: dict[str, Aggregate] = {agent.label: Aggregate() for agent in agents}
     matchups: list[dict[str, object]] = []
-
-    all_records: list[GameRecord] = []
+    records: list[GameRecord] = []
 
     t0 = time.perf_counter()
     game_id = 0
     matchup_idx = 0
+
     for i in range(len(agents)):
         for j in range(i + 1, len(agents)):
             a = agents[i]
             b = agents[j]
             matchup_idx += 1
 
-            # Run a paired match between a and b
-            local_records: list[GameRecord] = []
             local_a = Aggregate()
             local_b = Aggregate()
 
             for pair_idx in range(pairs):
-                if offset_seeds_by_matchup:
-                    seed = seed_start + (matchup_idx - 1) * pairs + pair_idx
-                else:
-                    seed = seed_start + pair_idx
+                seed = (
+                    seed_start + (matchup_idx - 1) * pairs + pair_idx
+                    if offset_seeds_by_matchup
+                    else seed_start + pair_idx
+                )
                 pair_id = (matchup_idx - 1) * pairs + pair_idx
 
                 g1 = play_game(
@@ -562,25 +568,21 @@ def run_roundrobin(
                 )
                 game_id += 1
 
-                local_records.extend([g1, g2])
+                records.extend([g1, g2])
+                for game in (g1, g2):
+                    _update_pair_aggregates(game, a.label, b.label, local_a, local_b)
 
-                for g in (g1, g2):
-                    _update_pair_aggregates(g, a.label, b.label, local_a, local_b)
+                if progress_every > 0 and (pair_idx + 1) % progress_every == 0:
+                    total_matchups = len(agents) * (len(agents) - 1) // 2
+                    done_pairs = pair_idx + 1
+                    print(
+                        f"Progress: matchup {matchup_idx}/{total_matchups} "
+                        f"({a.label} vs {b.label}) | pairs={done_pairs}/{pairs} "
+                        f"| {a.label} rate={local_a.score_rate():.3f}"
+                    )
 
-            # Merge to global scoreboard
-            scoreboard[a.label].games += local_a.games
-            scoreboard[a.label].wins += local_a.wins
-            scoreboard[a.label].losses += local_a.losses
-            scoreboard[a.label].draws += local_a.draws
-            scoreboard[a.label].points += local_a.points
-            scoreboard[a.label].total_plies += local_a.total_plies
-
-            scoreboard[b.label].games += local_b.games
-            scoreboard[b.label].wins += local_b.wins
-            scoreboard[b.label].losses += local_b.losses
-            scoreboard[b.label].draws += local_b.draws
-            scoreboard[b.label].points += local_b.points
-            scoreboard[b.label].total_plies += local_b.total_plies
+            _merge_aggregate(scoreboard[a.label], local_a)
+            _merge_aggregate(scoreboard[b.label], local_b)
 
             matchups.append(
                 {
@@ -592,19 +594,15 @@ def run_roundrobin(
                     "b_points": local_b.points,
                     "a_rate": local_a.score_rate(),
                     "b_rate": local_b.score_rate(),
+                    "a_search_time_sec": local_a.search_time_sec,
+                    "b_search_time_sec": local_b.search_time_sec,
+                    "a_avg_decision_sec": local_a.avg_decision_sec(),
+                    "b_avg_decision_sec": local_b.avg_decision_sec(),
                 }
             )
 
-            all_records.extend(local_records)
-
-            if progress_every > 0 and matchup_idx % progress_every == 0:
-                print(
-                    f"Progress: finished {matchup_idx} matchups / {len(agents)*(len(agents)-1)//2}"
-                )
-
     elapsed = time.perf_counter() - t0
 
-    # Print table-like summary
     print("")
     print("=== Round-robin summary (paired + color swap per matchup) ===")
     print(f"Agents     : {len(agents)}")
@@ -614,17 +612,18 @@ def run_roundrobin(
     print(f"Elapsed    : {elapsed:.2f}s")
     print("")
 
-    # Rank by points
     ranking = sorted(scoreboard.items(), key=lambda kv: kv[1].points, reverse=True)
     for rank, (label, agg) in enumerate(ranking, start=1):
         print(
             f"{rank:>2}. {label:<12} "
             f"points={agg.points:>6.1f}  rate={agg.score_rate():.3f}  "
-            f"W/D/L={agg.wins}/{agg.draws}/{agg.losses}  avg_plies={agg.avg_plies():.1f}"
+            f"W/D/L={agg.wins}/{agg.draws}/{agg.losses}  "
+            f"avg_plies={agg.avg_plies():.1f}  "
+            f"avg_decision={agg.avg_decision_sec():.4f}s"
         )
 
     if out_csv is not None:
-        _write_csv(out_csv, all_records)
+        _write_csv(out_csv, records)
         print(f"\nCSV written: {out_csv}")
 
     if out_json is not None:
@@ -635,28 +634,9 @@ def run_roundrobin(
             "seed_start": seed_start,
             "offset_seeds_by_matchup": offset_seeds_by_matchup,
             "max_plies": max_plies,
-            "search": {
-                "use_tt": search.use_tt,
-                "use_iterative_deepening": search.use_iterative_deepening,
-                "aspiration_window": search.aspiration_window,
-                "q_depth": search.q_depth,
-            },
             "git_commit": git_commit,
-            "agents": [
-                {"label": a.label, "eval": a.evaluator_name, "depth": a.depth} for a in agents
-            ],
-            "scoreboard": {
-                label: {
-                    "games": agg.games,
-                    "wins": agg.wins,
-                    "draws": agg.draws,
-                    "losses": agg.losses,
-                    "points": agg.points,
-                    "score_rate": agg.score_rate(),
-                    "avg_plies": agg.avg_plies(),
-                }
-                for label, agg in scoreboard.items()
-            },
+            "agents": [_agent_payload(agent) for agent in agents],
+            "scoreboard": {label: _aggregate_payload(agg) for label, agg in scoreboard.items()},
             "matchups": matchups,
             "elapsed_sec": elapsed,
         }
@@ -664,148 +644,38 @@ def run_roundrobin(
         print(f"JSON written: {out_json}")
 
 
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--max-plies", type=int, default=300)
+    parser.add_argument("--seed-start", type=int, default=0)
+    parser.add_argument("--pairs", type=int, default=200)
+    parser.add_argument("--out", type=str, default=None, help="Write per-game CSV.")
+    parser.add_argument("--out-json", type=str, default=None, help="Write summary JSON.")
+    parser.add_argument("--progress-every", type=int, default=50)
+    parser.add_argument("--default-depth", type=int, default=3)
+    parser.add_argument("--default-q-depth", type=int, default=2)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Onitama tournament runner for heuristic evaluation.",
+        description="Onitama tournament runner for heuristic/profile evaluation.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    def _add_search_args(p: argparse.ArgumentParser) -> None:
-        p.add_argument(
-            "--no-tt",
-            action="store_true",
-            help="Disable transposition table during search.",
-        )
-        p.add_argument(
-            "--no-iterative-deepening",
-            action="store_true",
-            help="Disable iterative deepening (single search at target depth).",
-        )
-        p.add_argument(
-            "--aspiration-window",
-            type=int,
-            default=100,
-            help="Aspiration window size; use -1 to disable.",
-        )
-        p.add_argument(
-            "--q-depth",
-            type=int,
-            default=2,
-            help="Quiescence capture extension depth.",
-        )
-
     p_match = sub.add_parser("match", help="Run a head-to-head match between two agents.")
-    p_match.add_argument(
-        "--max-plies",
-        type=int,
-        default=300,
-        help="Game is declared DRAW if this ply cap is reached.",
-    )
-    p_match.add_argument(
-        "--seed-start",
-        type=int,
-        default=0,
-        help="First seed. Each pair uses seed_start + i.",
-    )
-    p_match.add_argument(
-        "--pairs",
-        type=int,
-        default=200,
-        help="Number of paired seeds (each pair = 2 games with color swap).",
-    )
-    p_match.add_argument(
-        "--out",
-        type=str,
-        default=None,
-        help="Write per-game CSV to this path (optional).",
-    )
-    p_match.add_argument(
-        "--out-json",
-        type=str,
-        default=None,
-        help="Write summary JSON to this path (optional).",
-    )
-    p_match.add_argument(
-        "--progress-every",
-        type=int,
-        default=50,
-        help="Print progress every N pairs. Set 0 to disable.",
-    )
-    p_match.add_argument(
-        "--a",
-        required=True,
-        help="Agent A spec: <evaluator>@<depth>  e.g. v2b@3",
-    )
-    p_match.add_argument(
-        "--b",
-        required=True,
-        help="Agent B spec: <evaluator>@<depth>  e.g. v2c@3",
-    )
-    p_match.add_argument(
-        "--default-depth",
-        type=int,
-        default=3,
-        help="Depth used if an agent spec omits @depth.",
-    )
-    _add_search_args(p_match)
+    _add_common_args(p_match)
+    p_match.add_argument("--a", required=True, help="Agent A, e.g. v1@3 or v3@5q2.")
+    p_match.add_argument("--b", required=True, help="Agent B, e.g. v2@3 or v3@1q0.")
 
     p_rr = sub.add_parser("roundrobin", help="Run a round-robin across multiple agents.")
-    p_rr.add_argument(
-        "--max-plies",
-        type=int,
-        default=300,
-        help="Game is declared DRAW if this ply cap is reached.",
-    )
-    p_rr.add_argument(
-        "--seed-start",
-        type=int,
-        default=0,
-        help="First seed. Each pair uses seed_start + i.",
-    )
-    p_rr.add_argument(
-        "--pairs",
-        type=int,
-        default=200,
-        help="Number of paired seeds per matchup (each pair = 2 games with color swap).",
-    )
-    p_rr.add_argument(
-        "--out",
-        type=str,
-        default=None,
-        help="Write per-game CSV to this path (optional).",
-    )
-    p_rr.add_argument(
-        "--out-json",
-        type=str,
-        default=None,
-        help="Write summary JSON to this path (optional).",
-    )
-    p_rr.add_argument(
-        "--progress-every",
-        type=int,
-        default=2,
-        help="Print progress every N matchups. Set 0 to disable.",
-    )
-    p_rr.add_argument(
-        "--agents",
-        nargs="+",
-        required=True,
-        help="Agent specs: v1@3 v2a@3 v2b@3 ...",
-    )
-    p_rr.add_argument(
-        "--default-depth",
-        type=int,
-        default=3,
-        help="Depth used if an agent spec omits @depth.",
-    )
+    _add_common_args(p_rr)
+    p_rr.set_defaults(progress_every=2)
+    p_rr.add_argument("--agents", nargs="+", required=True, help="Agent specs, e.g. v1@3 v2@3 v3@3.")
     p_rr.add_argument(
         "--offset-seeds-by-matchup",
         action="store_true",
-        help="Use different seed ranges per matchup to reduce overfitting to one seed block.",
+        help="Use different seed ranges per matchup.",
     )
-    _add_search_args(p_rr)
 
     return parser
 
@@ -814,19 +684,25 @@ def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
 
+    if args.default_depth < 1:
+        raise ValueError("default_depth must be >= 1")
+    if args.default_q_depth < 0:
+        raise ValueError("default_q_depth must be >= 0")
+    if args.pairs < 1:
+        raise ValueError("pairs must be >= 1")
+    if args.max_plies < 1:
+        raise ValueError("max_plies must be >= 1")
+    if args.progress_every < 0:
+        raise ValueError("progress_every must be >= 0")
+
+    _ = sorted(EVALUATORS)
+    git_commit = _git_commit_hash()
     out_csv = Path(args.out) if args.out else None
     out_json = Path(args.out_json) if args.out_json else None
 
-    # Fast sanity check: show available evaluators (useful when you typo names)
-    if args.cmd in {"match", "roundrobin"}:
-        # no side effects, just informative if a crash happens
-        _ = sorted(EVALUATORS)
-    search = _build_search_config(args)
-    git_commit = _git_commit_hash()
-
     if args.cmd == "match":
-        a = _parse_agent_token(args.a, default_depth=args.default_depth)
-        b = _parse_agent_token(args.b, default_depth=args.default_depth)
+        a = _parse_agent_token(args.a, args.default_depth, args.default_q_depth)
+        b = _parse_agent_token(args.b, args.default_depth, args.default_q_depth)
         run_match(
             a=a,
             b=b,
@@ -836,12 +712,15 @@ def main() -> None:
             out_csv=out_csv,
             out_json=out_json,
             progress_every=args.progress_every,
-            search=search,
             git_commit=git_commit,
         )
+        return
 
-    elif args.cmd == "roundrobin":
-        agents = [_parse_agent_token(t, default_depth=args.default_depth) for t in args.agents]
+    if args.cmd == "roundrobin":
+        agents = [
+            _parse_agent_token(token, args.default_depth, args.default_q_depth)
+            for token in args.agents
+        ]
         run_roundrobin(
             agents=agents,
             pairs=args.pairs,
@@ -850,13 +729,12 @@ def main() -> None:
             out_csv=out_csv,
             out_json=out_json,
             progress_every=args.progress_every,
-            search=search,
             git_commit=git_commit,
             offset_seeds_by_matchup=args.offset_seeds_by_matchup,
         )
+        return
 
-    else:
-        raise RuntimeError(f"Unknown command: {args.cmd}")
+    raise RuntimeError(f"Unknown command: {args.cmd}")
 
 
 if __name__ == "__main__":

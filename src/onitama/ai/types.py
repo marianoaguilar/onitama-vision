@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable
 
 from onitama.engine.rules import Action
@@ -21,3 +22,18 @@ TTEntry = tuple[int, int, int, Action | None]
 
 # Main TT container: board state -> cached search entry.
 TranspositionTable = dict[GameState, TTEntry]
+
+
+@dataclass
+class SearchStats:
+    """Counters collected during one choose_action call."""
+
+    nodes: int = 0
+    q_nodes: int = 0
+    beta_cutoffs: int = 0
+    tt_probes: int = 0
+    tt_hits: int = 0
+    tt_cutoffs: int = 0
+    tt_stores: int = 0
+    depth_completed: int = 0
+    value: int | None = None

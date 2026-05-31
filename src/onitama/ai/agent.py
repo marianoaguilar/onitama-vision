@@ -9,7 +9,7 @@ from onitama.engine.state import GameState
 from onitama.engine.moves import Move
 from onitama.ai.search import alphabeta
 from onitama.ai.evaluate import get_evaluator
-from onitama.ai.types import Evaluator, TranspositionTable
+from onitama.ai.types import Evaluator, SearchStats, TranspositionTable
 
 
 def _action_priority(state: GameState, action: Action, perspective: Player) -> tuple[int, int]:
@@ -43,6 +43,8 @@ def choose_action(
     use_iterative_deepening: bool = True,
     aspiration_window: int | None = 100,
     q_depth: int = 2,
+    use_move_ordering: bool = True,
+    stats: SearchStats | None = None,
 ) -> Optional[Action]:
     """
     Choose the best action for the player to move in `state` using alpha-beta search.
@@ -64,7 +66,8 @@ def choose_action(
     perspective: Player = state.to_move
     
     # Initial root ordering before any search information is available.
-    actions = sorted(actions, key=lambda a: _action_priority(state, a, perspective), reverse=True)
+    if use_move_ordering:
+        actions = sorted(actions, key=lambda a: _action_priority(state, a, perspective), reverse=True)
 
     if evaluator is None:
         evaluator = get_evaluator("v1")
@@ -73,8 +76,8 @@ def choose_action(
         tt = {} if use_tt else None
 
     # Per-search move ordering helpers shared across deepening iterations.
-    killer_moves = [[None, None] for _ in range(depth + 1)]
-    history = {}
+    killer_moves = [[None, None] for _ in range(depth + 1)] if use_move_ordering else None
+    history = {} if use_move_ordering else None
 
     # -------------------
     def _search_at_depth(d: int, alpha: float, beta: float, root_actions: list[Action]) -> tuple[Action, int]:
@@ -101,6 +104,8 @@ def choose_action(
                 killer_moves,
                 history,
                 q_depth,
+                stats,
+                use_move_ordering,
             )
 
             if score > best_score_local:
@@ -116,7 +121,11 @@ def choose_action(
     # -------------------
 
     if not use_iterative_deepening:
-        return _search_at_depth(depth, -inf, inf, actions)[0]
+        best_action, best_score = _search_at_depth(depth, -inf, inf, actions)
+        if stats is not None:
+            stats.depth_completed = depth
+            stats.value = best_score
+        return best_action
 
     best_action = actions[0]
     best_score = -inf
@@ -124,7 +133,7 @@ def choose_action(
 
     # Iterative deepening driver
     for d in range(1, depth + 1):
-        if last_best_action is not None:
+        if use_move_ordering and last_best_action is not None:
             # Principal variation move from previous iteration first.
             actions = sorted(
                 actions,
@@ -145,5 +154,8 @@ def choose_action(
                 best_action, best_score = _search_at_depth(d, -inf, inf, actions)
 
         last_best_action = best_action
+        if stats is not None:
+            stats.depth_completed = d
+            stats.value = best_score
 
     return best_action

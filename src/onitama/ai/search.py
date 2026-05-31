@@ -6,7 +6,7 @@ from onitama.engine.rules import apply_action, generate_legal_actions, is_termin
 from onitama.engine.state import GameState
 from onitama.engine.moves import Move
 
-from onitama.ai.types import Evaluator, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
+from onitama.ai.types import Evaluator, SearchStats, TranspositionTable, TT_EXACT, TT_LOWER, TT_UPPER
 
 # History table:
 # key   -> move (from, to, card)
@@ -66,10 +66,15 @@ def quiescence(
     tt: TranspositionTable | None = None,
     killer_moves: list[list[Action | None]] | None = None,
     history: HistoryTable | None = None,
+    stats: SearchStats | None = None,
+    use_move_ordering: bool = True,
 ) -> int:
     """
     Quiescence search: a limited extension of leaf nodes to reduce horizon effect.
     """
+    if stats is not None:
+        stats.q_nodes += 1
+
     # Stand-pat evaluation.
     # If this static score is already good enough for beta, stop now.
     stand_pat = _color(state, perspective) * evaluator(state, perspective)
@@ -90,24 +95,29 @@ def quiescence(
     # Use the same move-order hints here too (TT, killers, history).
     tt_action: Action | None = None
     if tt is not None:
+        if stats is not None:
+            stats.tt_probes += 1
         entry = tt.get(state)
         if entry is not None:
+            if stats is not None:
+                stats.tt_hits += 1
             tt_action = entry[3]
 
     killers = None
     if killer_moves is not None and q_depth < len(killer_moves):
         killers = killer_moves[q_depth]
 
-    actions.sort(
-        # Sort priority (high to low):
-        # 1) TT move, 2) killer move, 3) history score.
-        key=lambda a: (
-            a == tt_action,
-            (killers is not None and a in killers),
-            _history_score(a, history),
-        ),
-        reverse=True,
-    )
+    if use_move_ordering:
+        actions.sort(
+            # Sort priority (high to low):
+            # 1) TT move, 2) killer move, 3) history score.
+            key=lambda a: (
+                a == tt_action,
+                (killers is not None and a in killers),
+                _history_score(a, history),
+            ),
+            reverse=True,
+        )
 
     for action in actions:
         child = apply_action(state, action)
@@ -121,8 +131,12 @@ def quiescence(
             tt,
             killer_moves,
             history,
+            stats,
+            use_move_ordering,
         )
         if score >= beta:
+            if stats is not None:
+                stats.beta_cutoffs += 1
             return int(score)
         if score > alpha:
             alpha = score
@@ -143,6 +157,8 @@ def alphabeta(
     killer_moves: list[list[Action | None]] | None = None,
     history: HistoryTable | None = None,
     q_depth: int = 0,
+    stats: SearchStats | None = None,
+    use_move_ordering: bool = True,
 ) -> int:
     """
     Negamax alpha-beta search.
@@ -154,13 +170,20 @@ def alphabeta(
     Returns a score for the player to move: higher is better for the side to play.
     """
 
+    if stats is not None:
+        stats.nodes += 1
+
     # Read TT entry (if any):
     # - EXACT: can return score directly (if depth is enough)
     # - LOWER/UPPER: can tighten alpha/beta
     tt_action: Action | None = None
     if tt is not None:
+        if stats is not None:
+            stats.tt_probes += 1
         entry = tt.get(state)
         if entry is not None:
+            if stats is not None:
+                stats.tt_hits += 1
             entry_depth, entry_value, entry_flag, entry_action = entry
             tt_action = entry_action
             if entry_depth >= depth:
@@ -171,6 +194,8 @@ def alphabeta(
                 elif entry_flag == TT_UPPER:
                     beta = min(beta, entry_value)
                 if alpha >= beta:
+                    if stats is not None:
+                        stats.tt_cutoffs += 1
                     return entry_value
 
     # At depth limit (or terminal), switch to quiescence to reduce horizon effects.
@@ -185,6 +210,8 @@ def alphabeta(
             tt,
             killer_moves,
             history,
+            stats,
+            use_move_ordering,
         )
 
     actions = generate_legal_actions(state)
@@ -197,15 +224,16 @@ def alphabeta(
     if killer_moves is not None and depth < len(killer_moves):
         killers = killer_moves[depth]
 
-    actions.sort(
-        key=lambda a: (
-            a == tt_action,
-            (killers is not None and a in killers),
-            _is_capture(state, a, mover),
-            _history_score(a, history),
-        ),
-        reverse=True,
-    )
+    if use_move_ordering:
+        actions.sort(
+            key=lambda a: (
+                a == tt_action,
+                (killers is not None and a in killers),
+                _is_capture(state, a, mover),
+                _history_score(a, history),
+            ),
+            reverse=True,
+        )
 
     best = -inf
     # Save original window to set the right TT flag later.
@@ -227,6 +255,8 @@ def alphabeta(
             killer_moves,
             history,
             q_depth,
+            stats,
+            use_move_ordering,
         )
 
         if score > best:
@@ -241,8 +271,10 @@ def alphabeta(
         alpha = max(alpha, best)
         
         if alpha >= beta:
+            if stats is not None:
+                stats.beta_cutoffs += 1
             # Beta cutoff: store the move as a killer at this depth.
-            if killer_moves is not None and depth < len(killer_moves):
+            if use_move_ordering and killer_moves is not None and depth < len(killer_moves):
                 if killers is not None and action not in killers:
                     # Keep two killer moves per depth.
                     killers[1] = killers[0]
@@ -258,5 +290,7 @@ def alphabeta(
         else:
             flag = TT_EXACT
         tt[state] = (depth, int(best), flag, best_action)
+        if stats is not None:
+            stats.tt_stores += 1
 
     return int(best)
