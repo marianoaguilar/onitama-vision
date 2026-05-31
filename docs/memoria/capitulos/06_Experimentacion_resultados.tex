@@ -1,3 +1,277 @@
 \chapter{Experimentación y resultados}
 \label{chap:experimentacion-resultados}
 
+Este capítulo presenta la evaluación experimental del sistema desarrollado. El análisis se centra principalmente en el agente de inteligencia artificial y en el módulo de visión por computador, al ser los componentes que permiten obtener resultados medibles mediante torneos, métricas de rendimiento, entrenamiento de modelos y pruebas en condiciones reales. Finalmente, se incluye una validación funcional del sistema integrado para comprobar que los distintos módulos operan de forma coordinada durante una partida física asistida por cámara.
+
+%==============================================================================
+% 6.1 Entorno experimental
+% =============================================================================
+\section{Entorno experimental}
+\label{sec:entorno-experimental}
+
+Antes de presentar los resultados obtenidos, se recoge el entorno experimental utilizado durante las pruebas. Esta información permite contextualizar las condiciones bajo las que se ejecutaron las evaluaciones del sistema, especialmente en aquellos componentes cuyo comportamiento depende del equipo, la cámara, el entorno de ejecución o los modelos empleados.
+
+En primer lugar, la Tabla~\ref{tab:entorno-hardware} resume el equipo utilizado para la ejecución local del sistema y la configuración de captura empleada durante las pruebas con cámara.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{p{6cm} X}
+\hline
+\textbf{Elemento} & \textbf{Valor} \\
+\hline
+Equipo utilizado & ASUS ZenBook UX425EA \\
+Sistema operativo & Ubuntu 22.04.5 LTS \\
+Procesador & Intel Core i7-1165G7 @ 2.80GHz \\
+Memoria RAM & 16 GB \\
+GPU local & Intel Iris Xe Graphics integrada \\
+Cámara utilizada & Webcam HD UVC del equipo \\
+Resolución de captura & 1280x720 píxeles \\
+Tasa de captura & 30 FPS \\
+Formato de captura & \texttt{MJPG} \\
+\hline
+\end{tabularx}
+\caption{Entorno hardware utilizado durante la experimentación.}
+\label{tab:entorno-hardware}
+\end{table}
+
+Además del entorno hardware, se registraron las versiones principales del entorno software empleado durante la experimentación. Estas versiones se recogen en la Tabla~\ref{tab:entorno-software}.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{p{6cm} X}
+\hline
+\textbf{Dependencia} & \textbf{Versión utilizada} \\
+\hline
+Python & 3.10.12 \\
+pytest & 9.0.2 \\
+NumPy & 2.2.6 \\
+OpenCV & 4.13.0.92 \\
+Ultralytics & 8.4.19 \\
+PySide6 & 6.11.0 \\
+\hline
+\end{tabularx}
+\caption{Entorno software utilizado durante la experimentación.}
+\label{tab:entorno-software}
+\end{table}
+
+Para las pruebas intensivas del agente de inteligencia artificial, especialmente los torneos automáticos y los benchmarks de búsqueda, se utilizó además PyPy 7.3.23 con Python 3.11.15. Este entorno auxiliar se empleó para reducir el tiempo de ejecución de este tipo de experimentos, manteniendo la misma lógica de juego y búsqueda.
+
+Las herramientas principales utilizadas para la evaluación del agente de inteligencia artificial fueron:
+
+\begin{itemize}
+    \item \texttt{scripts/tournament.py}, para ejecutar partidas automáticas entre agentes.
+    \item \texttt{scripts/bench\_search.py}, para medir el rendimiento de distintas configuraciones de búsqueda.
+\end{itemize}
+
+En las pruebas del módulo de visión por computador se utilizaron los modelos finales incorporados al proyecto:
+
+\begin{itemize}
+    \item \texttt{models/pieces\_yolov8s\_640\_best.pt}, para la detección de piezas.
+    \item \texttt{models/cards\_yolo11n-cls\_320\_best.pt}, para la clasificación de cartas.
+\end{itemize}
+
+La inferencia de estos modelos se realizó en el equipo local utilizando CPU, sin aceleración CUDA. El entrenamiento de los modelos de visión no se llevó a cabo en este equipo, sino en Google Colab. Los detalles sobre los conjuntos de datos, el proceso de entrenamiento y las métricas obtenidas se desarrollan en la sección dedicada a la evaluación del módulo de visión por computador.
+
+
+%==============================================================================
+% 6.2 Evaluación del agente de inteligencia artificial
+% =============================================================================
+\section{Evaluación del agente de inteligencia artificial}
+\label{sec:evaluacion-agente-ia}
+
+
+\subsection{Comparación experimental de funciones heurísticas}
+\label{subsec:comparacion-heuristicas}
+
+El objetivo de esta prueba es comparar las funciones heurísticas implementadas para el agente de inteligencia artificial y seleccionar la más adecuada para los experimentos posteriores. Para ello, se ejecutaron partidas automáticas entre agentes que utilizaban la misma configuración de búsqueda y solo diferían en la función de evaluación empleada.
+
+Para ejecutar los torneos se utilizó el script \texttt{scripts/tournament.py}. Esta herramienta permite enfrentar agentes de forma automática utilizando únicamente el motor de juego y el módulo de inteligencia artificial, sin intervención humana ni uso del módulo de visión por computador.
+
+Los agentes comparados fueron \texttt{v1}, \texttt{v2} y \texttt{v3}. Estas versiones representan una evolución progresiva de la función de evaluación: \texttt{v1} actúa como heurística base, \texttt{v2} incorpora criterios ofensivos y posicionales adicionales, y \texttt{v3} añade una evaluación dependiente de la fase de la partida. Antes de esta comparación final se realizaron pruebas preliminares de ajuste de pesos, por lo que las tres versiones evaluadas corresponden a las mejores configuraciones obtenidas para cada familia heurística.
+
+El diseño experimental se definió atendiendo a los siguientes criterios:
+
+\begin{itemize}
+    \item \textbf{Torneo \textit{round-robin}:} permite comparar todas las heurísticas entre sí bajo las mismas condiciones.
+
+    \item \textbf{Pares de partidas:} cada enfrentamiento se ejecuta por pares, alternando los colores de los agentes. Esto reduce el sesgo asociado al jugador inicial y a la configuración inicial de cartas.
+
+    \item \textbf{Profundidades 3 y 4:} la profundidad 3 se utiliza como configuración intermedia de referencia, mientras que la profundidad 4 permite comprobar si la tendencia se mantiene al aumentar el horizonte de búsqueda. En profundidad 3 se utilizaron 200 pares por enfrentamiento, mientras que en profundidad 4 se emplearon 100 pares debido al mayor coste computacional de la búsqueda.
+
+    \item \textbf{Profundidad quiescente 2:} se mantiene constante en todos los experimentos para que no influya en la comparación entre heurísticas.
+
+    \item \textbf{Bloques de semillas 0 y 1000:} las partidas dependen de configuraciones iniciales generadas de forma pseudoaleatoria, especialmente por el reparto inicial de cartas. Por ello, se emplean dos bloques de semillas diferentes para comprobar que los resultados no dependen de un único conjunto de posiciones iniciales.
+
+    \item \textbf{Límite de 300 \textit{plies}:} se fija para evitar que partidas excepcionalmente largas bloqueen la ejecución de los torneos. Si se alcanza este límite, la partida se considera empate.
+\end{itemize}
+
+La Tabla~\ref{tab:configuracion-comparacion-heuristicas} resume la configuración de los experimentos ejecutados.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l *{5}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Exp.} & \textbf{Prof.} & \textbf{Prof. quiescente} & \textbf{Pares/enfr.} & \textbf{Partidas} & \textbf{Semilla inicial} \\
+\hline
+E1 & 3 & 2 & 200 & 1200 & 0 \\
+E2 & 3 & 2 & 200 & 1200 & 1000 \\
+E3 & 4 & 2 & 100 & 600 & 0 \\
+E4 & 4 & 2 & 100 & 600 & 1000 \\
+\hline
+\end{tabularx}
+\caption{Configuración de los torneos utilizados para comparar las funciones heurísticas.}
+\label{tab:configuracion-comparacion-heuristicas}
+\end{table}
+
+La métrica principal utilizada fue la tasa de puntuación, calculada asignando 1 punto por victoria, 0.5 puntos por empate y 0 puntos por derrota. Esta métrica permite comparar el rendimiento global de cada heurística teniendo en cuenta tanto victorias como empates.
+
+La Tabla~\ref{tab:resultados-comparacion-heuristicas} muestra los resultados para cada evaluador obtenidos en cada experimento.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{l @{\hspace{10pt}} c @{\hspace{12pt}} c c c *{3}{>{\centering\arraybackslash}X}@{}}
+\hline
+\textbf{Exp.} & \textbf{Evaluador} & \textbf{Vict.} & \textbf{Emp.} & \textbf{Der.} & \textbf{Puntos} & \textbf{\% punt.} & \textbf{T/dec.} \\
+\hline
+E1 & \texttt{v1} & 369 & 5 & 426 & 371.5 & 46.44 & 2.38 ms \\
+E1 & \texttt{v2} & 331 & 3 & 466 & 332.5 & 41.56 & 5.14 ms \\
+E1 & \texttt{v3} & 493 & 6 & 301 & 496.0 & 62.00 & 5.26 ms \\
+\hline
+E2 & \texttt{v1} & 365 & 6 & 429 & 368.0 & 46.00 & 2.76 ms \\
+E2 & \texttt{v2} & 336 & 4 & 460 & 338.0 & 42.25 & 5.74 ms \\
+E2 & \texttt{v3} & 492 & 4 & 304 & 494.0 & 61.75 & 6.19 ms \\
+\hline
+E3 & \texttt{v1} & 75  & 2 & 323 & 76.0  & 19.00 & 10.97 ms \\
+E3 & \texttt{v2} & 220 & 8 & 172 & 224.0 & 56.00 & 19.87 ms \\
+E3 & \texttt{v3} & 297 & 6 & 97  & 300.0 & 75.00 & 20.43 ms \\
+\hline
+E4 & \texttt{v1} & 97  & 5 & 298 & 99.5  & 24.88 & 10.82 ms \\
+E4 & \texttt{v2} & 218 & 7 & 175 & 221.5 & 55.38 & 20.22 ms \\
+E4 & \texttt{v3} & 276 & 6 & 118 & 279.0 & 69.75 & 21.09 ms \\
+\hline
+\end{tabularx}
+\caption{Resultados de los torneos \textit{round-robin} entre funciones heurísticas.}
+\label{tab:resultados-comparacion-heuristicas}
+\end{table}
+
+Los resultados muestran que \texttt{v3} obtiene la mejor puntuación en todos los experimentos. A profundidad 3, su tasa de puntuación se mantiene prácticamente estable al cambiar el bloque de semillas: 62.00~\% en E1 y 61.75~\% en E2. A profundidad 4, vuelve a ser la mejor heurística, con un 75.00~\% en E3 y un 69.75~\% en E4. Además, al revisar los enfrentamientos directos de cada torneo, \texttt{v3} supera por separado tanto a \texttt{v1} como a \texttt{v2} en los cuatro experimentos.
+
+La relación entre \texttt{v1} y \texttt{v2} es menos estable. A profundidad 3, \texttt{v1} queda por encima de \texttt{v2} en ambos bloques de semillas. Sin embargo, a profundidad 4 esta relación se invierte y \texttt{v2} supera claramente a \texttt{v1}. Esto indica que los criterios adicionales de \texttt{v2} resultan más útiles cuando la búsqueda dispone de un horizonte algo mayor.
+
+En cambio, \texttt{v3} mantiene el mejor comportamiento en todas las configuraciones evaluadas. Esta estabilidad sugiere que la evaluación dependiente de la fase de partida proporciona una valoración más robusta de las posiciones. En Onitama, esto resulta especialmente relevante porque la importancia de factores como el avance del maestro, la movilidad o la seguridad de las piezas puede variar según el momento de la partida.
+
+El límite de 300 \textit{plies} tuvo un impacto reducido en los resultados. En cada uno de los experimentos E1 y E2, solo 7 de las 1200 partidas terminaron por este límite, mientras que en E3 y E4 lo hicieron 8 y 9 de 600 partidas, respectivamente. Por tanto, los empates representan un porcentaje bajo del total y no condicionan de forma significativa la comparación entre heurísticas.
+
+Por último, los tiempos medios por decisión muestran que \texttt{v2} y \texttt{v3} tienen un coste superior a \texttt{v1}. Este resultado es esperable, ya que ambas heurísticas incorporan más criterios de evaluación. No obstante, \texttt{v3} mantiene tiempos similares a \texttt{v2} y obtiene mejores resultados en todos los experimentos, por lo que el incremento de coste se considera asumible dentro de las profundidades evaluadas.
+
+A partir de estos resultados, se selecciona \texttt{v3} como función heurística principal para los experimentos posteriores. Esta elección se basa en que obtiene la mayor puntuación en todos los experimentos, mantiene su ventaja al cambiar el bloque de semillas y sigue siendo la mejor opción al aumentar la profundidad de búsqueda.
+
+
+\subsection{Evaluación de los perfiles de dificultad}
+\label{subsec:evaluacion-perfiles-dificultad}
+
+Una vez seleccionada \texttt{v3} como función heurística principal, se evaluaron los perfiles de dificultad definidos para el agente en la Sección~\ref{subsec:busqueda-evaluacion-ia}. El objetivo de esta prueba es comprobar si los niveles fácil, medio y difícil producen comportamientos diferenciados y coherentes con la dificultad esperada.
+
+El experimento se realizó con el script \texttt{scripts/tournament.py}, utilizado también en la comparación anterior. Se ejecutó un torneo \textit{round-robin} con 100 pares de partidas por enfrentamiento, alternando los colores de los agentes. En total se realizaron 600 partidas automáticas. La métrica principal fue la tasa de puntuación, asignando 1 punto por victoria, 0.5 puntos por empate y 0 puntos por derrota.
+
+La Tabla~\ref{tab:resultados-perfiles-dificultad} muestra los resultados globales obtenidos por cada perfil.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{l *{6}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Perfil} & \textbf{Vict.} & \textbf{Emp.} & \textbf{Der.} & \textbf{Puntos} & \textbf{\% punt.} & \textbf{T/dec.} \\
+\hline
+Fácil   & 50  & 1 & 349 & 50.5  & 12.62 & 0.237 ms \\
+Medio   & 223 & 1 & 176 & 223.5 & 55.88 & 5.826 ms \\
+Difícil & 326 & 0 & 74  & 326.0 & 81.50 & 86.604 ms \\
+\hline
+\end{tabularx}
+\caption{Resultados globales del torneo entre perfiles de dificultad.}
+\label{tab:resultados-perfiles-dificultad}
+\end{table}
+
+Los resultados muestran una jerarquía clara entre los tres perfiles. El perfil difícil obtiene la mayor puntuación global, con un 81.50~\%, seguido del perfil medio, con un 55.88~\%, y del perfil fácil, con un 12.62~\%. Por tanto, el orden de fuerza observado coincide con la dificultad definida para cada nivel. Además, solo una partida terminó en empate por alcanzar el límite máximo de 300 \textit{plies}, por lo que este límite no influye de forma relevante en el análisis.
+
+El coste temporal también aumenta con la dificultad. El perfil fácil presenta un tiempo medio por decisión prácticamente inmediato, mientras que el perfil medio se mantiene en torno a 5.826 ms. El perfil difícil alcanza 86.604 ms por decisión, un coste bastante superior, aunque todavía asumible para una partida interactiva, donde la inteligencia artificial no necesita responder de forma instantánea.
+
+Para comprobar que esta jerarquía también se mantiene en los duelos concretos, la Tabla~\ref{tab:enfrentamientos-perfiles-dificultad} recoge los enfrentamientos directos entre perfiles.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X *{4}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Perfil A} & \textbf{Perfil B} & \textbf{Puntos A} & \textbf{\% A} & \textbf{Puntos B} & \textbf{\% B} \\
+\hline
+Fácil & Medio   & 36.5/200 & 18.25 & 163.5/200 & 81.75 \\
+Fácil & Difícil & 14.0/200 & 7.00  & 186.0/200 & 93.00 \\
+Medio & Difícil & 60.0/200 & 30.00 & 140.0/200 & 70.00 \\
+\hline
+\end{tabularx}
+\caption{Porcentaje de puntuación en los enfrentamientos directos entre perfiles.}
+\label{tab:enfrentamientos-perfiles-dificultad}
+\end{table}
+
+Los enfrentamientos directos confirman la relación esperada entre niveles: el perfil medio supera ampliamente al fácil, el difícil supera con claridad al fácil y también mantiene una ventaja notable frente al medio. El perfil medio, aun quedando por debajo del difícil, consigue un 30.00~\% de puntuación en ese enfrentamiento, por lo que no se comporta como un nivel trivialmente inferior.
+
+También se analizaron las condiciones de victoria producidas durante el torneo. La Tabla~\ref{tab:condiciones-victoria-perfiles} muestra el número de partidas ganadas por captura del maestro y por llegada al templo rival, agrupadas por perfil ganador.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l *{2}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Perfil ganador} & \textbf{Captura del maestro} & \textbf{Llegada al templo} \\
+\hline
+Fácil   & 14  & 36  \\
+Medio   & 151 & 72  \\
+Difícil & 219 & 107 \\
+\hline
+\noalign{\vskip 2pt}
+Total   & 384 & 215 \\
+\hline
+\end{tabularx}
+\caption{Condiciones de victoria según el perfil ganador.}
+\label{tab:condiciones-victoria-perfiles}
+\end{table}
+
+En el conjunto del torneo, 384 partidas finalizaron por captura del maestro y 215 por llegada al templo rival. Además, se observa que el perfil fácil consigue más victorias por llegada al templo que por captura, mientras que los perfiles medio y difícil ganan mayoritariamente capturando al maestro rival. Esto encaja con la diferencia de profundidad entre perfiles, ya que una búsqueda más profunda permite detectar y castigar mejor la exposición táctica del maestro contrario.
+
+En conjunto, los resultados respaldan la configuración final de los perfiles de dificultad y permiten utilizarlos como niveles diferenciados dentro de la aplicación.
+
+
+\subsection{Impacto de las optimizaciones de búsqueda}
+\label{subsec:impacto-optimizaciones-busqueda}
+
+
+%==============================================================================
+% 6.3 Evaluación del módulo de visión por computador
+% =============================================================================
+\section{Evaluación del módulo de visión por computador}
+\label{sec:evaluacion-vision-computador}
+
+\subsection{Captura y preparación de los datos}
+\label{subsec:captura-preparacion-datos}
+
+\subsection{Entrenamiento del detector de piezas}
+\label{subsec:entrenamiento-detector-piezas}
+
+\subsection{Entrenamiento del clasificador de cartas}
+\label{subsec:entrenamiento-clasificador-cartas}
+
+\subsection{Evaluación en condiciones reales de uso}
+\label{subsec:evaluacion-condiciones-reales}
+
+
+%==============================================================================
+% 6.4 Validación funcional del sistema integrado
+% =============================================================================
+\section{Validación funcional del sistema integrado}
+\label{sec:validacion-funcional-sistema-integrado}
