@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import inf
-from onitama.engine.pieces import Player
+from onitama.engine.pieces import PieceType, Player
 from onitama.engine.rules import apply_action, generate_legal_actions, is_terminal, Action
 from onitama.engine.state import GameState
 from onitama.engine.moves import Move
@@ -52,8 +52,30 @@ def _color(state: GameState, perspective: Player) -> int:
     return 1 if state.to_move == perspective else -1
 
 
-def _captures_only(state: GameState, actions: list[Action], mover: Player) -> list[Action]:
-    return [a for a in actions if _is_capture(state, a, mover)]
+def _is_temple_win(state: GameState, action: Action, mover: Player) -> bool:
+    """
+    True if this action wins immediately by moving the mover's Master into
+    the opponent temple. This avoids building a child state just to detect
+    non-capturing terminal moves during quiescence.
+    """
+    if not isinstance(action, Move):
+        return False
+
+    fr, fc = action.from_pos
+    piece = state.board[fr][fc]
+    if piece is None or piece.owner != mover or piece.kind is not PieceType.MASTER:
+        return False
+
+    target_temple = (0, 2) if mover is Player.RED else (4, 2)
+    return action.to_pos == target_temple
+
+
+def _noisy_actions(state: GameState, actions: list[Action], mover: Player) -> list[Action]:
+    """
+    Quiescence only extends tactically sharp actions: captures and immediate
+    temple wins. Quiet non-terminal moves are left to the normal search.
+    """
+    return [a for a in actions if _is_capture(state, a, mover) or _is_temple_win(state, a, mover)]
 
 
 def quiescence(
@@ -88,7 +110,7 @@ def quiescence(
 
     actions = generate_legal_actions(state)
     mover = state.to_move
-    actions = _captures_only(state, actions, mover)
+    actions = _noisy_actions(state, actions, mover)
     if not actions:
         return int(stand_pat)
 
@@ -173,6 +195,11 @@ def alphabeta(
     if stats is not None:
         stats.nodes += 1
 
+    # Save the caller's original window before any TT tightening. The TT flag
+    # stored after the search must describe the result against this window.
+    orig_alpha = alpha
+    orig_beta = beta
+
     # Read TT entry (if any):
     # - EXACT: can return score directly (if depth is enough)
     # - LOWER/UPPER: can tighten alpha/beta
@@ -236,9 +263,6 @@ def alphabeta(
         )
 
     best = -inf
-    # Save original window to set the right TT flag later.
-    orig_alpha = alpha
-    orig_beta = beta
     best_action: Action | None = None
 
     # Main alpha-beta loop.

@@ -55,6 +55,10 @@ def choose_action(
     """
     if depth < 1:
         raise ValueError("depth must be >= 1")
+    if q_depth < 0:
+        raise ValueError("q_depth must be >= 0")
+    if aspiration_window is not None and aspiration_window <= 0:
+        raise ValueError("aspiration_window must be > 0 or None")
 
     if is_terminal(state):
         return None
@@ -72,8 +76,10 @@ def choose_action(
     if evaluator is None:
         evaluator = get_evaluator("v1")
 
-    if tt is None:
-        tt = {} if use_tt else None
+    if not use_tt:
+        tt = None
+    elif tt is None:
+        tt = {}
 
     # Per-search move ordering helpers shared across deepening iterations.
     killer_moves = [[None, None] for _ in range(depth + 1)] if use_move_ordering else None

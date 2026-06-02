@@ -30,5 +30,6 @@ class AIController(Controller):
             q_depth=self.q_depth,
             tt=self.tt,
         )
-        assert action is not None, "AIController was asked to move in a terminal state."
+        if action is None:
+            raise RuntimeError("AIController was asked to move in a terminal state.")
         return action

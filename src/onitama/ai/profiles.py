@@ -20,14 +20,14 @@ AI_PROFILES: dict[str, AIProfile] = {
         label="Fácil",
         evaluator_name="v3",
         depth=1,
-        q_depth=0,
+        q_depth=1,
     ),
     "medium": AIProfile(
         id="medium",
         label="Media",
         evaluator_name="v3",
         depth=3,
-        q_depth=1,
+        q_depth=2,
     ),
     "hard": AIProfile(
         id="hard",
