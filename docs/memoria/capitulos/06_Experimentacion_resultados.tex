@@ -397,6 +397,99 @@ En conjunto, los resultados muestran que los tres perfiles ofrecen niveles de ju
 \subsection{Captura y preparación de los datos}
 \label{subsec:captura-preparacion-datos}
 
+El módulo de visión se evaluó a partir de dos conjuntos de datos, uno para cada tarea visual del sistema:
+
+\begin{itemize}
+    \item \textbf{Piezas}: detección de objetos sobre imágenes del tablero rectificado.
+    \item \textbf{Cartas}: clasificación de recortes individuales obtenidos mediante ROIs calibradas.
+\end{itemize}
+
+En ambos casos, las capturas se realizaron con la cámara fija en la misma posición utilizada posteriormente durante la inferencia. Durante la adquisición se introdujeron ligeras variaciones de iluminación y disposición de los elementos, manteniendo estable el montaje físico general.
+
+Para la preparación de los conjuntos se utilizó Roboflow. Esta herramienta permitió organizar los datos, definir las clases, realizar las anotaciones o asignaciones correspondientes, dividir los conjuntos en entrenamiento, validación y prueba, aplicar el preprocesado necesario y exportar las versiones utilizadas durante el entrenamiento.
+
+La Tabla~\ref{tab:datasets-vision} resume los conjuntos de datos empleados.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{l @{\hspace{1cm}} l @{\hspace{1cm}} c @{\hspace{1cm}} c}
+\hline
+\textbf{Conjunto} & \textbf{Tarea} & \textbf{Datos base} & \textbf{Clases} \\
+\hline
+Piezas & Detección & 237 imágenes tablero & 4 \\
+Cartas & Clasificación & 2000 recortes cartas & 16 \\
+\hline
+\end{tabular}
+\caption{Resumen de los conjuntos de datos utilizados para el módulo de visión.}
+\label{tab:datasets-vision}
+\end{table}
+
+\subsubsection*{Conjunto de piezas}
+
+El conjunto de piezas se construyó a partir de capturas del tablero rectificado mediante homografía. De este modo, el detector se entrenó con imágenes equivalentes a las que recibe durante la ejecución del sistema.
+
+Las imágenes de piezas tenían un tamaño de 750x750 píxeles e incluían un margen alrededor de los cuatro lados del tablero. Este padding permitía conservar piezas que, por la inclinación de la cámara o por estar situadas cerca del borde, podían sobresalir ligeramente del área estricta de juego.
+
+La captura del conjunto de piezas se realizó en dos fases:
+
+\begin{itemize}
+    \item \textbf{Captura inicial}: se tomaron 200 imágenes variando la disposición de las piezas sobre el tablero. Se incluyeron tanto posiciones habituales como situaciones más exigentes, con piezas próximas entre sí, cerca del borde, no perfectamente centradas o parcialmente ocultas.
+    
+    \item \textbf{Ampliación del conjunto}: tras entrenar una primera versión del detector, se observó que las piezas con orientaciones muy distintas a la habitual podían producir confusiones. Por ello, se capturaron 40 imágenes adicionales centradas en rotaciones más variadas, de las que se seleccionaron 37 para el conjunto final.
+\end{itemize}
+
+El conjunto base final quedó formado por 237 imágenes anotadas. Las anotaciones se realizaron mediante cajas delimitadoras. En total, se generaron 1527 anotaciones. Las cuatro clases correspondían a la combinación entre color del jugador y tipo de pieza, diferenciando maestros y estudiantes. La distribución por clase se recoge en la Tabla~\ref{tab:distribucion-piezas}.
+
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{l r}
+\hline
+\textbf{Clase} & \textbf{Anotaciones} \\
+\hline
+\texttt{red\_student} & 550 \\
+\texttt{blue\_student} & 523 \\
+\texttt{blue\_master} & 227 \\
+\texttt{red\_master} & 227 \\
+\hline
+\end{tabular}
+\caption{Distribución de anotaciones del conjunto base de piezas.}
+\label{tab:distribucion-piezas}
+\end{table}
+
+La división del conjunto base se configuró siguiendo una proporción 70/20/10 para entrenamiento, validación y prueba. Como preprocesado, se aplicó orientación automática y redimensionado a 640x640 píxeles.
+
+Además, se generaron imágenes adicionales mediante aumentación únicamente sobre el subconjunto de entrenamiento. En concreto, se produjeron tres salidas por ejemplo de entrenamiento, utilizando variaciones de brillo entre -20\% y +20\%, y de exposición entre -10\% y +10\%.
+
+Tras este proceso, el conjunto final preparado para el entrenamiento quedó formado por 569 imágenes: 498 de entrenamiento, 48 de validación y 23 de prueba.
+
+\subsubsection*{Conjunto de cartas}
+
+El conjunto de cartas se construyó a partir de recortes individuales de las cinco cartas visibles, obtenidos mediante ROIs calibradas.
+
+La captura se organizó en 10 bloques. Cada bloque estaba formado por 40 fotografías del tablero, y de cada fotografía se extrajeron las cinco cartas visibles de la partida. De este modo, cada bloque generó 200 recortes, hasta alcanzar un total de 2000 imágenes.
+
+La división del conjunto se realizó por bloques completos:
+
+\begin{itemize}
+    \item 7 bloques para entrenamiento: 1400 imágenes.
+    \item 2 bloques para validación: 400 imágenes.
+    \item 1 bloque para prueba: 200 imágenes.
+\end{itemize}
+
+Esta división reduce la posibilidad de que recortes procedentes de disposiciones muy similares aparezcan simultáneamente en entrenamiento y validación o prueba.
+
+Las clases del conjunto corresponden a las 16 cartas de movimiento del juego base. La distribución quedó razonablemente equilibrada, con una media de 125 recortes por clase y un rango comprendido entre 106 y 140 recortes.
+
+Durante la preparación de los recortes se descartó deformar las cartas mediante estirado directo, ya que esto alteraba sus proporciones reales. En su lugar, se mantuvo la relación de aspecto y se completó la imagen con bordes negros hasta obtener una entrada cuadrada de 320x320 píxeles. El tamaño mediano original de los recortes era aproximadamente 377x251 píxeles.
+
+En la versión final del conjunto de cartas no se generaron imágenes adicionales mediante aumentación en Roboflow. El conjunto utilizado para el entrenamiento coincidió, por tanto, con las 2000 imágenes preparadas tras el recorte y el redimensionado con padding negro.
+
+En conjunto, estos dos datasets proporcionan la base experimental para entrenar los dos modelos visuales del sistema: el detector de piezas sobre el tablero y el clasificador de cartas sobre recortes individuales.
+
+
 \subsection{Entrenamiento del detector de piezas}
 \label{subsec:entrenamiento-detector-piezas}
 
