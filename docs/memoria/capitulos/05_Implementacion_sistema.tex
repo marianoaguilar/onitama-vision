@@ -150,17 +150,16 @@ La búsqueda se implementa en \texttt{search.py} mediante \texttt{alphabeta()}, 
 
 \subsubsection{Optimización de la búsqueda}
 
-En la implementación se han incorporado varias optimizaciones aplicadas directamente sobre el recorrido del árbol:
-
+La implementación incorpora varias técnicas configurables asociadas al proceso de búsqueda:
 \begin{itemize}
     \item \textbf{Tabla de transposición}: definida como \texttt{dict[GameState, TTEntry]}. Cada entrada almacena profundidad, valor, tipo de cota y mejor acción encontrada.
     \item \textbf{Ordenación de acciones}: combina la mejor acción almacenada en la tabla de transposición, capturas, \textit{killer moves} e historial de movimientos.
     \item \textbf{Profundización iterativa}: \texttt{choose\_action()} puede lanzar búsquedas de profundidad creciente hasta alcanzar el límite configurado.
-    \item \textbf{Ventanas de aspiración}: a partir de la puntuación de la profundidad anterior, se intenta primero una búsqueda con una ventana más estrecha.
-    \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis únicamente sobre acciones de captura.
+    \item \textbf{Ventanas de aspiración}: a partir de la puntuación obtenida en una profundidad anterior, se intenta primero una búsqueda con una ventana más estrecha.
+    \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis únicamente sobre acciones de captura para evitar evaluaciones prematuras en posiciones tácticamente inestables.
 \end{itemize}
 
-Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, como \texttt{depth}, \texttt{use\_tt}, \texttt{use\_iterative\_deepening}, \texttt{aspiration\_window} y \texttt{q\_depth}. De este modo, la misma implementación de búsqueda puede ejecutarse con distintas configuraciones, facilitando su análisis posterior.
+Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, que permiten fijar la profundidad principal, seleccionar el evaluador y activar o ajustar las técnicas auxiliares de búsqueda. De este modo, la misma implementación puede ejecutarse con distintas configuraciones, facilitando su análisis experimental posterior.
 
 La búsqueda determina qué estados se alcanzan durante la exploración, mientras que la función de evaluación determina cómo se valoran los estados situados en la frontera del árbol. Por ello, el evaluador utilizado influye directamente en la acción finalmente seleccionada por el agente.
 

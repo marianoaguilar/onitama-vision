@@ -15,7 +15,7 @@ En primer lugar, la Tabla~\ref{tab:entorno-hardware} resume el equipo utilizado 
 
 \begin{table}[H]
 \centering
-\begin{tabularx}{\textwidth}{p{6cm} X}
+\begin{tabular}{l @{\hspace{2cm}} l}
 \hline
 \textbf{Elemento} & \textbf{Valor} \\
 \hline
@@ -29,7 +29,7 @@ Resolución de captura & 1280x720 píxeles \\
 Tasa de captura & 30 FPS \\
 Formato de captura & \texttt{MJPG} \\
 \hline
-\end{tabularx}
+\end{tabular}
 \caption{Entorno hardware utilizado durante la experimentación.}
 \label{tab:entorno-hardware}
 \end{table}
@@ -38,7 +38,7 @@ Además del entorno hardware, se registraron las versiones principales del entor
 
 \begin{table}[H]
 \centering
-\begin{tabularx}{\textwidth}{p{6cm} X}
+\begin{tabular}{l @{\hspace{2cm}} l}
 \hline
 \textbf{Dependencia} & \textbf{Versión utilizada} \\
 \hline
@@ -49,7 +49,7 @@ OpenCV & 4.13.0.92 \\
 Ultralytics & 8.4.19 \\
 PySide6 & 6.11.0 \\
 \hline
-\end{tabularx}
+\end{tabular}
 \caption{Entorno software utilizado durante la experimentación.}
 \label{tab:entorno-software}
 \end{table}
@@ -136,46 +136,187 @@ La Tabla~\ref{tab:resultados-comparacion-heuristicas} muestra los resultados par
 \hline
 \textbf{Exp.} & \textbf{Evaluador} & \textbf{Vict.} & \textbf{Emp.} & \textbf{Der.} & \textbf{Puntos} & \textbf{\% punt.} & \textbf{T/dec.} \\
 \hline
-E1 & \texttt{v1} & 369 & 5 & 426 & 371.5 & 46.44 & 2.38 ms \\
-E1 & \texttt{v2} & 331 & 3 & 466 & 332.5 & 41.56 & 5.14 ms \\
-E1 & \texttt{v3} & 493 & 6 & 301 & 496.0 & 62.00 & 5.26 ms \\
+E1 & \texttt{v1} & 344 & 6 & 450 & 347.0 & 43.38 & 2.33 ms \\
+E1 & \texttt{v2} & 333 & 3 & 464 & 334.5 & 41.81 & 4.91 ms \\
+E1 & \texttt{v3} & 515 & 7 & 278 & 518.5 & 64.81 & 5.02 ms \\
 \hline
-E2 & \texttt{v1} & 365 & 6 & 429 & 368.0 & 46.00 & 2.76 ms \\
-E2 & \texttt{v2} & 336 & 4 & 460 & 338.0 & 42.25 & 5.74 ms \\
-E2 & \texttt{v3} & 492 & 4 & 304 & 494.0 & 61.75 & 6.19 ms \\
+E2 & \texttt{v1} & 333 & 8 & 459 & 337.0 & 42.12 & 2.44 ms \\
+E2 & \texttt{v2} & 340 & 6 & 454 & 343.0 & 42.88 & 5.11 ms \\
+E2 & \texttt{v3} & 517 & 6 & 277 & 520.0 & 65.00 & 5.32 ms \\
 \hline
-E3 & \texttt{v1} & 75  & 2 & 323 & 76.0  & 19.00 & 10.97 ms \\
-E3 & \texttt{v2} & 220 & 8 & 172 & 224.0 & 56.00 & 19.87 ms \\
-E3 & \texttt{v3} & 297 & 6 & 97  & 300.0 & 75.00 & 20.43 ms \\
+E3 & \texttt{v1} & 75  & 1 & 324 & 75.5  & 18.88 & 12.52 ms \\
+E3 & \texttt{v2} & 217 & 8 & 175 & 221.0 & 55.25 & 22.66 ms \\
+E3 & \texttt{v3} & 300 & 7 & 93  & 303.5 & 75.88 & 22.31 ms \\
 \hline
-E4 & \texttt{v1} & 97  & 5 & 298 & 99.5  & 24.88 & 10.82 ms \\
-E4 & \texttt{v2} & 218 & 7 & 175 & 221.5 & 55.38 & 20.22 ms \\
-E4 & \texttt{v3} & 276 & 6 & 118 & 279.0 & 69.75 & 21.09 ms \\
+E4 & \texttt{v1} & 77  & 4 & 319 & 79.0  & 19.75 & 12.46 ms \\
+E4 & \texttt{v2} & 230 & 6 & 164 & 233.0 & 58.25 & 23.47 ms \\
+E4 & \texttt{v3} & 286 & 4 & 110 & 288.0 & 72.00 & 23.23 ms \\
 \hline
 \end{tabularx}
 \caption{Resultados de los torneos \textit{round-robin} entre funciones heurísticas.}
 \label{tab:resultados-comparacion-heuristicas}
 \end{table}
 
-Los resultados muestran que \texttt{v3} obtiene la mejor puntuación en todos los experimentos. A profundidad 3, su tasa de puntuación se mantiene prácticamente estable al cambiar el bloque de semillas: 62.00~\% en E1 y 61.75~\% en E2. A profundidad 4, vuelve a ser la mejor heurística, con un 75.00~\% en E3 y un 69.75~\% en E4. Además, al revisar los enfrentamientos directos de cada torneo, \texttt{v3} supera por separado tanto a \texttt{v1} como a \texttt{v2} en los cuatro experimentos.
+Los resultados muestran que \texttt{v3} obtiene la mejor puntuación en todos los experimentos. A profundidad 3, su tasa de puntuación se mantiene prácticamente estable al cambiar el bloque de semillas: 64.81~\% en E1 y 65.00~\% en E2. A profundidad 4, vuelve a ser la mejor heurística, con un 75.88~\% en E3 y un 72.00~\% en E4. Además, al revisar los enfrentamientos directos de cada torneo, \texttt{v3} supera por separado tanto a \texttt{v1} como a \texttt{v2} en los cuatro experimentos.
 
 La relación entre \texttt{v1} y \texttt{v2} es menos estable. A profundidad 3, \texttt{v1} queda por encima de \texttt{v2} en ambos bloques de semillas. Sin embargo, a profundidad 4 esta relación se invierte y \texttt{v2} supera claramente a \texttt{v1}. Esto indica que los criterios adicionales de \texttt{v2} resultan más útiles cuando la búsqueda dispone de un horizonte algo mayor.
 
 En cambio, \texttt{v3} mantiene el mejor comportamiento en todas las configuraciones evaluadas. Esta estabilidad sugiere que la evaluación dependiente de la fase de partida proporciona una valoración más robusta de las posiciones. En Onitama, esto resulta especialmente relevante porque la importancia de factores como el avance del maestro, la movilidad o la seguridad de las piezas puede variar según el momento de la partida.
 
-El límite de 300 \textit{plies} tuvo un impacto reducido en los resultados. En cada uno de los experimentos E1 y E2, solo 7 de las 1200 partidas terminaron por este límite, mientras que en E3 y E4 lo hicieron 8 y 9 de 600 partidas, respectivamente. Por tanto, los empates representan un porcentaje bajo del total y no condicionan de forma significativa la comparación entre heurísticas.
+El límite de 300 \textit{plies} tuvo un impacto reducido en los resultados. En los experimentos E1 y E2, solo 8 y 10 de las 1200 partidas terminaron por este límite, mientras que en E3 y E4 lo hicieron 8 y 7 de 600 partidas, respectivamente. Por tanto, los empates representan un porcentaje bajo del total y no condicionan de forma significativa la comparación entre heurísticas.
 
 Por último, los tiempos medios por decisión muestran que \texttt{v2} y \texttt{v3} tienen un coste superior a \texttt{v1}. Este resultado es esperable, ya que ambas heurísticas incorporan más criterios de evaluación. No obstante, \texttt{v3} mantiene tiempos similares a \texttt{v2} y obtiene mejores resultados en todos los experimentos, por lo que el incremento de coste se considera asumible dentro de las profundidades evaluadas.
 
 A partir de estos resultados, se selecciona \texttt{v3} como función heurística principal para los experimentos posteriores. Esta elección se basa en que obtiene la mayor puntuación en todos los experimentos, mantiene su ventaja al cambiar el bloque de semillas y sigue siendo la mejor opción al aumentar la profundidad de búsqueda.
 
 
+\subsection{Impacto de las optimizaciones de búsqueda}
+\label{subsec:impacto-optimizaciones-busqueda}
+
+Una vez seleccionada \texttt{v3} como función heurística principal, se analizó el impacto de las técnicas configurables de búsqueda implementadas en el agente. El objetivo de esta prueba es determinar qué configuración resulta más adecuada para el uso final del sistema.
+
+Para ello se utilizó el script \texttt{scripts/bench\_search.py}. Este script genera partidas de referencia y reproduce posteriormente los mismos estados con distintas configuraciones de búsqueda. De esta forma, todas las variantes se evalúan sobre las mismas posiciones, lo que permite comparar el tiempo de decisión y el número de nodos explorados en condiciones equivalentes.
+
+El diseño del benchmark se definió atendiendo a los siguientes criterios:
+
+\begin{itemize}
+    \item \textbf{Heurística:} se empleó \texttt{v3}, seleccionada en la sección anterior como función heurística principal del agente.
+
+    \item \textbf{Profundidades evaluadas:} se probaron las profundidades principales 3, 4 y 5, para comprobar si el efecto de cada optimización se mantiene al aumentar el horizonte de búsqueda.
+
+    \item \textbf{Profundidad quiescente:} se fijó en 2 para aislar el efecto de las optimizaciones comparadas.
+
+    \item \textbf{Ventana de aspiración:} cuando esta técnica estaba activa, se utilizó una ventana inicial de 100 puntos alrededor del valor estimado por la iteración anterior.
+    
+    \item \textbf{Partidas medidas:} en profundidad 3 y 4 se evaluaron 50 partidas, mientras que en profundidad 5 se evaluaron 20 partidas debido al mayor coste computacional. En todos los casos se utilizó semilla inicial 0 y se fijó un límite máximo de 300 \textit{plies} por partida.
+
+    \item \textbf{Partidas de calentamiento:} se ejecutaron 5 partidas iniciales que no se incluyeron en las métricas finales, con el fin de reducir el efecto de arranque del entorno de ejecución.
+\end{itemize}
+
+La configuración completa incluye tabla de transposición (TT), ordenación de movimientos, profundización iterativa (ID) y ventanas de aspiración. A partir de ella se compararon variantes en las que se desactiva una técnica concreta, además de una configuración mínima sin ninguna de estas técnicas.
+
+La tabla recoge el tiempo total, el tiempo medio por decisión y dos ratios respecto a la configuración completa: tiempo relativo y nodos relativos. En ambos ratios, valores mayores que 1 indican un mayor coste y valores menores que 1 indican un menor coste.
+
+La Tabla~\ref{tab:resultados-optimizaciones-busqueda} resume los resultados principales.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{c l *{4}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Prof.} & \textbf{Configuración} & \textbf{Tiempo total} & \textbf{Tiempo/dec.} & \textbf{Ratio tiempo} & \textbf{Ratio nodos} \\
+\hline
+3 & Completa & 8.660 s & 5.161 ms & 1.00 & 1.00 \\
+3 & Sin TT & 8.611 s & 5.132 ms & 0.99 & 1.10 \\
+3 & Sin ordenación & 15.054 s & 8.972 ms & 1.74 & 1.97 \\
+3 & Sin ID & 7.315 s & 4.359 ms & 0.85 & 0.85 \\
+3 & Sin aspiración & 8.088 s & 4.820 ms & 0.93 & 0.89 \\
+3 & Mínima & 12.527 s & 7.466 ms & 1.45 & 1.69 \\
+\hline
+4 & Completa & 32.794 s & 18.697 ms & 1.00 & 1.00 \\
+4 & Sin TT & 39.471 s & 22.503 ms & 1.20 & 1.26 \\
+4 & Sin ordenación & 75.901 s & 43.273 ms & 2.31 & 2.62 \\
+4 & Sin ID & 29.239 s & 16.670 ms & 0.89 & 0.86 \\
+4 & Sin aspiración & 28.809 s & 16.425 ms & 0.88 & 0.88 \\
+4 & Mínima & 65.299 s & 37.229 ms & 1.99 & 2.40 \\
+\hline
+5 & Completa & 57.725 s & 75.065 ms & 1.00 & 1.00 \\
+5 & Sin TT & 55.063 s & 71.604 ms & 0.95 & 1.37 \\
+5 & Sin ordenación & 187.696 s & 244.077 ms & 3.25 & 4.63 \\
+5 & Sin ID & 40.913 s & 53.203 ms & 0.71 & 0.92 \\
+5 & Sin aspiración & 42.389 s & 55.123 ms & 0.73 & 0.92 \\
+5 & Mínima & 164.402 s & 213.786 ms & 2.85 & 4.68 \\
+\hline
+\end{tabularx}
+\caption{Impacto de distintas configuraciones de búsqueda respecto a la configuración completa.}
+\label{tab:resultados-optimizaciones-busqueda}
+\end{table}
+
+\textbf{Ordenación de movimientos.} Es la optimización con efecto más claro. Al desactivarla, el tiempo aumenta en todas las profundidades: 1.74 veces en profundidad 3, 2.31 veces en profundidad 4 y 3.25 veces en profundidad 5. El número de nodos explorados también crece de forma notable. Por tanto, esta técnica se mantiene en la configuración final.
+
+\textbf{Tabla de transposición.} Presenta un comportamiento menos estable. En profundidad 4 mejora el rendimiento respecto a la variante sin tabla, pero en profundidad 3 y 5 no aporta una reducción clara del tiempo. En profundidad 5, incluso explorando más nodos, la variante sin tabla obtiene un tiempo ligeramente menor. Esto indica que el ahorro de nodos no siempre compensa el coste de consultar y actualizar la tabla.
+
+\textbf{Profundización iterativa y ventanas de aspiración.} No mejoran el rendimiento en este escenario. Ambas técnicas están relacionadas, ya que las ventanas de aspiración utilizan el valor obtenido en una profundidad anterior para iniciar la siguiente búsqueda con una ventana más estrecha. En una búsqueda a profundidad fija, las iteraciones previas y los posibles reintentos añaden coste adicional. Por ello, las configuraciones que desactivan estas técnicas son más rápidas en las tres profundidades evaluadas.
+
+\textbf{Configuración mínima.} Sirve como referencia para observar el efecto acumulado de eliminar varias técnicas de búsqueda. Sus resultados muestran que desactivar todas las optimizaciones no es una buena alternativa, ya que el coste aumenta de forma clara respecto a la configuración completa, especialmente en profundidad 4 y 5.
+
+Con estos resultados, se probó una configuración combinada manteniendo solo la técnica que había mostrado una mejora clara de rendimiento: la ordenación de movimientos. En esta variante se desactivan simultáneamente la tabla de transposición, la profundización iterativa y las ventanas de aspiración, manteniendo constante la búsqueda quiescente. La Tabla~\ref{tab:confirmacion-optimizaciones-busqueda} compara esta configuración con la configuración completa y con la mejor variante individual observada en cada profundidad.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{c *{3}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Prof.} & \textbf{Completa} & \textbf{Mejor variante individual} & \textbf{Configuración combinada} \\
+\hline
+3 & 8.660 s & 7.315 s & 7.064 s \\
+4 & 32.794 s & 28.809 s & 26.417 s \\
+5 & 57.725 s & 40.913 s & 39.688 s \\
+\hline
+\end{tabularx}
+\caption{Comparación de la configuración combinada frente a la configuración completa y las mejores variantes individuales.}
+\label{tab:confirmacion-optimizaciones-busqueda}
+\end{table}
+
+La mejor variante individual corresponde a desactivar la profundización iterativa en profundidad 3 y 5, y a desactivar las ventanas de aspiración en profundidad 4. No obstante, la configuración combinada obtiene el menor tiempo total en las tres profundidades, por lo que se adopta como base para la configuración final de búsqueda, manteniendo únicamente la ordenación de movimientos entre las optimizaciones de rendimiento evaluadas.
+
+
+\subsubsection{Comprobación de la búsqueda quiescente}
+
+La búsqueda quiescente se estudió de forma diferente al resto de técnicas de búsqueda. En este caso, su finalidad principal no es reducir el tiempo de cómputo, sino mejorar la evaluación de posiciones tácticamente inestables en la frontera del árbol. Por ello, además del coste temporal, se evaluó su efecto sobre la calidad de las decisiones del agente.
+
+El experimento se definió atendiendo a los siguientes criterios:
+
+\begin{itemize}
+    \item \textbf{Heurística:} se utilizó \texttt{v3}, manteniendo la misma función de evaluación seleccionada en la sección anterior.
+
+    \item \textbf{Profundidad principal:} se fijó en 3 para todos los agentes, de forma que la única diferencia fuese la profundidad quiescente.
+
+    \item \textbf{Profundidades quiescentes comparadas:} se evaluaron tres configuraciones: sin búsqueda quiescente, con profundidad quiescente 1 y con profundidad quiescente 2.
+
+    \item \textbf{Torneos ejecutados:} se realizaron dos torneos \textit{round-robin}, con semillas iniciales 0 y 1000. En cada uno se emplearon 200 pares de partidas por enfrentamiento, alternando colores.
+\end{itemize}
+
+La Tabla~\ref{tab:resultados-quiescencia} recoge los resultados obtenidos.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{l l c c c *{3}{>{\centering\arraybackslash}X}}
+\hline
+\textbf{Exp.} & \textbf{Configuración} & \textbf{Vict.} & \textbf{Emp.} & \textbf{Der.} & \textbf{Puntos} & \textbf{\% punt.} & \textbf{T/dec.} \\
+\hline
+Q1 & Sin quiescencia & 264 & 4 & 532 & 266.0 & 33.25 & 3.064 ms \\
+Q1 & Quiescencia 1  & 431 & 7 & 362 & 434.5 & 54.31 & 4.025 ms \\
+Q1 & Quiescencia 2  & 497 & 5 & 298 & 499.5 & 62.44 & 4.514 ms \\
+\hline
+Q2 & Sin quiescencia & 269 & 4 & 527 & 271.0 & 33.88 & 3.706 ms \\
+Q2 & Quiescencia 1  & 430 & 6 & 364 & 433.0 & 54.12 & 4.693 ms \\
+Q2 & Quiescencia 2  & 493 & 6 & 301 & 496.0 & 62.00 & 5.003 ms \\
+\hline
+\end{tabularx}
+\caption{Impacto de la búsqueda quiescente en la calidad del agente.}
+\label{tab:resultados-quiescencia}
+\end{table}
+
+\textbf{Calidad de juego.} Los resultados muestran una progresión clara al aumentar la profundidad quiescente. Sin búsqueda quiescente, la puntuación se mantiene en torno al 33~\%. Con profundidad quiescente 1 supera el 54~\%, y con profundidad quiescente 2 alcanza aproximadamente el 62~\%. Esta tendencia aparece en los dos bloques de semillas, por lo que el resultado no depende de un reparto concreto de cartas.
+
+\textbf{Coste temporal.} El tiempo medio por decisión aumenta al activar la búsqueda quiescente, pero el incremento se mantiene en valores bajos para una partida interactiva. Además, el salto de profundidad quiescente 1 a 2 añade un coste reducido en comparación con la mejora obtenida en puntuación.
+
+Estos resultados justifican mantener la búsqueda quiescente, ajustando su profundidad según el perfil de dificultad: profundidad 1 para el perfil fácil y profundidad 2 para los perfiles medio y difícil. 
+
+Así, la búsqueda del agente conserva la ordenación de movimientos y la búsqueda quiescente, mientras que el resto de técnicas permanecen desactivadas al no aportar una mejora estable en el contexto evaluado.
+
+
 \subsection{Evaluación de los perfiles de dificultad}
 \label{subsec:evaluacion-perfiles-dificultad}
 
-Una vez seleccionada \texttt{v3} como función heurística principal, se evaluaron los perfiles de dificultad definidos para el agente en la Sección~\ref{subsec:busqueda-evaluacion-ia}. El objetivo de esta prueba es comprobar si los niveles fácil, medio y difícil producen comportamientos diferenciados y coherentes con la dificultad esperada.
+Con la heurística y la configuración de búsqueda ya fijadas, se evaluaron los perfiles de dificultad definidos para el agente en la Sección~\ref{subsec:busqueda-evaluacion-ia}. Esta prueba analiza el comportamiento conjunto de los niveles fácil, medio y difícil, comprobando si producen diferencias claras y coherentes con la dificultad esperada.
 
-El experimento se realizó con el script \texttt{scripts/tournament.py}, utilizado también en la comparación anterior. Se ejecutó un torneo \textit{round-robin} con 100 pares de partidas por enfrentamiento, alternando los colores de los agentes. En total se realizaron 600 partidas automáticas. La métrica principal fue la tasa de puntuación, asignando 1 punto por victoria, 0.5 puntos por empate y 0 puntos por derrota.
+El experimento se realizó con el script \texttt{scripts/tournament.py}, utilizando la configuración de búsqueda seleccionada en la sección anterior. Se ejecutó un torneo \textit{round-robin} con 100 pares de partidas por enfrentamiento, alternando los colores de los agentes, semilla inicial 0 y límite máximo de 300 \textit{plies}. En total se realizaron 600 partidas automáticas. La métrica principal fue la tasa de puntuación, asignando 1 punto por victoria, 0.5 puntos por empate y 0 puntos por derrota.
 
 La Tabla~\ref{tab:resultados-perfiles-dificultad} muestra los resultados globales obtenidos por cada perfil.
 
@@ -187,20 +328,20 @@ La Tabla~\ref{tab:resultados-perfiles-dificultad} muestra los resultados globale
 \hline
 \textbf{Perfil} & \textbf{Vict.} & \textbf{Emp.} & \textbf{Der.} & \textbf{Puntos} & \textbf{\% punt.} & \textbf{T/dec.} \\
 \hline
-Fácil   & 50  & 1 & 349 & 50.5  & 12.62 & 0.237 ms \\
-Medio   & 223 & 1 & 176 & 223.5 & 55.88 & 5.826 ms \\
-Difícil & 326 & 0 & 74  & 326.0 & 81.50 & 86.604 ms \\
+Fácil   & 49  & 1 & 350 & 49.5  & 12.38 & 0.248 ms \\
+Medio   & 199 & 1 & 200 & 199.5 & 49.88 & 4.739 ms \\
+Difícil & 351 & 0 & 49  & 351.0 & 87.75 & 85.107 ms \\
 \hline
 \end{tabularx}
 \caption{Resultados globales del torneo entre perfiles de dificultad.}
 \label{tab:resultados-perfiles-dificultad}
 \end{table}
 
-Los resultados muestran una jerarquía clara entre los tres perfiles. El perfil difícil obtiene la mayor puntuación global, con un 81.50~\%, seguido del perfil medio, con un 55.88~\%, y del perfil fácil, con un 12.62~\%. Por tanto, el orden de fuerza observado coincide con la dificultad definida para cada nivel. Además, solo una partida terminó en empate por alcanzar el límite máximo de 300 \textit{plies}, por lo que este límite no influye de forma relevante en el análisis.
+\textbf{Resultados globales.} Los resultados muestran una diferencia clara entre los tres perfiles. El perfil difícil obtiene la mayor puntuación global, con un 87.75~\%, seguido del perfil medio, con un 49.88~\%, y del perfil fácil, con un 12.38~\%. Además, solo una partida terminó en empate por alcanzar el límite máximo de 300 \textit{plies}, por lo que este límite no influye de forma relevante en el análisis.
 
-El coste temporal también aumenta con la dificultad. El perfil fácil presenta un tiempo medio por decisión prácticamente inmediato, mientras que el perfil medio se mantiene en torno a 5.826 ms. El perfil difícil alcanza 86.604 ms por decisión, un coste bastante superior, aunque todavía asumible para una partida interactiva, donde la inteligencia artificial no necesita responder de forma instantánea.
+\textbf{Coste temporal.} El coste temporal aumenta con la dificultad. El perfil fácil presenta un tiempo medio por decisión prácticamente inmediato, el perfil medio se mantiene en torno a 4.739 ms y el perfil difícil alcanza 85.107 ms. Aunque este último coste es superior, sigue siendo asumible para una partida interactiva.
 
-Para comprobar que esta jerarquía también se mantiene en los duelos concretos, la Tabla~\ref{tab:enfrentamientos-perfiles-dificultad} recoge los enfrentamientos directos entre perfiles.
+La Tabla~\ref{tab:enfrentamientos-perfiles-dificultad} permite comprobar esta diferencia en los enfrentamientos directos entre perfiles.
 
 \begin{table}[H]
 \centering
@@ -210,16 +351,16 @@ Para comprobar que esta jerarquía también se mantiene en los duelos concretos,
 \hline
 \textbf{Perfil A} & \textbf{Perfil B} & \textbf{Puntos A} & \textbf{\% A} & \textbf{Puntos B} & \textbf{\% B} \\
 \hline
-Fácil & Medio   & 36.5/200 & 18.25 & 163.5/200 & 81.75 \\
-Fácil & Difícil & 14.0/200 & 7.00  & 186.0/200 & 93.00 \\
-Medio & Difícil & 60.0/200 & 30.00 & 140.0/200 & 70.00 \\
+Fácil & Medio   & 38.5/200 & 19.25 & 161.5/200 & 80.75 \\
+Fácil & Difícil & 11.0/200 & 5.50  & 189.0/200 & 94.50 \\
+Medio & Difícil & 38.0/200 & 19.00 & 162.0/200 & 81.00 \\
 \hline
 \end{tabularx}
 \caption{Porcentaje de puntuación en los enfrentamientos directos entre perfiles.}
 \label{tab:enfrentamientos-perfiles-dificultad}
 \end{table}
 
-Los enfrentamientos directos confirman la relación esperada entre niveles: el perfil medio supera ampliamente al fácil, el difícil supera con claridad al fácil y también mantiene una ventaja notable frente al medio. El perfil medio, aun quedando por debajo del difícil, consigue un 30.00~\% de puntuación en ese enfrentamiento, por lo que no se comporta como un nivel trivialmente inferior.
+Los duelos directos refuerzan la lectura anterior: el perfil medio supera ampliamente al fácil, mientras que el difícil domina tanto al fácil como al medio. De este modo, el perfil medio queda situado como un nivel intermedio real, no solo por su puntuación global, sino también por su comportamiento frente a los otros dos niveles.
 
 También se analizaron las condiciones de victoria producidas durante el torneo. La Tabla~\ref{tab:condiciones-victoria-perfiles} muestra el número de partidas ganadas por captura del maestro y por llegada al templo rival, agrupadas por perfil ganador.
 
@@ -230,25 +371,21 @@ También se analizaron las condiciones de victoria producidas durante el torneo.
 \hline
 \textbf{Perfil ganador} & \textbf{Captura del maestro} & \textbf{Llegada al templo} \\
 \hline
-Fácil   & 14  & 36  \\
-Medio   & 151 & 72  \\
-Difícil & 219 & 107 \\
+Fácil   & 46  & 3  \\
+Medio   & 161 & 38 \\
+Difícil & 305 & 46 \\
 \hline
 \noalign{\vskip 2pt}
-Total   & 384 & 215 \\
+Total   & 512 & 87 \\
 \hline
 \end{tabularx}
 \caption{Condiciones de victoria según el perfil ganador.}
 \label{tab:condiciones-victoria-perfiles}
 \end{table}
 
-En el conjunto del torneo, 384 partidas finalizaron por captura del maestro y 215 por llegada al templo rival. Además, se observa que el perfil fácil consigue más victorias por llegada al templo que por captura, mientras que los perfiles medio y difícil ganan mayoritariamente capturando al maestro rival. Esto encaja con la diferencia de profundidad entre perfiles, ya que una búsqueda más profunda permite detectar y castigar mejor la exposición táctica del maestro contrario.
+En el conjunto del torneo, 512 partidas finalizaron por captura del maestro y 87 por llegada al templo rival. La captura del maestro es, por tanto, la condición de victoria dominante en los tres perfiles, especialmente en el perfil difícil. Esto encaja con la diferencia de profundidad entre niveles, ya que una búsqueda más profunda permite detectar y castigar mejor la exposición táctica del maestro contrario.
 
-En conjunto, los resultados respaldan la configuración final de los perfiles de dificultad y permiten utilizarlos como niveles diferenciados dentro de la aplicación.
-
-
-\subsection{Impacto de las optimizaciones de búsqueda}
-\label{subsec:impacto-optimizaciones-busqueda}
+En conjunto, los resultados muestran que los tres perfiles ofrecen niveles de juego diferenciados y adecuados para su uso dentro de la aplicación.
 
 
 %==============================================================================
