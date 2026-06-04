@@ -55,6 +55,14 @@ class AgentSpec:
         get_evaluator(self.evaluator_name)
 
 
+@dataclass(frozen=True)
+class SearchConfig:
+    use_tt: bool
+    use_iterative_deepening: bool
+    aspiration_window: int | None
+    use_move_ordering: bool
+
+
 @dataclass
 class CompiledAgent:
     label: str
@@ -63,6 +71,10 @@ class CompiledAgent:
     q_depth: int
     evaluator: Callable[[GameState, Player], int]
     tt: TranspositionTable
+    use_tt: bool
+    use_iterative_deepening: bool
+    aspiration_window: int | None
+    use_move_ordering: bool
 
     def select_action(self, state: GameState) -> tuple[Action, float]:
         t0 = time.perf_counter()
@@ -71,7 +83,11 @@ class CompiledAgent:
             depth=self.depth,
             evaluator=self.evaluator,
             q_depth=self.q_depth,
-            tt=self.tt,
+            use_tt=self.use_tt,
+            tt=self.tt if self.use_tt else None,
+            use_iterative_deepening=self.use_iterative_deepening,
+            aspiration_window=self.aspiration_window,
+            use_move_ordering=self.use_move_ordering,
         )
         elapsed = time.perf_counter() - t0
         assert action is not None, "Agent asked to move in a terminal state."
@@ -189,7 +205,7 @@ def _parse_agent_token(token: str, default_depth: int, default_q_depth: int) -> 
     return spec
 
 
-def _compile_agent(spec: AgentSpec) -> CompiledAgent:
+def _compile_agent(spec: AgentSpec, search_config: SearchConfig) -> CompiledAgent:
     return CompiledAgent(
         label=spec.label,
         evaluator_name=spec.evaluator_name,
@@ -197,6 +213,10 @@ def _compile_agent(spec: AgentSpec) -> CompiledAgent:
         q_depth=spec.q_depth,
         evaluator=get_evaluator(spec.evaluator_name),
         tt={},
+        use_tt=search_config.use_tt,
+        use_iterative_deepening=search_config.use_iterative_deepening,
+        aspiration_window=search_config.aspiration_window,
+        use_move_ordering=search_config.use_move_ordering,
     )
 
 
@@ -367,6 +387,15 @@ def _agent_payload(agent: AgentSpec) -> dict[str, int | str]:
     }
 
 
+def _search_config_payload(config: SearchConfig) -> dict[str, bool | int | None]:
+    return {
+        "use_tt": config.use_tt,
+        "use_iterative_deepening": config.use_iterative_deepening,
+        "aspiration_window": config.aspiration_window,
+        "use_move_ordering": config.use_move_ordering,
+    }
+
+
 def _print_match_summary(
     *,
     a: AgentSpec,
@@ -409,6 +438,7 @@ def run_match(
     *,
     a: AgentSpec,
     b: AgentSpec,
+    search_config: SearchConfig,
     pairs: int,
     seed_start: int,
     max_plies: int,
@@ -420,8 +450,8 @@ def run_match(
     if pairs < 1:
         raise ValueError("pairs must be >= 1")
 
-    agent_a = _compile_agent(a)
-    agent_b = _compile_agent(b)
+    agent_a = _compile_agent(a, search_config)
+    agent_b = _compile_agent(b, search_config)
 
     records: list[GameRecord] = []
     agg_a = Aggregate()
@@ -491,6 +521,7 @@ def run_match(
             "max_plies": max_plies,
             "agent_a": _agent_payload(a),
             "agent_b": _agent_payload(b),
+            "search_config": _search_config_payload(search_config),
             "git_commit": git_commit,
             "summary": {
                 "a": _aggregate_payload(agg_a),
@@ -505,6 +536,7 @@ def run_match(
 def run_roundrobin(
     *,
     agents: list[AgentSpec],
+    search_config: SearchConfig,
     pairs: int,
     seed_start: int,
     max_plies: int,
@@ -520,7 +552,7 @@ def run_roundrobin(
     if len(set(labels)) != len(labels):
         raise ValueError("Round-robin agents must have unique labels")
 
-    compiled = {agent.label: _compile_agent(agent) for agent in agents}
+    compiled = {agent.label: _compile_agent(agent, search_config) for agent in agents}
     scoreboard: dict[str, Aggregate] = {agent.label: Aggregate() for agent in agents}
     matchups: list[dict[str, object]] = []
     records: list[GameRecord] = []
@@ -634,6 +666,7 @@ def run_roundrobin(
             "seed_start": seed_start,
             "offset_seeds_by_matchup": offset_seeds_by_matchup,
             "max_plies": max_plies,
+            "search_config": _search_config_payload(search_config),
             "git_commit": git_commit,
             "agents": [_agent_payload(agent) for agent in agents],
             "scoreboard": {label: _aggregate_payload(agg) for label, agg in scoreboard.items()},
@@ -653,6 +686,15 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--progress-every", type=int, default=50)
     parser.add_argument("--default-depth", type=int, default=3)
     parser.add_argument("--default-q-depth", type=int, default=2)
+    parser.add_argument("--no-tt", action="store_true", help="Disable the transposition table.")
+    parser.add_argument("--no-iterative-deepening", action="store_true", help="Disable iterative deepening.")
+    parser.add_argument(
+        "--aspiration-window",
+        type=str,
+        default="100",
+        help="Aspiration window size, or 'none' to disable aspiration windows.",
+    )
+    parser.add_argument("--no-move-ordering", action="store_true", help="Disable move ordering.")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -694,6 +736,19 @@ def main() -> None:
         raise ValueError("max_plies must be >= 1")
     if args.progress_every < 0:
         raise ValueError("progress_every must be >= 0")
+    if args.aspiration_window.lower() == "none":
+        aspiration_window = None
+    else:
+        aspiration_window = int(args.aspiration_window)
+        if aspiration_window <= 0:
+            raise ValueError("aspiration_window must be > 0 or 'none'")
+
+    search_config = SearchConfig(
+        use_tt=not args.no_tt,
+        use_iterative_deepening=not args.no_iterative_deepening,
+        aspiration_window=aspiration_window,
+        use_move_ordering=not args.no_move_ordering,
+    )
 
     _ = sorted(EVALUATORS)
     git_commit = _git_commit_hash()
@@ -706,6 +761,7 @@ def main() -> None:
         run_match(
             a=a,
             b=b,
+            search_config=search_config,
             pairs=args.pairs,
             seed_start=args.seed_start,
             max_plies=args.max_plies,
@@ -723,6 +779,7 @@ def main() -> None:
         ]
         run_roundrobin(
             agents=agents,
+            search_config=search_config,
             pairs=args.pairs,
             seed_start=args.seed_start,
             max_plies=args.max_plies,
