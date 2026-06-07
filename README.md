@@ -116,13 +116,13 @@ pytest -q
 Tournament script:
 
 ```bash
-python scripts/tournament.py --help
+python scripts/ai/tournament.py --help
 ```
 
 Search benchmark:
 
 ```bash
-python scripts/bench_search.py --help
+python scripts/ai/bench_search.py --help
 ```
 
 ## 6. Project structure

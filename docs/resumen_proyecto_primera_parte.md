@@ -148,7 +148,7 @@ Incluye:
 
 ## 7. Scripts de experimentacion (`scripts/`)
 ### 7.1 Torneos
-Archivo: `scripts/tournament.py`.
+Archivo: `scripts/ai/tournament.py`.
 
 Modos:
 - `match`: enfrentamiento A vs B con semillas pareadas y cambio de color (justicia experimental).
@@ -162,7 +162,7 @@ Funcionalidades:
 - Parametros de busqueda (TT, iterative deepening, aspiration window, q-depth).
 
 ### 7.2 Benchmark de busqueda
-Archivo: `scripts/bench_search.py`.
+Archivo: `scripts/ai/bench_search.py`.
 
 Objetivo:
 - Medir coste temporal de `choose_action` en estados de medio juego.
@@ -214,10 +214,10 @@ python -m onitama.cli.play
 
 Ayuda del torneo:
 ```bash
-python scripts/tournament.py --help
+python scripts/ai/tournament.py --help
 ```
 
 Benchmark de busqueda:
 ```bash
-python scripts/bench_search.py --help
+python scripts/ai/bench_search.py --help
 ```
