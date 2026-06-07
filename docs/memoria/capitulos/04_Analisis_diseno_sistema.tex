@@ -3,45 +3,14 @@
 
 Una vez presentados los fundamentos teóricos, tecnológicos y reglamentarios sobre los que se apoya el proyecto, este capítulo aborda el análisis y diseño del sistema desarrollado. El objetivo es describir el problema desde el punto de vista de la solución software, identificando los requisitos principales, los actores que intervienen, la organización general del sistema y los flujos de funcionamiento que permiten coordinar el motor de juego, la inteligencia artificial, la visión por computador y la interfaz de usuario.
 
-% Este capítulo no se centra todavía en los detalles concretos de implementación, sino en las decisiones de diseño que estructuran el sistema y justifican su división en módulos. De este modo, se establece una visión global de la solución antes de describir, en el capítulo siguiente, cómo se ha materializado cada componente en el código del proyecto.
-
 
 %==============================================================================
-% 4.1. Descripción y objetivos del sistema
-% =============================================================================
-\section{Descripción y objetivos del sistema}
-\label{sec:descripcion-objetivos-sistema}
-
-El sistema desarrollado en este trabajo tiene como finalidad permitir que un jugador humano dispute una partida física de Onitama contra un agente de inteligencia artificial. A diferencia de una implementación puramente digital del juego, la aplicación se apoya en un tablero real observado mediante una cámara, de forma que el sistema debe interpretar la escena física, mantener una representación lógica de la partida y coordinar la respuesta del agente automático.
-
-Desde el punto de vista funcional, el jugador manipula las piezas y cartas sobre el tablero físico, mientras que el software reconstruye la información relevante de la partida y la contrasta con el motor de reglas. Esta separación entre observación visual y estado lógico resulta fundamental, ya que las imágenes capturadas pueden contener errores derivados de la iluminación, la perspectiva, las oclusiones o movimientos incompletos. Por ello, la información procedente de la cámara no se acepta directamente como estado definitivo, sino que se valida de acuerdo con las transiciones legales del juego.
-
-El objetivo general del proyecto es, por tanto, desarrollar un sistema inteligente capaz de gestionar una partida de Onitama sobre un tablero físico, integrando reglas de juego, búsqueda adversarial, reconocimiento visual e interacción con el usuario. A partir de este objetivo general, se derivan los siguientes objetivos específicos:
-
-\begin{itemize}
-    \item Representar digitalmente el estado completo de una partida de Onitama, incluyendo la disposición de las piezas, el turno actual, las cartas disponibles para cada jugador y la carta lateral.
-
-    \item Implementar un motor de reglas capaz de generar acciones legales, aplicar movimientos, resolver capturas, actualizar el intercambio de cartas y detectar las condiciones de victoria.
-
-    \item Incorporar un agente de inteligencia artificial que seleccione movimientos de forma automática a partir del estado actual de la partida.
-
-    \item Reconstruir el estado observado del tablero físico mediante técnicas de visión por computador, identificando tanto la posición y el tipo de las piezas como las cartas visibles.
-
-    \item Validar los cambios detectados en la escena física comprobando que corresponden a transiciones legales desde el estado lógico mantenido por el sistema.
-
-    \item Proporcionar una interfaz gráfica que permita configurar la partida, calibrar el sistema de visión, mostrar el estado actual y guiar la interacción entre el jugador humano y la inteligencia artificial.
-
-    \item Mantener una organización modular que facilite el desarrollo, prueba y evolución independiente de los distintos componentes del sistema.
-\end{itemize}
-
-
-%==============================================================================
-% 4.2. Requisitos del sistema
+% 4.1. Requisitos del sistema
 % =============================================================================
 \section{Requisitos del sistema}
 \label{sec:requisitos-sistema}
 
-A partir de los objetivos definidos anteriormente, esta sección recoge los requisitos que guían el diseño del sistema. Se agrupan en requisitos funcionales, requisitos no funcionales y restricciones o supuestos de diseño, atendiendo a las capacidades de la aplicación, las propiedades esperadas y las condiciones impuestas por el uso de un tablero físico observado mediante cámara.
+A partir del problema y de los objetivos definidos en el capítulo introductorio, esta sección recoge los requisitos que guiaron el diseño y el desarrollo del sistema. Se agrupan en requisitos funcionales, requisitos no funcionales y restricciones o supuestos de diseño, atendiendo a las capacidades de la aplicación, las propiedades esperadas y las condiciones derivadas del uso de un tablero físico observado mediante una cámara.
 
 
 \subsection{Requisitos funcionales}
@@ -185,9 +154,8 @@ Las siguientes restricciones y supuestos delimitan el contexto de uso previsto p
 \end{enumerate}
 
 
-
 %==============================================================================
-% 4.3. Casos de uso
+% 4.2. Casos de uso
 % =============================================================================
 \section{Casos de uso}
 \label{sec:casos-uso}
@@ -247,7 +215,7 @@ La Figura~\ref{fig:casos-uso} resume gráficamente los principales casos de uso 
 
 
 %==============================================================================
-% 4.4. Arquitectura del sistema
+% 4.3. Arquitectura del sistema
 % =============================================================================
 \section{Arquitectura del sistema}
 \label{sec:arquitectura-sistema}
@@ -292,15 +260,8 @@ Representa el núcleo lógico de la aplicación. Define el estado de una partida
 Selecciona la acción que debe realizar el sistema cuando le corresponde jugar. Para ello, analiza el estado lógico confirmado de la partida y utiliza el motor de juego para explorar las acciones legales disponibles.
 
 
-% \section{Modelo de datos del dominio}
-% \label{sec:modelo-datos-dominio}
-
-% Demasiado repetitivo explicar otra vez el modelo de datos del dominio,
-% que viene a ser el estado del juego y se ha explicado en diversas ocasiones.
-
-
 %==============================================================================
-% 4.5. Flujo de funcionamiento
+% 4.4. Flujo de funcionamiento
 % =============================================================================
 \section{Flujo de funcionamiento}
 \label{sec:flujo-funcionamiento}
@@ -344,7 +305,7 @@ La Figura~\ref{fig:flujo-turno-ia} muestra el ciclo correspondiente al turno de 
 
 
 %==============================================================================
-% 4.6. Metodología y estrategia de desarrollo
+% 4.5. Metodología y estrategia de desarrollo
 % =============================================================================
 \section{Metodología y estrategia de desarrollo}
 \label{sec:metodologia-desarrollo}

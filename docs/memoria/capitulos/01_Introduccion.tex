@@ -1,1 +1,93 @@
 \chapter{Introducción}
+\label{chap:introduccion}
+
+%==============================================================================
+% 1.1. Contexto y motivación
+% =============================================================================
+\section{Contexto y motivación}
+\label{sec:contexto-motivacion}
+
+Los juegos de tablero han ocupado un lugar destacado en el desarrollo de la inteligencia artificial. Sus reglas precisas y la necesidad de tomar decisiones frente a un adversario permiten estudiar el comportamiento de sistemas capaces de analizar posiciones, anticipar posibles respuestas y seleccionar acciones.
+
+El interés por construir programas capaces de jugar se remonta a los orígenes de la inteligencia artificial. En 1950, Claude Shannon planteó algunos de los principios fundamentales para programar un ordenador que jugara al ajedrez \cite{shannon1950chess}. Décadas más tarde, en 1997, el sistema Deep Blue desarrollado por IBM derrotó al entonces campeón mundial Garri Kaspárov \cite{ibm_deep_blue}. Otro hito especialmente relevante se produjo con AlphaGo, que combinó técnicas de aprendizaje profundo y búsqueda para abordar el juego del Go y logró superar a jugadores profesionales de máximo nivel \cite{silver2016alphago}. Este último caso tuvo una gran repercusión pública y mostró de forma clara cómo un sistema de inteligencia artificial podía abordar con éxito un juego de estrategia especialmente complejo.
+
+En la mayoría de las implementaciones informáticas de juegos de tablero, la partida se desarrolla sobre una representación completamente digital, de modo que el programa conoce directamente su estado. Sin embargo, la visión por computador permite conectar estas capacidades con juegos desarrollados sobre tableros reales. Un ejemplo de esta línea de trabajo es el sistema propuesto por Wölflein y Arandjelović para reconstruir posiciones de ajedrez a partir de fotografías, transformando la disposición física de las piezas en una representación utilizable por un motor de juego \cite{wolflein2021chessState}.
+
+Este planteamiento permite incorporar herramientas automáticas de análisis sin sustituir el soporte material del juego ni exigir que el jugador reproduzca manualmente cada movimiento en una interfaz digital. El ordenador puede participar en la partida mientras el usuario continúa manipulando las piezas y cartas reales, conservando así la interacción física que caracteriza a los juegos de mesa. La posibilidad de relacionar una partida observada mediante una cámara con una representación digital constituye una de las principales motivaciones del presente trabajo.
+
+La elección de Onitama responde tanto a su interés estratégico como a la viabilidad de desarrollar un sistema completo con medios técnicos asumibles dentro del proyecto. Frente a juegos tradicionalmente utilizados en inteligencia artificial, como el ajedrez o el Go, Onitama constituye un caso de estudio menos habitual. Su tablero de \(5 \times 5\) casillas, el número reducido de piezas y el uso de un conjunto limitado de cartas visibles permiten representar la partida, procesar visualmente sus componentes y ejecutar búsquedas y partidas automáticas en un ordenador portátil convencional.
+
+Esta escala manejable no implica que la toma de decisiones resulte trivial. La carta utilizada en cada turno pasa posteriormente al oponente, por lo que una acción modifica tanto la posición del tablero como las opciones futuras de ambos jugadores. Además, la existencia de dos condiciones de victoria introduce objetivos complementarios. Onitama ofrece así un equilibrio adecuado entre originalidad, profundidad estratégica y viabilidad técnica.
+
+
+%==============================================================================
+% 1.2. Planteamiento del problema
+% =============================================================================
+\section{Planteamiento del problema}
+\label{sec:planteamiento-problema}
+
+En una implementación digital de un juego de tablero, el sistema dispone directamente de toda la información necesaria para gestionar la partida. La posición de las piezas, las cartas disponibles, el jugador activo y las acciones realizadas se encuentran representadas internamente, por lo que cada movimiento puede registrarse y validarse de forma inmediata. En una partida física, en cambio, esta información no está disponible de manera directa: el sistema solo puede acceder a ella a través de la observación de la escena real.
+
+Esta diferencia introduce el problema central del proyecto. La imagen capturada por una cámara no equivale por sí misma al estado lógico de la partida. Una observación visual puede contener errores, elementos parcialmente ocultos o situaciones intermedias producidas mientras el jugador todavía está moviendo una pieza o intercambiando una carta. Por tanto, el sistema no puede aceptar cualquier configuración detectada como una posición válida, sino que debe interpretarla y contrastarla con las reglas del juego.
+
+El problema no consiste únicamente en reconocer piezas o cartas de forma aislada. Para que la partida pueda desarrollarse correctamente, es necesario mantener sincronizadas dos representaciones de una misma realidad: la partida física, manipulada por el jugador sobre el tablero, y la partida lógica, utilizada por el programa para aplicar las reglas y tomar decisiones. La dificultad aparece precisamente en la relación entre ambas, ya que cada cambio observado debe corresponderse con una evolución legal desde el último estado confirmado.
+
+Esta sincronización afecta tanto al turno del jugador humano como al turno de la inteligencia artificial. En el primer caso, el sistema debe comprobar que el movimiento realizado físicamente por el jugador es legal. En el segundo, el agente calcula una acción sobre la representación interna de la partida, pero dicha acción debe ejecutarse después sobre el tablero real y ser confirmada mediante la cámara. De este modo, la inteligencia artificial no actúa sobre una partida puramente digital, sino sobre una partida física que debe mantenerse coherente con su modelo interno.
+
+El problema abordado en este trabajo puede resumirse, por tanto, como el desarrollo de un sistema capaz de conectar una partida física de Onitama con una representación digital fiable. Para ello, es necesario interpretar visualmente el tablero y las cartas, validar los cambios observados de acuerdo con las reglas del juego y permitir que un agente automático participe en la partida sin sustituir la interacción física del jugador con los componentes reales.
+
+
+%==============================================================================
+% 1.3. Objetivos del proyecto
+% =============================================================================
+\section{Objetivos del proyecto}
+\label{sec:objetivos-proyecto}
+
+El objetivo general de este trabajo es diseñar, implementar y evaluar un sistema inteligente que permita disputar una partida física de Onitama entre un jugador humano y un agente de inteligencia artificial.
+
+Para alcanzar este objetivo general, se establecen los siguientes objetivos específicos:
+
+\begin{itemize}
+    \item Representar digitalmente el estado completo de una partida de Onitama, incluyendo la disposición de las piezas, el turno actual, las cartas disponibles para cada jugador y la carta lateral.
+
+    \item Implementar un motor de reglas capaz de generar acciones legales, aplicar movimientos, resolver capturas, actualizar el intercambio de cartas y detectar las condiciones de victoria.
+
+    \item Desarrollar un agente de inteligencia artificial capaz de seleccionar movimientos de forma automática a partir del estado actual de la partida y ofrecer distintos niveles de dificultad.
+
+    \item Reconstruir el estado observado del tablero físico mediante técnicas de visión por computador, identificando tanto la posición, el color y el tipo de las piezas como las cartas visibles.
+
+    \item Validar los cambios detectados en la escena física, comprobando que corresponden a transiciones legales desde el último estado confirmado de la partida.
+
+    \item Coordinar el turno del jugador humano, la selección de la acción de la inteligencia artificial y la confirmación de su posterior ejecución sobre el tablero físico.
+
+    \item Proporcionar una interfaz gráfica que permita configurar la partida, realizar las calibraciones necesarias, mostrar su evolución y guiar la interacción entre el usuario y el agente automático.
+
+    \item Evaluar experimentalmente el comportamiento del agente de inteligencia artificial, el rendimiento de los modelos de visión y el funcionamiento conjunto de la aplicación.
+\end{itemize}
+
+
+%==============================================================================
+% 1.4. Estructura de la memoria
+% =============================================================================
+\section{Estructura de la memoria}
+\label{sec:estructura-memoria}
+
+La memoria se organiza en siete capítulos, cuyo contenido se resume a continuación.
+
+\begin{itemize}
+    \setlength{\itemsep}{0.6em}
+
+    \item[] \textbf{Capítulo 1. Introducción.} Presenta el contexto y la motivación del trabajo, plantea el problema abordado y define los objetivos generales y específicos del proyecto. También describe la organización seguida en el resto de la memoria.
+
+    \item[] \textbf{Capítulo 2. Fundamentos teóricos y tecnológicos.} Expone los conceptos necesarios para comprender el desarrollo del sistema. Incluye la representación digital de juegos de tablero, los fundamentos de la inteligencia artificial aplicada a juegos de dos jugadores, los algoritmos de búsqueda adversarial y las principales técnicas de visión por computador utilizadas para interpretar una escena física.
+
+    \item[] \textbf{Capítulo 3. Fundamentos del juego Onitama.} Describe los componentes del juego, su configuración inicial, el desarrollo de los turnos y las condiciones de victoria. Además, analiza las implicaciones de estas reglas sobre la representación de la partida, la generación de movimientos y la observación de las piezas y cartas.
+
+    \item[] \textbf{Capítulo 4. Análisis y diseño del sistema.} Recoge los requisitos funcionales y no funcionales, las restricciones de diseño y los principales casos de uso. También presenta la arquitectura general, los flujos de funcionamiento que coordinan los distintos componentes y la metodología seguida durante el desarrollo.
+
+    \item[] \textbf{Capítulo 5. Implementación del sistema.} Detalla la organización del proyecto y la construcción de sus principales componentes: el motor de juego, el agente de inteligencia artificial, el módulo de visión por computador, la lógica de sincronización, el control de ejecución, la interfaz gráfica y las herramientas auxiliares.
+
+    \item[] \textbf{Capítulo 6. Experimentación y resultados.} Describe el entorno experimental y evalúa los componentes desarrollados. Se analizan las funciones heurísticas, las optimizaciones de búsqueda y los perfiles de dificultad del agente, así como el entrenamiento y el comportamiento de los modelos de visión y el funcionamiento conjunto del sistema.
+
+    \item[] \textbf{Capítulo 7. Conclusiones y trabajo futuro.} Recoge las principales conclusiones obtenidas, valora el grado de cumplimiento de los objetivos, identifica las limitaciones del sistema y plantea posibles líneas de mejora y ampliación.
+\end{itemize}
