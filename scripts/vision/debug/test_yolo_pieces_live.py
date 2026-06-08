@@ -46,7 +46,7 @@ def class_style(name: str) -> tuple[tuple[int, int, int], int, int, int]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Live YOLO test for Onitama pieces (camera + padded board warp).")
-    parser.add_argument("--model", type=Path, default=Path("models/pieces_yolov8s_640_best.pt"))
+    parser.add_argument("--model", type=Path, default=Path("models/pieces_yolo11s_640_best.pt"))
     parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
     parser.add_argument("--camera-id", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)

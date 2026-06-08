@@ -39,7 +39,7 @@ class YoloPieceDetector:
     def __init__(
         self,
         *,
-        model_path: str | Path = "models/pieces_yolov8s_640_best.pt",
+        model_path: str | Path = "models/pieces_yolo11s_640_best.pt",
         calibration_path: str | Path = "data/vision/calibration.json",
         padding_ratio: float = 0.25,
         imgsz: int = 640,

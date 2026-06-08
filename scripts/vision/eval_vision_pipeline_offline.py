@@ -32,7 +32,7 @@ from onitama.vision.snapshot import VisionSnapshot
 from onitama.vision.vision_pipeline import VisionPipeline
 
 
-LIGHTING_LEVELS = ("easy", "medium", "hard")
+LIGHTING_LEVELS = ("low_light", "good_light")
 CARD_SLOTS = ("red_0", "red_1", "side", "blue_0", "blue_1")
 CSV_COLUMNS = (
     "state_id",
@@ -573,7 +573,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--annotations", type=Path, default=Path("data/vision/pipeline_eval/annotations.json"))
-    parser.add_argument("--piece-model", type=Path, default=Path("models/pieces_yolov8s_640_best.pt"))
+    parser.add_argument("--piece-model", type=Path, default=Path("models/pieces_yolo11s_640_best.pt"))
     parser.add_argument("--card-model", type=Path, default=Path("models/cards_yolo11n-cls_320_best.pt"))
     parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
     parser.add_argument("--rois-path", type=Path, default=Path("data/vision/card_rois.json"))
