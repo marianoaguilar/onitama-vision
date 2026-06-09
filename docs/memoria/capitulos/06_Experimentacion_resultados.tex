@@ -63,10 +63,12 @@ Las herramientas principales utilizadas para la evaluación del agente de inteli
     \item \texttt{scripts/ai/bench\_search.py}, para medir el rendimiento de distintas configuraciones de búsqueda.
 \end{itemize}
 
-En las pruebas del módulo de visión por computador se utilizaron los modelos finales incorporados al proyecto:
+Para las pruebas del módulo de visión por computador se utilizó el script \texttt{scripts/vision/eval\_vision\_pipeline.py}, que evalúa la reconstrucción del estado observado a partir de imágenes previamente capturadas.
+
+En estas pruebas se utilizaron los modelos finales incorporados al proyecto:
 
 \begin{itemize}
-    \item \texttt{models/pieces\_yolov8s\_640\_best.pt}, para la detección de piezas.
+    \item \texttt{models/pieces\_yolo11s\_640\_best.pt}, para la detección de piezas.
     \item \texttt{models/cards\_yolo11n-cls\_320\_best.pt}, para la clasificación de cartas.
 \end{itemize}
 
@@ -434,7 +436,7 @@ El conjunto de piezas se construyó a partir de capturas del tablero rectificado
 
 Las imágenes originales tenían un tamaño de $750\times750$ píxeles e incluían un margen alrededor de los cuatro lados del tablero. Este \textit{padding} permitía conservar piezas que, por estar próximas al borde y debido a la inclinación de la cámara, podían sobresalir parcialmente del tablero.
 
-La adquisición se realizó de forma incremental. Las primeras capturas contenían distintas cantidades y distribuciones de piezas, incluyendo posiciones habituales y situaciones más exigentes, como piezas próximas entre sí, situadas cerca del borde o parcialmente ocultas. Posteriormente se incorporaron nuevas imágenes para reforzar la presencia de piezas giradas y condiciones de iluminación distintas a las utilizadas inicialmente.
+La captura de imágenes se realizó de forma incremental. Las primeras contenían distintas cantidades y distribuciones de piezas, incluyendo posiciones habituales y situaciones más exigentes, como piezas próximas entre sí, situadas cerca del borde o parcialmente ocultas. Posteriormente se incorporaron nuevas imágenes para reforzar la presencia de piezas giradas y condiciones de iluminación distintas a las utilizadas inicialmente.
 
 En una primera versión del conjunto, la división entre entrenamiento, validación y prueba se realizó aleatoriamente por imágenes. Sin embargo, muchas de las capturas se habían obtenido de forma consecutiva y, entre dos fotografías próximas, solo cambiaba la posición de algunas piezas. Por tanto, podían aparecer escenas visualmente muy similares en subconjuntos diferentes, haciendo que las métricas de validación resultaran demasiado optimistas.
 
@@ -501,7 +503,7 @@ En la versión final del conjunto de cartas no se generaron imágenes adicionale
 
 El detector de piezas se entrenó para localizar los elementos presentes sobre el tablero rectificado. Cada predicción proporciona una caja delimitadora, una clase y un valor de confianza. Posteriormente, el sistema utiliza la posición de la caja para asignar la pieza detectada a una casilla concreta del tablero.
 
-El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11s.pt} preentrenado, adecuado para la tarea de detección planteada. La variante \textit{small} se escogió por ofrecer un equilibrio adecuado entre capacidad y coste computacional, permitiendo localizar y distinguir las cuatro clases de piezas sin comprometer la posterior ejecución del sistema en el equipo local.
+El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11s.pt} preentrenado. La variante \textit{small} se escogió por ofrecer un equilibrio adecuado entre capacidad y coste computacional, permitiendo localizar y distinguir las cuatro clases de piezas sin comprometer la posterior ejecución del sistema en el equipo local.
 
 La configuración principal del entrenamiento se resume en la Tabla~\ref{tab:config-entrenamiento-piezas}.
 
@@ -536,26 +538,6 @@ Los parámetros principales de aumentación fueron:
     \item probabilidad de \textit{Mosaic}: \texttt{mosaic=0.3}.
 \end{itemize}
 
-Las métricas registradas corresponden al subconjunto de validación, compuesto por 60 imágenes y 503 instancias anotadas. La Tabla~\ref{tab:metricas-detector-piezas} recoge los valores del mejor \textit{checkpoint}, correspondiente a la época con mayor \textit{mAP50-95}.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{l r}
-\hline
-\textbf{Métrica} & \textbf{Valor} \\
-\hline
-Época del mejor modelo & 102 \\
-Precisión & 0.99472 \\
-\textit{Recall} & 0.99778 \\
-\textit{mAP50} & 0.99500 \\
-\textit{mAP50-95} & 0.88973 \\
-\hline
-\end{tabular}
-\caption{Resultados de validación del detector de piezas.}
-\label{tab:metricas-detector-piezas}
-\end{table}
-
 La Figura~\ref{fig:resultados-entrenamiento-piezas} muestra la evolución de las pérdidas y de las métricas principales durante el entrenamiento.
 
 \begin{figure}[H]
@@ -567,11 +549,32 @@ La Figura~\ref{fig:resultados-entrenamiento-piezas} muestra la evolución de las
 
 El modelo convergió rápidamente durante las primeras épocas. En la primera época alcanzó un \textit{mAP50} de 0.94257 y un \textit{mAP50-95} de 0.76902, mientras que en la época 5 estos valores aumentaron hasta 0.99492 y 0.85400, respectivamente.
 
-El entrenamiento se configuró con un máximo de 200 épocas para proporcionar margen suficiente para la convergencia. El mejor \textit{checkpoint} se obtuvo en la época 102, con un \textit{mAP50-95} de 0.88973. A partir de ese momento, las métricas de validación permanecieron estables y presentaron únicamente pequeñas fluctuaciones.
+El entrenamiento se configuró con un máximo de 200 épocas para proporcionar margen suficiente para la convergencia. El mejor modelo se obtuvo en la época 102, con un \textit{mAP50-95} de 0.88973. A partir de ese momento, las métricas de validación permanecieron estables y presentaron únicamente pequeñas fluctuaciones.
 
-Los resultados muestran una detección muy fiable sobre el subconjunto de validación, con valores de precisión y \textit{recall} próximos a 1 para las cuatro clases. La matriz de confusión registró 502 clasificaciones correctas sobre las 503 instancias anotadas. El único error correspondió a un estudiante rojo clasificado como maestro rojo, sin observarse piezas omitidas, detecciones adicionales sobre el fondo ni otras confusiones entre clases.
+Una vez seleccionados los pesos correspondientes a la mejor época, el modelo se evaluó sobre los subconjuntos de validación y prueba. El primero estaba formado por 60 imágenes y 503 instancias anotadas, mientras que el conjunto de prueba contenía 30 imágenes y 279 instancias que no habían intervenido en el entrenamiento ni en la selección del modelo. Los resultados se recogen en la Tabla~\ref{tab:metricas-detector-piezas}.
 
-Los pesos correspondientes al mejor \textit{checkpoint} se incorporaron al proyecto en la siguiente ruta:
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{l r r}
+\hline
+\textbf{Métrica} & \textbf{Validación} & \textbf{Prueba} \\
+\hline
+Precisión & 0.995 & 0.991 \\
+\textit{Recall} & 0.998 & 0.992 \\
+\textit{mAP50} & 0.995 & 0.995 \\
+\textit{mAP50-95} & 0.890 & 0.879 \\
+\hline
+\end{tabular}
+\caption{Resultados del detector de piezas sobre los subconjuntos de validación y prueba.}
+\label{tab:metricas-detector-piezas}
+\end{table}
+
+Los resultados muestran una detección muy fiable sobre ambos subconjuntos. En validación, la matriz de confusión registró 502 clasificaciones correctas sobre las 503 instancias anotadas. El único error correspondió a un estudiante rojo clasificado como maestro rojo, sin observarse piezas omitidas, detecciones adicionales sobre el fondo ni otras confusiones entre clases.
+
+El rendimiento sobre el conjunto de prueba fue muy próximo al obtenido en validación. El \textit{mAP50} se mantuvo en 0.995 y el \textit{mAP50-95} descendió únicamente de 0.890 a 0.879. La proximidad entre ambos resultados indica que el modelo generaliza adecuadamente a imágenes nuevas.
+
+Los pesos correspondientes a la mejor época se incorporaron al proyecto en la siguiente ruta:
 
 \begin{center}
 \small
@@ -586,7 +589,7 @@ Este archivo es cargado por el detector durante la inferencia. El funcionamiento
 
 El clasificador de cartas se entrenó para identificar la carta presente en cada recorte obtenido mediante las ROIs calibradas.
 
-El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11n-cls.pt} preentrenado, adecuado para la tarea de clasificación planteada. La variante \textit{nano} se escogió por su bajo coste computacional y porque ofrecía capacidad suficiente para distinguir las 16 clases de cartas en un entorno visual controlado.
+El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11n-cls.pt} preentrenado, correspondiente a la variante de clasificación de YOLO11. El tamaño \textit{nano} se escogió por su bajo coste computacional y porque ofrecía capacidad suficiente para distinguir las 16 clases de cartas en un entorno visual controlado.
 
 La configuración principal del entrenamiento se resume en la Tabla~\ref{tab:config-entrenamiento-cartas}.
 
@@ -608,41 +611,39 @@ Tamaño de \textit{batch} & 32 \\
 \label{tab:config-entrenamiento-cartas}
 \end{table}
 
-En la versión final del conjunto de datos no se generaron imágenes adicionales mediante aumentación en Roboflow. No obstante, durante el entrenamiento se mantuvieron activas las transformaciones internas de Ultralytics para aumentar la variabilidad de las muestras.
+Durante el entrenamiento se mantuvieron activas las transformaciones internas predeterminadas de Ultralytics para aumentar la variabilidad de las muestras. El proceso se configuró con 30 épocas, suficientes para que las métricas de validación alcanzaran sus valores máximos y se mantuvieran estables antes de finalizar.
 
-El entrenamiento se configuró con 30 épocas. Este número resultó suficiente para que las métricas de validación alcanzaran sus valores máximos y se mantuvieran estables antes de finalizar el proceso.
-
-Las métricas registradas corresponden al subconjunto de validación utilizado por Ultralytics durante el entrenamiento. La Tabla~\ref{tab:metricas-clasificador-cartas} recoge los resultados obtenidos al finalizar las 30 épocas.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{l r}
-\hline
-\textbf{Métrica} & \textbf{Valor} \\
-\hline
-Época final & 30 \\
-Precisión \textit{top-1} & 1.00000 \\
-Precisión \textit{top-5} & 1.00000 \\
-Pérdida de validación & 0.00432 \\
-\hline
-\end{tabular}
-\caption{Resultados de validación del clasificador de cartas.}
-\label{tab:metricas-clasificador-cartas}
-\end{table}
-
-La Figura~\ref{fig:resultados-entrenamiento-cartas} muestra la evolución de la pérdida y de las métricas de precisión durante el entrenamiento. La pérdida de validación desciende de forma continuada y las métricas \textit{top-1} y \textit{top-5} alcanzan valores máximos antes de finalizar el proceso.
+La Figura~\ref{fig:resultados-entrenamiento-cartas} muestra la evolución de la pérdida y de las métricas de exactitud durante el entrenamiento.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.82\textwidth]{imagenes/results_cards.png}
-\caption{Evolución de pérdidas y precisión durante el entrenamiento del clasificador de cartas.}
+\caption{Evolución de pérdidas y exactitud durante el entrenamiento del clasificador de cartas.}
 \label{fig:resultados-entrenamiento-cartas}
 \end{figure}
 
-La evolución registrada muestra una convergencia rápida. En la época 2 se alcanzaba ya una precisión \textit{top-1} de 0.8375, en la época 7 se llegaba a 0.9875 y en la época 17 se alcanzaba el valor 1.0000. La precisión \textit{top-5} también llegó a 1.0000 durante el entrenamiento, lo que indica que la clase correcta se encontraba siempre entre las cinco predicciones más probables.
+La evolución registrada muestra una convergencia rápida. En la época 2 se alcanzó una exactitud \textit{top-1} de 0.8375, en la época 7 se llegó a 0.9875 y en la época 17 se alcanzó por primera vez el valor 1.0000. Esta exactitud máxima volvió a obtenerse en épocas posteriores, mientras que la pérdida de validación continuó descendiendo hasta alcanzar un valor de 0.00432 en la época 30. La exactitud \textit{top-5} también alcanzó 1.0000 durante el entrenamiento.
 
-Los resultados finales muestran un rendimiento perfecto sobre el subconjunto de validación. La matriz de confusión no registró errores en sus 400 imágenes, por lo que no se observaron confusiones entre las 16 clases de cartas. Además, la pérdida de validación no presentó una degradación al final del entrenamiento, sin mostrar indicios claros de sobreajuste en este experimento.
+Una vez obtenidos los pesos finales, el clasificador se evaluó sobre los subconjuntos de validación y prueba. El primero estaba formado por 400 imágenes, mientras que el conjunto de prueba contenía 200 imágenes que no habían intervenido en el entrenamiento ni en la selección del modelo. Los resultados se recogen en la Tabla~\ref{tab:metricas-clasificador-cartas}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{l r r}
+\hline
+\textbf{Métrica} & \textbf{Validación} & \textbf{Prueba} \\
+\hline
+Exactitud \textit{top-1} & 1.000 & 0.995 \\
+Exactitud \textit{top-5} & 1.000 & 1.000 \\
+\hline
+\end{tabular}
+\caption{Resultados del clasificador de cartas sobre los subconjuntos de validación y prueba.}
+\label{tab:metricas-clasificador-cartas}
+\end{table}
+
+Los resultados de validación muestran una clasificación correcta de las 400 imágenes, sin errores en la matriz de confusión. Sobre el conjunto de prueba, el modelo clasificó correctamente 199 de las 200 imágenes, manteniendo una exactitud \textit{top-5} de 1.000.
+
+La diferencia de únicamente 0.005 en la exactitud \textit{top-1} entre validación y prueba indica que el clasificador generaliza adecuadamente a imágenes nuevas. Además, el único error de primera elección mantuvo la clase correcta entre las cinco predicciones con mayor probabilidad.
 
 Los pesos utilizados por el clasificador se incorporaron al proyecto en la siguiente ruta:
 
@@ -657,8 +658,145 @@ Este archivo es cargado durante la clasificación de los recortes correspondient
 \subsection{Evaluación en condiciones reales de uso}
 \label{subsec:evaluacion-condiciones-reales}
 
-% Incluir imagenes de inferencia de cartas y piezas, mostrando las predicciones realizadas por los modelos.
-% Incluir resultados script de evaluación de pipeline de visión.
+Tras evaluar por separado el detector de piezas y el clasificador de cartas, se comprobó el funcionamiento del pipeline visual completo sobre imágenes capturadas con el montaje real. El objetivo era determinar si el sistema podía reconstruir correctamente una observación de la partida ante diferentes disposiciones del tablero y condiciones de iluminación.
+
+Para ello se prepararon 10 estados físicos distintos. Cada uno se fotografió bajo dos condiciones:
+
+\begin{itemize}
+    \item buena iluminación;
+    \item poca luz y presencia de sombras.
+\end{itemize}
+
+El conjunto quedó formado por 20 imágenes externas, no utilizadas durante el entrenamiento ni durante la selección de los modelos. La posición de la cámara, la orientación del tablero y la calibración se mantuvieron iguales a las empleadas durante el funcionamiento normal del sistema.
+
+La evaluación se automatizó mediante el script
+\path{scripts/vision/eval_vision_pipeline.py}. Este valida las imágenes de entrada y sus anotaciones de referencia, ejecuta el mismo pipeline visual utilizado por la aplicación y calcula las métricas correspondientes. Junto con los resultados, genera también imágenes de análisis empleadas como evidencia visual en esta memoria.
+
+Para cada imagen, la observación reconstruida se comparó con una referencia definida manualmente. El tablero se consideró exacto cuando todas las piezas coincidían en clase y casilla, sin omisiones ni detecciones adicionales; el conjunto de cartas, cuando las cinco se clasificaban correctamente; y la observación completa, cuando se cumplían ambos criterios.
+
+La Tabla~\ref{tab:evaluacion-pipeline-vision} recoge los resultados obtenidos en cada condición de iluminación.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{
+>{\hsize=1.45\hsize\linewidth=\hsize\raggedright\arraybackslash}X
+>{\hsize=0.55\hsize\linewidth=\hsize\centering\arraybackslash}X
+>{\hsize=1.00\hsize\linewidth=\hsize\centering\arraybackslash}X
+>{\hsize=1.00\hsize\linewidth=\hsize\centering\arraybackslash}X
+>{\hsize=0.95\hsize\linewidth=\hsize\centering\arraybackslash}X
+>{\hsize=1.05\hsize\linewidth=\hsize\centering\arraybackslash}X
+}
+\hline
+\textbf{Iluminación} &
+\textbf{Imgs.} &
+\textbf{Tableros exactos} &
+\textbf{Cartas exactas} &
+\textbf{Observ. exactas} &
+\textbf{Tiempo medio (ms)} \\
+\hline
+Buena iluminación & 10 & 10 & 10 & 10 & 177{,}16 \\
+Poca luz y sombras & 10 & 10 & 10 & 10 & 181{,}41 \\
+\hline
+Total & 20 & 20 & 20 & 20 & 179{,}29 \\
+\hline
+\end{tabularx}
+\caption{Resultados del pipeline visual en condiciones reales de uso.}
+\label{tab:evaluacion-pipeline-vision}
+\end{table}
+
+En total se evaluaron 176 instancias de piezas y 100 recortes de cartas. Todas las piezas fueron localizadas y clasificadas correctamente, sin registrarse omisiones, detecciones adicionales ni confusiones entre clases. Del mismo modo, todas las cartas fueron identificadas correctamente.
+
+Como resultado, el pipeline reconstruyó de forma exacta los 20 tableros, los 20 conjuntos de cartas y las 20 observaciones completas. El rendimiento fue idéntico bajo las dos condiciones de iluminación, por lo que la reducción de luminosidad y la presencia de sombras no provocaron errores en las imágenes evaluadas.
+
+El tiempo medio de procesamiento fue de 179{,}29~ms por imagen. La escasa diferencia entre ambas condiciones de iluminación indica que esta no afectó de forma relevante al tiempo de ejecución. Al ser inferior a 0{,}2~s, el procesamiento resulta suficientemente rápido para mantener la fluidez de una partida por turnos.
+
+Las Figuras~\ref{fig:pipeline-capturas-originales}--\ref{fig:pipeline-clasificacion-cartas} muestran un ejemplo representativo del procesamiento de una misma disposición bajo las dos condiciones de iluminación evaluadas.
+\vspace{0.3cm}
+
+% Figura 1: capturas originales completas
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}[b]{0.92\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_captura_buena_luz.jpg}
+        \caption{Captura original con buena iluminación.}
+        \label{fig:pipeline-captura-buena-luz}
+    \end{subfigure}
+
+    \vspace{0.5cm}
+
+    \begin{subfigure}[b]{0.92\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_captura_poca_luz.jpg}
+        \caption{Captura original con poca luz y sombras.}
+        \label{fig:pipeline-captura-poca-luz}
+    \end{subfigure}
+
+    \caption{Capturas originales de una misma disposición bajo las dos condiciones de iluminación evaluadas.}
+    \label{fig:pipeline-capturas-originales}
+\end{figure}
+
+
+% Figura 2: tableros rectificados con las detecciones
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_tablero_buena_luz.jpg}
+        \caption{Tablero rectificado con buena iluminación.}
+        \label{fig:pipeline-tablero-buena-luz}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_tablero_poca_luz.jpg}
+        \caption{Tablero rectificado con poca luz y sombras.}
+        \label{fig:pipeline-tablero-poca-luz}
+    \end{subfigure}
+
+    \caption{Detecciones realizadas sobre los tableros rectificados de ambas capturas.}
+    \label{fig:pipeline-detecciones-tablero}
+\end{figure}
+
+
+% Figura 3: ROIs de las cartas con las clasificaciones
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_cartas_buena_luz.jpg}
+        \caption{ROIs de las cartas con buena iluminación.}
+        \label{fig:pipeline-cartas-buena-luz}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]
+        {imagenes/pipeline_cartas_poca_luz.jpg}
+        \caption{ROIs de las cartas con poca luz y sombras.}
+        \label{fig:pipeline-cartas-poca-luz}
+    \end{subfigure}
+
+    \caption{Clasificación de las cinco cartas visibles bajo las dos condiciones de iluminación evaluadas.}
+    \label{fig:pipeline-clasificacion-cartas}
+\end{figure}
+
+Las Figuras~\ref{fig:pipeline-capturas-originales}--\ref{fig:pipeline-clasificacion-cartas} muestran que las predicciones se mantienen estables bajo ambas condiciones de iluminación. Tanto el detector como el clasificador ofrecen valores de confianza elevados en la práctica totalidad de los elementos mostrados, lo que evidencia una buena robustez frente a los cambios de luminosidad y la presencia de sombras.
+
+Destaca especialmente el estudiante rojo en la celda (3, 3), parcialmente oculto detrás del maestro. A pesar de que solo una parte de la pieza permanece visible, el detector identifica correctamente su clase y casilla en las dos capturas. Este resultado refleja la utilidad de haber incluido situaciones de oclusión durante la preparación del conjunto de entrenamiento y demuestra la capacidad del modelo para resolver configuraciones visualmente exigentes. Del mismo modo, las cinco cartas fueron clasificadas correctamente, con confianzas comprendidas entre 0{,}997 y 1{,}000.
+
+Aunque la evaluación se realizó sobre un número limitado de estados y manteniendo fija la geometría del montaje, los resultados obtenidos ofrecen una evidencia sólida del funcionamiento fiable del pipeline en las condiciones de uso previstas y respaldan su integración en la versión final del sistema.
 
 
 %==============================================================================

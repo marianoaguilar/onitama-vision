@@ -17,6 +17,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+import cv2
+import numpy as np
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
@@ -27,7 +30,8 @@ if str(SRC_ROOT) not in sys.path:
 from onitama.engine.cards import CARD_BY_NAME
 from onitama.vision.board import BOARD_SIZE, VisionBoard, VisionPiece
 from onitama.vision.card_classifier import YoloCardClassifier
-from onitama.vision.piece_detector import YoloPieceDetector
+from onitama.vision.card_rois import SLOT_COLOR, SLOT_LABEL, SLOT_ORDER, quad_centroid
+from onitama.vision.piece_detector import PieceDetection, YoloPieceDetector
 from onitama.vision.snapshot import VisionSnapshot
 from onitama.vision.vision_pipeline import VisionPipeline
 
@@ -53,6 +57,36 @@ CSV_COLUMNS = (
     "mismatch_details",
     "error_type",
     "error_message",
+)
+PIECE_DETECTIONS_CSV_COLUMNS = (
+    "state_id",
+    "lighting",
+    "image",
+    "detection_index",
+    "class_name",
+    "vision_piece",
+    "confidence",
+    "bbox_x1",
+    "bbox_y1",
+    "bbox_x2",
+    "bbox_y2",
+    "anchor_x",
+    "anchor_y",
+    "cell_row",
+    "cell_col",
+    "in_board",
+)
+CARD_CLASSIFICATIONS_CSV_COLUMNS = (
+    "state_id",
+    "lighting",
+    "image",
+    "slot",
+    "expected",
+    "predicted",
+    "confidence",
+    "correct",
+    "raw_crop_width",
+    "raw_crop_height",
 )
 
 
@@ -127,6 +161,47 @@ class ResultRow:
     mismatch_details: str
     error_type: str
     error_message: str
+
+
+@dataclass(frozen=True)
+class PieceDetectionRow:
+    state_id: str
+    lighting: str
+    image: str
+    detection_index: int
+    class_name: str
+    vision_piece: str
+    confidence: float
+    bbox_x1: float
+    bbox_y1: float
+    bbox_x2: float
+    bbox_y2: float
+    anchor_x: float
+    anchor_y: float
+    cell_row: int | str
+    cell_col: int | str
+    in_board: bool
+
+
+@dataclass(frozen=True)
+class CardClassificationRow:
+    state_id: str
+    lighting: str
+    image: str
+    slot: str
+    expected: str
+    predicted: str
+    confidence: float
+    correct: bool
+    raw_crop_width: int
+    raw_crop_height: int
+
+
+@dataclass(frozen=True)
+class SampleEvaluation:
+    result: ResultRow
+    piece_detections: tuple[PieceDetectionRow, ...]
+    card_classifications: tuple[CardClassificationRow, ...]
 
 
 def _require_object(value: object, label: str) -> dict[str, object]:
@@ -350,8 +425,6 @@ def compare_snapshot(expected: ExpectedSample, predicted: VisionSnapshot) -> Sna
 
 
 def _read_image(path: Path) -> Any:
-    import cv2
-
     frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if frame is None:
         raise RuntimeError(f"Image cannot be opened with OpenCV: {path}")
@@ -380,14 +453,256 @@ def _build_pipeline(args: argparse.Namespace) -> VisionPipeline:
     return VisionPipeline(piece_detector=piece_detector, card_classifier=card_classifier)
 
 
-def evaluate_sample(sample: ExpectedSample, pipeline: VisionPipeline) -> ResultRow:
+def _sample_slug(sample: ExpectedSample) -> str:
+    return f"{sample.state_id}_{sample.lighting}"
+
+
+def _piece_color(piece: VisionPiece | None) -> tuple[int, int, int]:
+    if piece is VisionPiece.RED_MASTER:
+        return (38, 42, 154)
+    if piece is VisionPiece.RED_STUDENT:
+        return (78, 104, 232)
+    if piece is VisionPiece.BLUE_MASTER:
+        return (134, 72, 20)
+    if piece is VisionPiece.BLUE_STUDENT:
+        return (224, 154, 64)
+    return (185, 185, 185)
+
+
+def _piece_token(piece: VisionPiece | None) -> str:
+    if piece is VisionPiece.RED_MASTER:
+        return "RM"
+    if piece is VisionPiece.RED_STUDENT:
+        return "RS"
+    if piece is VisionPiece.BLUE_MASTER:
+        return "BM"
+    if piece is VisionPiece.BLUE_STUDENT:
+        return "BS"
+    return "??"
+
+
+def _soften_color(color: tuple[int, int, int], factor: float = 0.88) -> tuple[int, int, int]:
+    return tuple(max(0, min(255, int(round(channel * factor)))) for channel in color)
+
+
+def _card_dashboard_color(slot: str) -> tuple[int, int, int]:
+    if slot == "side":
+        return (24, 142, 228)
+    return _soften_color(SLOT_COLOR[slot], 0.82)
+
+
+def draw_label_box(
+    image: np.ndarray,
+    text: str,
+    origin: tuple[int, int],
+    *,
+    color: tuple[int, int, int],
+    text_color: tuple[int, int, int] = (245, 245, 245),
+    fill_color: tuple[int, int, int] | None = None,
+    font_scale: float = 0.46,
+    thickness: int = 1,
+    padding: int = 4,
+    alpha: float = 0.84,
+) -> None:
+    x, y = origin
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    box_x1 = max(0, x - padding)
+    box_y1 = max(0, y - text_h - baseline - padding)
+    box_x2 = min(image.shape[1] - 1, x + text_w + padding)
+    box_y2 = min(image.shape[0] - 1, y + baseline + padding)
+
+    overlay = image.copy()
+    cv2.rectangle(overlay, (box_x1, box_y1), (box_x2, box_y2), fill_color or (46, 46, 46), -1, cv2.LINE_AA)
+    cv2.addWeighted(overlay, alpha, image, 1.0 - alpha, 0, dst=image)
+    cv2.rectangle(image, (box_x1, box_y1), (box_x2, box_y2), _soften_color(color, 1.08), 1, cv2.LINE_AA)
+    cv2.putText(image, text, (x, y), font, font_scale, text_color, thickness, cv2.LINE_AA)
+
+
+def draw_piece_detections(
+    warped: np.ndarray,
+    detections: list[PieceDetection],
+    roi: tuple[int, int, int, int],
+) -> np.ndarray:
+    preview = warped.copy()
+    for detection in detections:
+        color = _piece_color(detection.vision_piece)
+        x1, y1, x2, y2 = (int(round(value)) for value in detection.bbox_xyxy)
+        cv2.rectangle(preview, (x1, y1), (x2, y2), color, 2)
+        ax, ay = (int(round(value)) for value in detection.anchor_xy)
+        cv2.circle(preview, (ax, ay), 3, color, -1)
+        cell = "--" if detection.cell is None else f"{detection.cell[0]},{detection.cell[1]}"
+        label = f"{_piece_token(detection.vision_piece)} {detection.confidence:.2f} [{cell}]"
+        draw_label_box(
+            preview,
+            label,
+            (x1, max(18, y1 - 8)),
+            color=color,
+            fill_color=_soften_color(color, 0.58),
+            text_color=(255, 255, 255),
+            font_scale=0.45,
+            thickness=1,
+            alpha=0.88,
+        )
+    return preview
+
+
+def draw_card_classifications(
+    frame: np.ndarray,
+    classifier: YoloCardClassifier,
+    snapshot: VisionSnapshot,
+    confidences_by_slot: dict[str, float],
+) -> np.ndarray:
+    preview = frame.copy()
+    slot_to_card = {
+        "red_0": snapshot.red_cards[0],
+        "red_1": snapshot.red_cards[1],
+        "side": snapshot.side_card,
+        "blue_0": snapshot.blue_cards[0],
+        "blue_1": snapshot.blue_cards[1],
+    }
+    for slot in SLOT_ORDER:
+        points = classifier.rois[slot]
+        color = SLOT_COLOR[slot]
+        pts_i = np.array([[int(round(x)), int(round(y))] for x, y in points], dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(preview, [pts_i], isClosed=True, color=color, thickness=2)
+        cx, cy = quad_centroid(points)
+        label = f"{SLOT_LABEL[slot]}: {slot_to_card[slot]} {confidences_by_slot[slot]:.2f}"
+        draw_label_box(
+            preview,
+            label,
+            (int(round(cx - 90.0)), int(round(cy + 24.0))),
+            color=color,
+            fill_color=(58, 58, 58),
+            text_color=(245, 245, 245),
+            font_scale=0.56,
+            thickness=1,
+            alpha=0.76,
+        )
+    return preview
+
+
+def _fit_thumbnail(image: np.ndarray, width: int, height: int) -> np.ndarray:
+    if image.size == 0:
+        return np.zeros((height, width, 3), dtype=np.uint8)
+    src_h, src_w = image.shape[:2]
+    scale = min(width / float(src_w), height / float(src_h))
+    out_w = max(1, int(round(src_w * scale)))
+    out_h = max(1, int(round(src_h * scale)))
+    interpolation = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+    resized = cv2.resize(image, (out_w, out_h), interpolation=interpolation)
+    canvas = np.zeros((height, width, 3), dtype=np.uint8)
+    offset_x = (width - out_w) // 2
+    offset_y = (height - out_h) // 2
+    canvas[offset_y:offset_y + out_h, offset_x:offset_x + out_w] = resized
+    return canvas
+
+
+def build_card_crops_dashboard(
+    raw_crops: dict[str, np.ndarray],
+    card_rows: tuple[CardClassificationRow, ...],
+) -> np.ndarray:
+    width = 980
+    tile_w = 940
+    tile_h = 270
+    crop_w = 430
+    crop_h = 218
+    gap = 6
+    margin = 10
+    height = margin * 2 + tile_h * len(SLOT_ORDER) + gap * (len(SLOT_ORDER) - 1)
+    dashboard = np.zeros((height, width, 3), dtype=np.uint8)
+    dashboard[:] = (232, 232, 232)
+
+    by_slot = {row.slot: row for row in card_rows}
+    for index, slot in enumerate(SLOT_ORDER):
+        row = by_slot[slot]
+        x0 = margin
+        y0 = margin + index * (tile_h + gap)
+        panel = dashboard[y0:y0 + tile_h, x0:x0 + tile_w]
+        panel[:] = (244, 244, 244)
+        color = _card_dashboard_color(slot)
+
+        cv2.rectangle(panel, (0, 0), (tile_w - 1, tile_h - 1), (204, 204, 204), 1, cv2.LINE_AA)
+        crop_thumb = _fit_thumbnail(raw_crops[slot], width=crop_w, height=crop_h)
+        crop_x = 24
+        panel[20:20 + crop_h, crop_x:crop_x + crop_w] = crop_thumb
+        cv2.rectangle(panel, (crop_x - 1, 19), (crop_x + crop_w, 20 + crop_h), (170, 170, 170), 1)
+        text_x = crop_x + crop_w + 46
+        cv2.putText(panel, SLOT_LABEL[slot], (text_x, 76), cv2.FONT_HERSHEY_SIMPLEX, 1.02, color, 2, cv2.LINE_AA)
+        cv2.putText(
+            panel,
+            f"expected: {row.expected}",
+            (text_x, 132),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.78,
+            (12, 12, 12),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            panel,
+            f"predicted: {row.predicted} ({row.confidence:.3f})",
+            (text_x, 176),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.78,
+            (8, 8, 8) if row.correct else (28, 82, 168),
+            1,
+            cv2.LINE_AA,
+        )
+    return dashboard
+
+
+def _write_image(path: Path, image: np.ndarray) -> None:
+    if not cv2.imwrite(str(path), image):
+        raise RuntimeError(f"Could not write image artifact: {path}")
+
+
+def write_artifacts(
+    output_dir: Path,
+    sample: ExpectedSample,
+    *,
+    warped: np.ndarray,
+    detections: list[PieceDetection],
+    piece_roi: tuple[int, int, int, int],
+    frame: np.ndarray,
+    classifier: YoloCardClassifier,
+    snapshot: VisionSnapshot,
+    raw_crops: dict[str, np.ndarray],
+    card_rows: tuple[CardClassificationRow, ...],
+) -> None:
+    artifact_root = output_dir / "artifacts"
+    pieces_dir = artifact_root / "pieces"
+    cards_dir = artifact_root / "cards"
+    crops_dir = artifact_root / "card_crops"
+    pieces_dir.mkdir(parents=True, exist_ok=True)
+    cards_dir.mkdir(parents=True, exist_ok=True)
+    crops_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = _sample_slug(sample)
+    confidences_by_slot = {row.slot: row.confidence for row in card_rows}
+    _write_image(pieces_dir / f"{slug}_pieces.jpg", draw_piece_detections(warped, detections, piece_roi))
+    _write_image(
+        cards_dir / f"{slug}_cards.jpg",
+        draw_card_classifications(frame, classifier, snapshot, confidences_by_slot),
+    )
+    _write_image(crops_dir / f"{slug}_card_crops.jpg", build_card_crops_dashboard(raw_crops, card_rows))
+
+
+def evaluate_sample(sample: ExpectedSample, pipeline: VisionPipeline, output_dir: Path) -> SampleEvaluation:
     frame = _read_image(sample.image_path)
     started = time.perf_counter()
     try:
-        snapshot = pipeline.snapshot_from_frame(frame)
+        warped = pipeline.piece_detector.warp_frame(frame)
+        detections = pipeline.piece_detector.detect_on_warped(warped)
+        board = pipeline.piece_detector.detections_to_board(detections)
+
+        raw_crops = pipeline.card_classifier.extract_card_crops(frame)
+        card_result = pipeline.card_classifier.classify_crops(raw_crops)
+        snapshot = VisionSnapshot.from_board_and_cards(board=board, card_result=card_result)
+
         pipeline_ms = (time.perf_counter() - started) * 1000.0
         comparison = compare_snapshot(sample, snapshot)
-        return ResultRow(
+        result_row = ResultRow(
             state_id=sample.state_id,
             lighting=sample.lighting,
             image=str(sample.image_path),
@@ -407,28 +722,111 @@ def evaluate_sample(sample: ExpectedSample, pipeline: VisionPipeline) -> ResultR
             error_type="",
             error_message="",
         )
+
+        piece_rows = tuple(_build_piece_detection_rows(sample, detections))
+        card_rows = tuple(_build_card_classification_rows(sample, card_result, raw_crops))
+        write_artifacts(
+            output_dir,
+            sample,
+            warped=warped,
+            detections=detections,
+            piece_roi=pipeline.piece_detector.rotated_roi,
+            frame=frame,
+            classifier=pipeline.card_classifier,
+            snapshot=snapshot,
+            raw_crops=raw_crops,
+            card_rows=card_rows,
+        )
+        return SampleEvaluation(
+            result=result_row,
+            piece_detections=piece_rows,
+            card_classifications=card_rows,
+        )
     except Exception as exc:
         pipeline_ms = (time.perf_counter() - started) * 1000.0
-        return ResultRow(
-            state_id=sample.state_id,
-            lighting=sample.lighting,
-            image=str(sample.image_path),
-            status="error",
-            pieces_gt=count_pieces(sample.board),
-            pieces_pred=0,
-            pieces_correct=0,
-            pieces_missing=0,
-            pieces_extra=0,
-            pieces_wrong_class=0,
-            cards_correct=0,
-            board_exact=False,
-            cards_exact=False,
-            snapshot_exact=False,
-            pipeline_ms=pipeline_ms,
-            mismatch_details="{}",
-            error_type=type(exc).__name__,
-            error_message=str(exc),
+        return SampleEvaluation(
+            result=ResultRow(
+                state_id=sample.state_id,
+                lighting=sample.lighting,
+                image=str(sample.image_path),
+                status="error",
+                pieces_gt=count_pieces(sample.board),
+                pieces_pred=0,
+                pieces_correct=0,
+                pieces_missing=0,
+                pieces_extra=0,
+                pieces_wrong_class=0,
+                cards_correct=0,
+                board_exact=False,
+                cards_exact=False,
+                snapshot_exact=False,
+                pipeline_ms=pipeline_ms,
+                mismatch_details="{}",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            ),
+            piece_detections=(),
+            card_classifications=(),
         )
+
+
+def _build_piece_detection_rows(sample: ExpectedSample, detections: list[PieceDetection]) -> list[PieceDetectionRow]:
+    rows: list[PieceDetectionRow] = []
+    for index, detection in enumerate(detections):
+        x1, y1, x2, y2 = detection.bbox_xyxy
+        anchor_x, anchor_y = detection.anchor_xy
+        cell_row: int | str = "" if detection.cell is None else detection.cell[0]
+        cell_col: int | str = "" if detection.cell is None else detection.cell[1]
+        rows.append(
+            PieceDetectionRow(
+                state_id=sample.state_id,
+                lighting=sample.lighting,
+                image=str(sample.image_path),
+                detection_index=index,
+                class_name=detection.class_name,
+                vision_piece="" if detection.vision_piece is None else detection.vision_piece.value,
+                confidence=detection.confidence,
+                bbox_x1=x1,
+                bbox_y1=y1,
+                bbox_x2=x2,
+                bbox_y2=y2,
+                anchor_x=anchor_x,
+                anchor_y=anchor_y,
+                cell_row=cell_row,
+                cell_col=cell_col,
+                in_board=detection.in_board,
+            )
+        )
+    return rows
+
+
+def _build_card_classification_rows(
+    sample: ExpectedSample,
+    card_result: Any,
+    raw_crops: dict[str, np.ndarray],
+) -> list[CardClassificationRow]:
+    expected_by_slot = dict(zip(CARD_SLOTS, sample.card_slots()))
+    predictions_by_slot = card_result.by_slot()
+    rows: list[CardClassificationRow] = []
+    for slot in CARD_SLOTS:
+        prediction = predictions_by_slot[slot]
+        crop = raw_crops[slot]
+        expected = expected_by_slot[slot]
+        rows.append(
+            CardClassificationRow(
+                state_id=sample.state_id,
+                lighting=sample.lighting,
+                image=str(sample.image_path),
+                slot=slot,
+                expected=expected,
+                predicted=prediction.class_name,
+                confidence=prediction.confidence,
+                correct=prediction.class_name == expected,
+                raw_crop_width=int(crop.shape[1]),
+                raw_crop_height=int(crop.shape[0]),
+            )
+        )
+    return rows
 
 
 def count_pieces(board: VisionBoard) -> int:
@@ -509,12 +907,43 @@ def write_results_csv(path: Path, rows: list[ResultRow]) -> None:
             writer.writerow(payload)
 
 
+def write_piece_detections_csv(path: Path, rows: list[PieceDetectionRow]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=PIECE_DETECTIONS_CSV_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            payload = asdict(row)
+            payload["confidence"] = f"{row.confidence:.6f}"
+            for field_name in ("bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2", "anchor_x", "anchor_y"):
+                payload[field_name] = f"{payload[field_name]:.3f}"
+            writer.writerow(payload)
+
+
+def write_card_classifications_csv(path: Path, rows: list[CardClassificationRow]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=CARD_CLASSIFICATIONS_CSV_COLUMNS)
+        writer.writeheader()
+        for row in rows:
+            payload = asdict(row)
+            payload["confidence"] = f"{row.confidence:.6f}"
+            writer.writerow(payload)
+
+
 def write_summary_json(path: Path, summary: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def print_summary(summary: dict[str, object], results_path: Path, summary_path: Path) -> None:
+def print_summary(
+    summary: dict[str, object],
+    results_path: Path,
+    summary_path: Path,
+    piece_detections_path: Path,
+    card_classifications_path: Path,
+    artifacts_path: Path,
+) -> None:
     global_summary = _require_summary_object(summary["global"])
     by_lighting = _require_summary_object(summary["by_lighting"])
 
@@ -559,6 +988,9 @@ def print_summary(summary: dict[str, object], results_path: Path, summary_path: 
         )
     print(f"results.csv: {results_path}")
     print(f"summary.json: {summary_path}")
+    print(f"piece_detections.csv: {piece_detections_path}")
+    print(f"card_classifications.csv: {card_classifications_path}")
+    print(f"artifacts: {artifacts_path}")
 
 
 def _require_summary_object(value: object) -> dict[str, Any]:
@@ -602,14 +1034,36 @@ def main() -> int:
     except Exception as exc:
         print(f"Warmup failed and will not be included in results: {type(exc).__name__}: {exc}", file=sys.stderr)
 
-    rows = [evaluate_sample(sample, pipeline) for sample in samples]
+    evaluations = [evaluate_sample(sample, pipeline, args.output_dir) for sample in samples]
+    rows = [evaluation.result for evaluation in evaluations]
+    piece_detection_rows = [
+        row
+        for evaluation in evaluations
+        for row in evaluation.piece_detections
+    ]
+    card_classification_rows = [
+        row
+        for evaluation in evaluations
+        for row in evaluation.card_classifications
+    ]
     summary = build_summary(rows)
 
     results_path = args.output_dir / "results.csv"
     summary_path = args.output_dir / "summary.json"
+    piece_detections_path = args.output_dir / "piece_detections.csv"
+    card_classifications_path = args.output_dir / "card_classifications.csv"
     write_results_csv(results_path, rows)
+    write_piece_detections_csv(piece_detections_path, piece_detection_rows)
+    write_card_classifications_csv(card_classifications_path, card_classification_rows)
     write_summary_json(summary_path, summary)
-    print_summary(summary, results_path, summary_path)
+    print_summary(
+        summary,
+        results_path,
+        summary_path,
+        piece_detections_path,
+        card_classifications_path,
+        args.output_dir / "artifacts",
+    )
     return 0
 
 
