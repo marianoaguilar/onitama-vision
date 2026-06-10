@@ -336,6 +336,8 @@ class MessageBanner(QFrame):
         colors = {
             "neutral": (theme.SURFACE, theme.TEXT_MUTED),
             "success": (theme.SUCCESS_SOFT_BG, theme.SUCCESS_STRONG),
+            "winner-red": (theme.RED_SOFT, theme.RED_DARK),
+            "winner-blue": (theme.BLUE_SOFT, theme.BLUE_DARK),
             "warning": (theme.WARNING_SOFT_BG, theme.WARNING_STRONG),
             "error": (theme.ERROR_SOFT_BG, theme.ERROR_STRONG),
         }

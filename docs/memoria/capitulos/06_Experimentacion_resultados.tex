@@ -801,8 +801,126 @@ Aunque la evaluación se realizó sobre un número limitado de estados y manteni
 
 %==============================================================================
 % 6.4 Validación funcional del sistema integrado
-% =============================================================================
+%==============================================================================
 \section{Validación funcional del sistema integrado}
-\label{sec:validacion-funcional-sistema-integrado}
+\label{sec:validacion-sistema-integrado}
 
-% Validación funcional del sistema integrado, se pueden incluir capturas de la gui.
+Una vez evaluados por separado el agente de inteligencia artificial y el módulo de visión por computador, se realizó una validación funcional de la aplicación completa. El objetivo fue comprobar que los distintos componentes operaban de forma coordinada durante una partida física asistida por cámara.
+
+La validación se llevó a cabo utilizando la interfaz gráfica, el tablero físico y la configuración de cámara descrita en la Sección~\ref{sec:entorno-experimental}. Durante la prueba se recorrieron las principales fases de una sesión: inicialización del estado, movimiento del jugador humano, selección y confirmación de la jugada de la inteligencia artificial y finalización de la partida. También se provocaron movimientos incompatibles y lecturas visuales inválidas para comprobar que estas situaciones no modificaban indebidamente el estado lógico.
+
+La Tabla~\ref{tab:validacion-funcional} resume los principales casos comprobados y el comportamiento observado.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{
+>{\hsize=0.85\hsize\linewidth=\hsize\raggedright\arraybackslash}X
+>{\hsize=1.60\hsize\linewidth=\hsize\raggedright\arraybackslash}X
+>{\hsize=0.55\hsize\linewidth=\hsize\centering\arraybackslash}X
+}
+\hline
+\textbf{Caso comprobado} & \textbf{Comportamiento esperado} & \textbf{Resultado} \\
+\hline
+Inicialización de la partida &
+Reconstrucción del tablero y de las cinco cartas visibles, estableciendo el primer estado confirmado. &
+Correcto \\
+\hline
+Movimiento humano legal &
+Aceptación de la observación como sucesor legal y actualización del estado y del turno. &
+Correcto \\
+\hline
+Movimiento humano no válido &
+Rechazo de la observación y mantenimiento del último estado confirmado. &
+Correcto \\
+\hline
+Selección de la jugada de la IA &
+Cálculo de una acción legal y presentación de la jugada que debe ejecutarse sobre el tablero físico. &
+Correcto \\
+\hline
+Ejecución correcta de la jugada de la IA &
+Coincidencia entre la observación y el estado esperado, confirmando la acción y continuando la partida. &
+Correcto \\
+\hline
+Ejecución incorrecta de la jugada de la IA &
+Detección de la discrepancia y mantenimiento de la jugada pendiente hasta corregir la posición física. &
+Correcto \\
+\hline
+Lectura visual inválida &
+Presentación de un aviso ante problemas de detección de piezas o cartas, sin modificar el último estado confirmado. &
+Correcto \\
+\hline
+Finalización de la partida &
+Detección de la condición de victoria, actualización de la fase de la sesión y presentación del ganador. &
+Correcto \\
+\hline
+\end{tabularx}
+\caption{Casos comprobados durante la validación funcional del sistema integrado.}
+\label{tab:validacion-funcional}
+\end{table}
+
+La Figura~\ref{fig:validacion-sistema-integrado} muestra seis momentos representativos de la validación, desde el reconocimiento del estado inicial hasta la finalización de la partida.
+
+\begin{figure}[H]
+\centering
+
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_estado_inicial.png}
+    \smallskip
+
+    \small (a) Estado inicial reconocido y turno del jugador humano.
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_movimiento_rechazado.png}
+    \smallskip
+
+    \small (b) Rechazo de un movimiento no válido.
+\end{minipage}
+
+\vspace{0.35cm}
+
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_jugada_ia_pendiente.png}
+    \smallskip
+
+    \small (c) Jugada de la inteligencia artificial pendiente de ejecución.
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_movimiento_ia_no_coincide.png}
+    \smallskip
+
+    \small (d) Discrepancia entre la jugada esperada y la observada.
+\end{minipage}
+
+\vspace{0.35cm}
+
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_lectura_invalida.png}
+    \smallskip
+
+    \small (e) Lectura visual inválida provocada por las cartas.
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{imagenes/gui_finalizacion.png}
+    \smallskip
+
+    \small (f) Finalización de la partida y presentación del ganador.
+\end{minipage}
+
+\caption{Momentos representativos de la validación funcional del sistema integrado.}
+\label{fig:validacion-sistema-integrado}
+\end{figure}
+
+Los casos evaluados se resolvieron conforme a lo esperado. El sistema actualizó la partida únicamente ante observaciones coherentes con una transición legal o con la jugada esperada de la inteligencia artificial. Ante movimientos incorrectos o lecturas visuales inválidas, conservó el último estado confirmado e informó al usuario. 
+
+En conjunto, los resultados obtenidos respaldan la viabilidad práctica de la aplicación para asistir una partida física completa de Onitama frente al agente automático.

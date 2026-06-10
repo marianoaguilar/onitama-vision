@@ -64,10 +64,15 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
     if state.phase is SessionPhase.FINISHED:
         winner = player_label(state.winner_player)
         reason = winner_reason_label(state.winner_reason)
+        tone = "success"
+        if state.winner_player is Player.RED:
+            tone = "winner-red"
+        elif state.winner_player is Player.BLUE:
+            tone = "winner-blue"
         return StatusView(
-            title=f"¡Partida terminada: gana {winner}!",
+            title=f"¡Partida finalizada: gana {winner}!",
             detail=reason,
-            tone="success",
+            tone=tone,
         )
 
     if state.phase is SessionPhase.BOOTSTRAP:
