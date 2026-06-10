@@ -97,7 +97,7 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         if state.last_outcome is SessionOutcome.AI_EXECUTION_CONFIRMED:
             return StatusView(
                 title="Movimiento de la IA confirmado",
-                detail="Turno del humano",
+                detail="Turno del jugador humano",
                 tone="success",
             )
         if state.observation_kind is not None:
@@ -107,7 +107,7 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
                 tone="warning",
             )
         return StatusView(
-            title="Turno del humano",
+            title="Turno del jugador humano",
             detail="Haz tu movimiento en el tablero físico",
         )
 
