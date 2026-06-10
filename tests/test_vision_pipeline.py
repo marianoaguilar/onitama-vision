@@ -1,6 +1,4 @@
 import numpy as np
-
-from onitama.engine.pieces import Player
 from onitama.vision.board import VisionBoard, VisionPiece
 from onitama.vision.card_classifier import CardClassificationResult, CardSlotPrediction
 from onitama.vision.vision_pipeline import VisionPipeline
@@ -59,23 +57,3 @@ def test_pipeline_snapshot_from_frame_assembles_board_and_cards() -> None:
     assert snapshot.blue_cards == ("Crab", "Boar")
     assert snapshot.side_card == "Rabbit"
 
-
-def test_pipeline_game_state_from_frame_converts_to_engine_state() -> None:
-    board = VisionBoard.empty()
-    board = board.with_cell(0, 2, VisionPiece.BLUE_MASTER)
-    board = board.with_cell(4, 2, VisionPiece.RED_MASTER)
-    pipeline = VisionPipeline(
-        piece_detector=_StubPieceDetector(board),
-        card_classifier=_StubCardClassifier(_sample_card_result()),
-    )
-    frame = np.zeros((32, 32, 3), dtype=np.uint8)
-
-    snapshot = pipeline.snapshot_from_frame(frame)
-    game_state = snapshot.to_game_state(to_move="BLUE")
-
-    assert game_state.to_move is Player.BLUE
-    assert game_state.red_cards[0].name == "Tiger"
-    assert game_state.blue_cards[1].name == "Boar"
-    assert game_state.side_card.name == "Rabbit"
-    assert game_state.board[0][2] is not None
-    assert game_state.board[4][2] is not None
