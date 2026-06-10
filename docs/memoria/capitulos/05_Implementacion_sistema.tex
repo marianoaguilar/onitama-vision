@@ -141,7 +141,7 @@ El punto de entrada del agente es \texttt{choose\_action()}. Esta función recib
 
 La búsqueda trabaja siempre sobre sucesores creados con \texttt{apply\_action()}, por lo que cada nodo explorado corresponde a un estado legal generado por el motor.
 
-La clase \texttt{AIController} adapta el agente al protocolo común de controladores del sistema. Su configuración incluye la profundidad de búsqueda, el nombre del evaluador y la profundidad quiescente. Durante la inicialización obtiene el evaluador correspondiente mediante \texttt{get\_evaluator()} y mantiene una tabla de transposición propia para reutilizar información entre turnos. En cada llamada a \texttt{select\_action()}, delega la selección en \texttt{choose\_action()}.
+La clase \texttt{AIController} adapta el agente al protocolo común de controladores del sistema. Su configuración incluye la profundidad de búsqueda, el nombre del evaluador y la profundidad quiescente. Durante la inicialización obtiene el evaluador correspondiente mediante \texttt{get\_evaluator()} y puede mantener una tabla de transposición propia cuando esta técnica está habilitada. En cada llamada a \texttt{select\_action()}, delega la selección en \texttt{choose\_action()}.
 
 \subsection{Búsqueda y evaluación}
 \label{subsec:busqueda-evaluacion-ia}
@@ -324,7 +324,7 @@ El reconocimiento de piezas parte de la calibración del tablero implementada en
 Sobre la imagen rectificada actúa \texttt{YoloPieceDetector}, definido en \\ \texttt{piece\_detector.py}. El modelo utilizado se carga desde:
 
 \begin{center}
-\texttt{models/pieces\_yolov8s\_640\_best.pt}
+\texttt{models/pieces\_yolo11s\_640\_best.pt}
 \end{center}
 
 Después de la detección, cada caja se asocia a una celda \texttt{(row, col)} mediante un punto de anclaje calculado sobre la propia detección. Las clases reconocidas por el detector son:

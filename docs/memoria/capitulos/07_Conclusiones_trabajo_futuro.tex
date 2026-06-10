@@ -7,15 +7,15 @@
 \section{Conclusiones}
 \label{sec:conclusiones}
 
-El desarrollo de este proyecto ha permitido construir un sistema completo para disputar una partida física de Onitama entre un jugador humano y un agente de inteligencia artificial. La solución obtenida no se limita a implementar las reglas del juego o a seleccionar movimientos de forma automática, sino que conecta estas capacidades con la observación de un tablero real mediante visión por computador y con una interfaz que coordina la interacción durante la partida.
+El desarrollo de este proyecto ha permitido diseñar, implementar y evaluar un sistema funcional e integrado para disputar una partida física de Onitama entre un jugador humano y un agente de inteligencia artificial. La solución obtenida no se limita a implementar las reglas del juego o a seleccionar movimientos de forma automática, sino que conecta estas capacidades con la observación de un tablero real mediante visión por computador y con una interfaz que coordina la interacción durante la partida.
 
 La principal aportación del trabajo se encuentra en la integración entre la dimensión física y la representación lógica del juego. Una imagen capturada por la cámara no constituye por sí sola un estado válido, por lo que ha sido necesario distinguir entre la observación visual y el estado confirmado de la partida. La estabilización de las observaciones y su comparación con las transiciones permitidas por el motor de reglas permiten mantener la coherencia entre ambas representaciones y evitar que lecturas incompletas o incorrectas modifiquen indebidamente la partida.
 
 Esta separación de responsabilidades también ha resultado fundamental para la organización del sistema. El motor de juego, el agente de inteligencia artificial, el módulo de visión, la lógica de sincronización, el control de ejecución y la interfaz gráfica se han desarrollado como componentes diferenciados, pero coordinados mediante representaciones y operaciones comunes. Este enfoque ha facilitado su validación independiente y ha permitido abordar de forma progresiva la integración final.
 
-Onitama ha resultado un caso de estudio adecuado para este propósito. Su escala permite representar y analizar la partida con recursos computacionales accesibles, mientras que la rotación de las cartas y las distintas condiciones de victoria mantienen una complejidad estratégica suficiente para justificar el desarrollo de un agente de búsqueda. Del mismo modo, el reducido número de piezas y cartas visibles hace viable la reconstrucción del estado mediante una cámara, sin eliminar los retos propios de una escena física real.
+La elección de Onitama ha resultado adecuada para el propósito del trabajo. Su escala permite representar y analizar la partida con recursos computacionales accesibles, mientras que la rotación de las cartas y las dos condiciones de victoria proporcionan una complejidad estratégica suficiente para justificar el desarrollo de un agente de búsqueda. Del mismo modo, el número reducido de piezas y cartas visibles hace viable la reconstrucción del estado mediante una cámara, sin eliminar los retos derivados de trabajar con una escena física real.
 
-En conjunto, el trabajo muestra que es posible incorporar un agente inteligente a un juego de tablero físico sin sustituir sus componentes materiales por una interfaz completamente digital. El sistema desarrollado actúa como enlace entre la percepción visual, la aplicación de las reglas y la toma automática de decisiones, manteniendo al jugador humano como responsable de la manipulación del tablero. El resultado constituye una base funcional sobre la que pueden realizarse nuevas mejoras tanto en la robustez visual como en la autonomía y capacidad de decisión del sistema.
+En conjunto, los resultados obtenidos demuestran la viabilidad del enfoque planteado dentro de las condiciones de uso definidas. El sistema permite que un agente inteligente participe en una partida desarrollada sobre un tablero real, conservando el jugador humano la manipulación física de las piezas y las cartas. La combinación de percepción visual, validación mediante reglas y selección automática de acciones da lugar a una solución integrada y funcional para el escenario propuesto.
 
 
 %==============================================================================
@@ -24,29 +24,27 @@ En conjunto, el trabajo muestra que es posible incorporar un agente inteligente 
 \section{Cumplimiento de los objetivos}
 \label{sec:cumplimiento-objetivos}
 
-El objetivo general definido al inicio de la memoria consistía en diseñar, implementar y evaluar un sistema inteligente que permitiera disputar una partida física de Onitama entre un jugador humano y un agente de inteligencia artificial. Tras el desarrollo realizado, este objetivo puede considerarse cumplido, ya que se ha construido una aplicación capaz de representar la partida, observar el tablero físico, validar la evolución del juego y coordinar la actuación del agente automático.
-
-El cumplimiento de este objetivo general se concreta en los distintos objetivos específicos planteados:
+A continuación, se analiza el grado de cumplimiento de los objetivos específicos establecidos al comienzo del proyecto:
 
 \begin{itemize}
     \item \textbf{Representación digital de la partida.} Se ha definido una representación completa del estado de Onitama, incluyendo el tablero, las piezas, el jugador activo, las cartas disponibles para cada jugador y la carta lateral. Esta representación ha servido como base común para el motor de reglas, la inteligencia artificial y la sincronización con la observación visual.
 
     \item \textbf{Implementación del motor de reglas.} Se ha desarrollado un motor capaz de generar acciones legales, aplicar movimientos, resolver capturas, actualizar el intercambio de cartas y detectar las dos condiciones de victoria del juego. Este componente actúa como referencia lógica del sistema y garantiza que la evolución interna de la partida respete las reglas de Onitama.
 
-    \item \textbf{Desarrollo del agente de inteligencia artificial.} Se ha implementado un agente basado en búsqueda adversarial, con funciones heurísticas de evaluación y distintas técnicas de optimización. Además, se han definido perfiles de dificultad que permiten ajustar el comportamiento del agente en función de la profundidad de búsqueda empleada.
+    \item \textbf{Desarrollo del agente de inteligencia artificial.} Se ha implementado un agente basado en búsqueda adversarial, con funciones heurísticas de evaluación y distintas técnicas de optimización. Además, se han definido perfiles de dificultad que permiten modificar su capacidad de análisis mediante diferentes profundidades de búsqueda.
 
-    \item \textbf{Reconstrucción visual del estado físico.} Se ha construido un módulo de visión por computador capaz de procesar imágenes capturadas por una cámara, detectar las piezas sobre el tablero y clasificar las cartas visibles. A partir de esta información, el sistema puede generar una observación estructurada de la escena física.
+    \item \textbf{Reconstrucción visual del estado físico.} Se ha construido un módulo de visión por computador capaz de procesar imágenes capturadas por una cámara, detectar las piezas sobre el tablero y clasificar las cartas visibles. A partir de esta información, el sistema genera una observación estructurada de la escena física.
 
-    \item \textbf{Validación de los cambios observados.} Se ha incorporado una capa de sincronización que no acepta directamente cualquier observación visual, sino que la estabiliza y la compara con las transiciones legales generadas por el motor. De este modo, el sistema puede distinguir entre estados válidos, observaciones sin cambio y configuraciones incoherentes con la evolución de la partida.
+    \item \textbf{Validación de los cambios observados.} Se ha incorporado una capa de sincronización que no acepta directamente cualquier observación visual, sino que la estabiliza y la compara con las transiciones legales generadas por el motor. De este modo, el sistema puede distinguir entre estados válidos, observaciones sin cambios y configuraciones incoherentes con la evolución de la partida.
 
-    \item \textbf{Coordinación de los turnos de juego.} Se ha desarrollado una lógica de sesión que coordina el turno del jugador humano, la selección de la jugada de la inteligencia artificial y la confirmación de su ejecución física sobre el tablero. Esta coordinación permite que el agente participe en una partida real sin que el juego se reduzca a una simulación puramente digital.
+    \item \textbf{Coordinación de los turnos de juego.} Se ha desarrollado una lógica de sesión que coordina el turno del jugador humano, la selección de la jugada de la inteligencia artificial y la confirmación de su ejecución física sobre el tablero. Esta coordinación permite que el agente participe en una partida real sin reducir el juego a una simulación puramente digital.
 
     \item \textbf{Desarrollo de la interfaz gráfica.} Se ha implementado una aplicación de escritorio que permite configurar la partida, realizar las calibraciones necesarias, visualizar el estado del juego, mostrar las cartas y guiar al usuario durante la interacción con el agente automático.
 
-    \item \textbf{Evaluación experimental.} Se han realizado pruebas sobre los principales componentes del sistema. En particular, se ha evaluado el comportamiento del agente mediante torneos y benchmarks de búsqueda, se han entrenado y validado los modelos de visión por computador y se ha comprobado el funcionamiento conjunto de la aplicación en condiciones reales de uso.
+    \item \textbf{Evaluación experimental.} Se han evaluado los principales componentes del sistema mediante procedimientos adaptados a cada uno de ellos. El agente se ha analizado mediante torneos automáticos y benchmarks de búsqueda; los modelos de visión se han evaluado sobre subconjuntos de validación y prueba; el pipeline visual se ha comprobado sobre imágenes externas; y el funcionamiento conjunto de la aplicación se ha verificado mediante casos representativos de una partida asistida por cámara.
 \end{itemize}
 
-En conjunto, los objetivos planteados se han alcanzado dentro del alcance definido para el proyecto. El sistema resultante permite jugar físicamente a Onitama con asistencia de inteligencia artificial y visión por computador, aunque su funcionamiento sigue condicionado por las restricciones propias del montaje físico, la cámara y los modelos visuales empleados.
+En conjunto, los ocho objetivos específicos establecidos al comienzo del proyecto han sido alcanzados. Las limitaciones identificadas no impiden el funcionamiento del sistema dentro de las condiciones previstas, aunque sí delimitan su capacidad de generalización, el alcance de su evaluación y su autonomía, como se expone en la Sección~\ref{sec:limitaciones}.
 
 
 %==============================================================================
@@ -57,22 +55,32 @@ En conjunto, los objetivos planteados se han alcanzado dentro del alcance defini
 
 La evaluación experimental permitió comparar las distintas alternativas desarrolladas y justificar la configuración final del sistema. Los resultados más relevantes se resumen a continuación.
 
+\begingroup
+\titlespacing*{\paragraph}
+    {0pt}
+    {0.5\baselineskip}
+    {1em}
+
 \paragraph{Comparación de las funciones heurísticas.}
 En el agente de inteligencia artificial, la función heurística \texttt{v3} obtuvo el mejor comportamiento en los cuatro torneos realizados. Su tasa de puntuación se situó alrededor del 65\,\% en profundidad 3 y entre el 72\,\% y el 76\,\% en profundidad 4, superando tanto a \texttt{v1} como a \texttt{v2} en los enfrentamientos directos. Estos resultados respaldan el uso de una evaluación dependiente de la fase de la partida, capaz de adaptar la importancia de los distintos criterios estratégicos conforme evoluciona el juego.
 
 \paragraph{Impacto de las optimizaciones de búsqueda.}
-El análisis realizado mostró que no todas las optimizaciones implementadas aportaban el mismo beneficio en el escenario estudiado. La ordenación de movimientos fue la técnica con un efecto más claro, ya que su desactivación incrementó progresivamente el tiempo y el número de nodos explorados al aumentar la profundidad. La tabla de transposición presentó un comportamiento menos estable, mientras que la profundización iterativa y las ventanas de aspiración añadieron coste en las búsquedas a profundidad fija utilizadas. La configuración final, que conserva la ordenación de movimientos y desactiva estas tres técnicas, redujo el tiempo total respecto a la configuración completa en un 18.4\,\%, un 19.4\,\% y un 31.2\,\% para las profundidades 3, 4 y 5, respectivamente.
+Los benchmarks mostraron que la ordenación de movimientos fue la optimización con un efecto más claro sobre el rendimiento. En cambio, la tabla de transposición, la profundización iterativa y las ventanas de aspiración no compensaron su coste en las condiciones evaluadas. La configuración combinada adoptada finalmente, basada en la ordenación de movimientos y sin estas tres técnicas, redujo el tiempo total de búsqueda en un 18,4\,\%, un 19,4\,\% y un 31,2\,\% para las profundidades 3, 4 y 5, respectivamente, frente a la configuración completa.
 
 \paragraph{Efecto de la búsqueda quiescente.}
-La búsqueda quiescente produjo una mejora clara en la calidad del agente. En los torneos comparativos, la configuración sin esta extensión obtuvo una tasa de puntuación próxima al 33\,\%, mientras que la profundidad quiescente 2 alcanzó valores cercanos al 62\,\% en los dos bloques de semillas evaluados. El aumento del tiempo por decisión fue reducido dentro del contexto de una partida interactiva, por lo que esta configuración se mantuvo en los perfiles definitivos.
+La búsqueda quiescente produjo una mejora clara en la calidad de las decisiones del agente. A profundidad principal 3, la configuración sin extensión quiescente obtuvo una tasa de puntuación cercana al 33\,\%, mientras que la profundidad quiescente 2 alcanzó aproximadamente el 62\,\% en los dos bloques de semillas evaluados. El incremento temporal asociado se mantuvo dentro de valores adecuados para una partida interactiva, por lo que esta técnica se conservó en los perfiles finales.
 
 \paragraph{Perfiles de dificultad.}
-Los torneos entre niveles confirmaron una separación coherente entre los perfiles definidos. El perfil fácil obtuvo una tasa de puntuación del 12.38\,\%, el perfil medio alcanzó el 49.88\,\% y el perfil difícil llegó al 87.75\,\%. Los tiempos medios por decisión permanecieron por debajo de una décima de segundo incluso en el nivel difícil. La combinación de la heurística \texttt{v3}, una profundidad principal de 5 y una profundidad quiescente de 2 permitió así alcanzar un nivel de juego elevado sin perjudicar la fluidez de la partida. En las partidas manuales realizadas durante el desarrollo, este perfil ofreció además un reto considerable frente a jugadores familiarizados con Onitama.
+El torneo entre perfiles confirmó una separación clara entre los niveles definidos. El perfil fácil obtuvo una tasa de puntuación del 12,38\,\%, el perfil medio alcanzó el 49,88\,\% y el perfil difícil llegó al 87,75\,\%. En cada enfrentamiento directo, el perfil de mayor dificultad superó claramente al inferior. Incluso en el nivel difícil, el tiempo medio por decisión fue de 85,107~ms, por lo que el aumento de capacidad de juego no impide una interacción fluida.
 
-% Los apartados sobre los modelos de visión y la valoración conjunta
-% se completarán cuando finalicen las pruebas en condiciones reales
-% y la validación funcional del sistema integrado.
-Faltan los dos últimos apartados!!
+\paragraph{Resultados del módulo de visión por computador.}
+Los modelos visuales alcanzaron resultados elevados sobre los subconjuntos reservados para su evaluación. El detector de piezas obtuvo un \textit{mAP50} de 0,995 tanto en validación como en prueba, y un \textit{mAP50-95} de 0,890 y 0,879, respectivamente. Por su parte, el clasificador de cartas alcanzó una exactitud \textit{top-1} de 1,000 en validación y de 0,995 en prueba. Al evaluar el pipeline completo sobre 20 imágenes externas, las 176 instancias de piezas y los 100 recortes de cartas fueron reconocidos correctamente, permitiendo reconstruir de forma exacta los 20 estados observados. El tiempo medio de procesamiento fue de 179,29~ms por imagen, adecuado para el desarrollo de una partida por turnos bajo las condiciones de uso evaluadas.
+
+\paragraph{Validación del sistema integrado.}
+La validación funcional confirmó la coordinación entre la visión por computador, el motor de reglas, el agente y la interfaz gráfica. El sistema aceptó movimientos legales, rechazó cambios incompatibles, mostró las acciones de la inteligencia artificial y comprobó su ejecución física, manteniendo protegido el último estado confirmado ante observaciones inválidas. De este modo, la aplicación conservó la coherencia entre la partida física y su representación lógica en los principales flujos evaluados.
+
+\endgroup
+
 
 %==============================================================================
 % 7.4. Limitaciones
@@ -80,22 +88,16 @@ Faltan los dos últimos apartados!!
 \section{Limitaciones}
 \label{sec:limitaciones}
 
-Aunque el sistema desarrollado cumple los objetivos planteados, su funcionamiento está condicionado por varios factores que deben tenerse en cuenta al interpretar los resultados y valorar su posible uso en otros entornos.
+Aunque el sistema desarrollado cumple los objetivos planteados, presenta varias limitaciones que deben tenerse en cuenta al interpretar los resultados y valorar su aplicación en otros entornos.
 
-\paragraph{Condiciones de captura y generalización visual.}
-El rendimiento del módulo de visión depende de factores como la iluminación, el enfoque, los reflejos, las oclusiones y la visibilidad de las piezas y cartas. Además, los modelos se han entrenado con los componentes físicos y las condiciones de captura empleadas durante el desarrollo. Por ello, cambios significativos en el tablero, las piezas, las cartas o el entorno podrían reducir la fiabilidad y requerir nuevos datos de entrenamiento o ajustes adicionales.
+El rendimiento del módulo de visión depende de las condiciones de iluminación, la visibilidad de los componentes y la estabilidad del montaje. La evaluación del pipeline completo se realizó sobre 20 imágenes externas, bajo dos condiciones de iluminación y manteniendo la misma cámara y disposición física. Además, antes de iniciar la partida es necesario calibrar el tablero y las regiones correspondientes a las cartas, proceso que debe repetirse si se modifica el encuadre o la ubicación de los componentes. Por tanto, los resultados obtenidos no pueden generalizarse directamente a otras cámaras, perspectivas o elementos físicos sin realizar nuevas pruebas o ajustes.
 
-\paragraph{Calibración y montaje físico.}
-El sistema requiere una calibración previa del tablero y de las regiones correspondientes a las cartas. Durante la partida se asume que la cámara permanece fija y que la disposición general del montaje no cambia. Si se modifica el encuadre, la posición del tablero o la ubicación de las cartas, es necesario repetir la calibración. Esta dependencia limita la capacidad de utilizar la aplicación de forma inmediata en configuraciones físicas diferentes.
+Estas condiciones también delimitan el alcance de la validación del sistema integrado. Las pruebas realizadas cubren casos funcionales representativos de los principales flujos de una partida y permiten comprobar la coordinación entre los distintos componentes, así como el tratamiento de situaciones válidas e inválidas. No obstante, no constituyen una evaluación prolongada con múltiples usuarios, montajes físicos o partidas completas.
 
-\paragraph{Sincronización de la partida.}
-La lógica de sincronización permite estabilizar las observaciones y comprobar si los cambios detectados corresponden a transiciones legales desde el último estado confirmado. Sin embargo, no contempla la recuperación automática ante desincronizaciones complejas, como varios movimientos no observados o modificaciones físicas que no puedan relacionarse con una única acción legal. En estas situaciones, el usuario debe corregir manualmente la disposición o reiniciar la sesión.
+En el caso del agente de inteligencia artificial, su calidad se ha analizado principalmente mediante enfrentamientos automáticos entre heurísticas, configuraciones de búsqueda y perfiles de dificultad. Este enfoque permite comparar las alternativas desarrolladas, pero no determina un nivel absoluto frente a jugadores humanos ni frente a otros motores de Onitama. Asimismo, las profundidades superiores no pudieron evaluarse con el mismo número de partidas debido a su mayor coste computacional.
 
-\paragraph{Evaluación del agente.}
-La calidad del agente se ha analizado principalmente mediante enfrentamientos automáticos entre distintas heurísticas, configuraciones de búsqueda y perfiles de dificultad. Este enfoque permite establecer comparaciones relativas entre las alternativas desarrolladas, pero no determina un nivel absoluto frente a jugadores humanos ni frente a otros motores de Onitama. Asimismo, el coste computacional de profundidades superiores dificultó la ejecución de torneos con un número de partidas comparable al utilizado en las configuraciones finalmente seleccionadas.
+Finalmente, la aplicación calcula y muestra las acciones de la inteligencia artificial, pero no dispone de mecanismos para mover físicamente las piezas y las cartas. Por ello, el jugador debe ejecutar también las jugadas indicadas por el agente, de modo que el sistema actúa como observador, validador y oponente lógico, pero no como un jugador físico completamente autónomo.
 
-\paragraph{Autonomía del sistema.}
-La aplicación calcula y muestra las acciones de la inteligencia artificial, pero no incluye mecanismos capaces de mover físicamente las piezas y cartas. Por tanto, el jugador humano debe ejecutar sobre el tablero tanto sus propias jugadas como las indicadas por el agente. El sistema actúa como observador, validador y oponente lógico, pero no como un jugador físico completamente autónomo.
 
 %==============================================================================
 % 7.5. Trabajo futuro
@@ -103,19 +105,24 @@ La aplicación calcula y muestra las acciones de la inteligencia artificial, per
 \section{Trabajo futuro}
 \label{sec:trabajo-futuro}
 
-Las limitaciones identificadas permiten plantear distintas líneas de continuación orientadas a mejorar la robustez, la flexibilidad y la autonomía del sistema desarrollado.
+Los resultados obtenidos y las limitaciones identificadas permiten plantear distintas líneas de continuación orientadas a mejorar la robustez, la flexibilidad y la autonomía del sistema.
 
-\paragraph{Mejora del módulo de visión.}
-Una primera línea de trabajo consiste en ampliar los conjuntos de datos con nuevas condiciones de iluminación, cámaras, orientaciones y situaciones de oclusión. Esto permitiría evaluar mejor la capacidad de generalización de los modelos y reducir su dependencia del montaje utilizado durante el desarrollo. También podría incorporarse información temporal entre frames o una detección explícita de manos y oclusiones para evitar procesar escenas mientras el jugador está manipulando los componentes.
+\begingroup
+\titlespacing*{\paragraph}
+    {0pt}
+    {0.5\baselineskip}
+    {1em}
 
-\paragraph{Calibración más flexible.}
-El sistema podría reducir su dependencia de una configuración fija mediante mecanismos automáticos de localización del tablero y de las cartas. El uso de referencias visuales, marcadores o técnicas de seguimiento permitiría actualizar la transformación geométrica cuando se produjeran pequeños desplazamientos de la cámara o del tablero, evitando repetir manualmente toda la calibración.
+\paragraph{Visión y calibración.}
+Los conjuntos de datos podrían ampliarse con imágenes capturadas mediante diferentes cámaras, perspectivas, condiciones de iluminación y componentes físicos. También resultaría conveniente evaluar el pipeline durante partidas completas y estudiar mecanismos específicos para detectar oclusiones temporales, como la presencia de las manos del jugador. Además, podría incorporarse una localización automática del tablero y de las cartas mediante marcadores visuales o técnicas de seguimiento, reduciendo la dependencia de una calibración manual.
 
-\paragraph{Recuperación de la sincronización.}
-La lógica actual puede detectar observaciones incoherentes, pero no reconstruir automáticamente una partida cuando se pierde la correspondencia con el último estado confirmado. Como mejora, podrían analizarse secuencias de varias acciones legales para encontrar una posible ruta hasta la posición observada. También resultaría útil permitir la corrección manual del estado desde la interfaz y proporcionar indicaciones más precisas sobre las piezas o cartas responsables de la discrepancia.
+\paragraph{Interacción y diagnóstico.}
+La aplicación podría proporcionar información más detallada cuando la observación física no coincida con el estado esperado. La interfaz podría indicar qué piezas o cartas producen la discrepancia y guiar al usuario durante su corrección. También podrían añadirse funciones para consultar el historial de movimientos, guardar y recuperar partidas o visualizar las detecciones realizadas por el módulo de visión.
 
-\paragraph{Ampliación del agente de inteligencia artificial.}
-El agente podría extenderse mediante nuevas funciones de evaluación, ajuste automático de pesos o estrategias de búsqueda basadas en límites de tiempo por movimiento. También sería posible estudiar enfoques alternativos, como la búsqueda Monte Carlo o métodos de aprendizaje por refuerzo. Finalmente, una evaluación con jugadores de distintos niveles o frente a otras implementaciones de Onitama permitiría situar con mayor precisión la capacidad de juego del agente.
+\paragraph{Ampliación y evaluación del agente.}
+Podrían estudiarse nuevas funciones heurísticas, procedimientos de ajuste automático de pesos o búsquedas limitadas por tiempo en lugar de por una profundidad fija. También sería posible explorar enfoques alternativos, como la búsqueda en árboles de Monte Carlo o las técnicas de aprendizaje por refuerzo. Para obtener una referencia más amplia de la capacidad del agente, resultaría de interés compararlo con otros motores de Onitama y evaluarlo frente a jugadores humanos con distintos niveles de experiencia.
 
-\paragraph{Mejoras en la interacción y autonomía.}
-La interfaz podría incorporar un historial completo de movimientos, reproducción de partidas, guardado y recuperación de sesiones y herramientas más avanzadas de diagnóstico visual. Como ampliación de mayor alcance, podría integrarse un mecanismo robótico capaz de ejecutar físicamente las jugadas seleccionadas por la inteligencia artificial. De este modo, el sistema dejaría de depender del jugador humano para mover las piezas y se convertiría en un oponente físico completamente autónomo.
+\paragraph{Autonomía física.}
+La ampliación de mayor alcance consistiría en incorporar un mecanismo capaz de ejecutar físicamente las acciones seleccionadas por la inteligencia artificial. La integración con un sistema robótico que pudiera desplazar las piezas e intercambiar las cartas permitiría eliminar la intervención del usuario durante el turno del agente y transformar la aplicación en un oponente físico completamente autónomo.
+
+\endgroup
