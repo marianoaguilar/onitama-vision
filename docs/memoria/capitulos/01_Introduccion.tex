@@ -74,20 +74,24 @@ Para alcanzar este objetivo general, se establecen los siguientes objetivos espe
 
 La memoria se organiza en siete capítulos, cuyo contenido se resume a continuación.
 
-\begin{itemize}
-    \setlength{\itemsep}{0.6em}
+\begingroup
+\titlespacing*{\paragraph}
+    {0pt}
+    {0.5\baselineskip}
+    {1em}
 
-    \item[] \textbf{Capítulo 1. Introducción.} Presenta el contexto y la motivación del trabajo, plantea el problema abordado y define los objetivos generales y específicos del proyecto. También describe la organización seguida en el resto de la memoria.
+\paragraph{Capítulo 1. Introducción.} Presenta el contexto y la motivación del trabajo, plantea el problema abordado y define los objetivos generales y específicos del proyecto. También describe la organización seguida en el resto de la memoria.
 
-    \item[] \textbf{Capítulo 2. Fundamentos teóricos y tecnológicos.} Expone los conceptos necesarios para comprender el desarrollo del sistema. Incluye la representación digital de juegos de tablero, los fundamentos de la inteligencia artificial aplicada a juegos de dos jugadores, los algoritmos de búsqueda adversarial y las principales técnicas de visión por computador utilizadas para interpretar una escena física.
+\paragraph{Capítulo 2. Fundamentos teóricos y tecnológicos.} Expone los conceptos necesarios para comprender el desarrollo del sistema. Incluye la representación digital de juegos de tablero, los fundamentos de la inteligencia artificial aplicada a juegos de dos jugadores, los algoritmos de búsqueda adversarial y las principales técnicas de visión por computador utilizadas para interpretar una escena física.
 
-    \item[] \textbf{Capítulo 3. Fundamentos del juego Onitama.} Describe los componentes del juego, su configuración inicial, el desarrollo de los turnos y las condiciones de victoria. Además, analiza las implicaciones de estas reglas sobre la representación de la partida, la generación de movimientos y la observación de las piezas y cartas.
+\paragraph{Capítulo 3. Fundamentos del juego Onitama.} Describe los componentes del juego, su configuración inicial, el desarrollo de los turnos y las condiciones de victoria. Además, analiza las implicaciones de estas reglas sobre la representación de la partida, la generación de movimientos y la observación de las piezas y cartas.
 
-    \item[] \textbf{Capítulo 4. Análisis y diseño del sistema.} Recoge los requisitos funcionales y no funcionales, las restricciones de diseño y los principales casos de uso. También presenta la arquitectura general, los flujos de funcionamiento que coordinan los distintos componentes y la metodología seguida durante el desarrollo.
+\paragraph{Capítulo 4. Análisis y diseño del sistema.} Recoge los requisitos funcionales y no funcionales, las restricciones de diseño y los principales casos de uso. También presenta la arquitectura general, los flujos de funcionamiento que coordinan los distintos componentes y la metodología seguida durante el desarrollo.
 
-    \item[] \textbf{Capítulo 5. Implementación del sistema.} Detalla la organización del proyecto y la construcción de sus principales componentes: el motor de juego, el agente de inteligencia artificial, el módulo de visión por computador, la lógica de sincronización, el control de ejecución, la interfaz gráfica y las herramientas auxiliares.
+\paragraph{Capítulo 5. Implementación del sistema.} Detalla la organización del proyecto y la construcción de sus principales componentes: el motor de juego, el agente de inteligencia artificial, el módulo de visión por computador, la lógica de sincronización, el control de ejecución, la interfaz gráfica y las herramientas auxiliares.
 
-    \item[] \textbf{Capítulo 6. Experimentación y resultados.} Describe el entorno experimental y evalúa los componentes desarrollados. Se analizan las funciones heurísticas, las optimizaciones de búsqueda y los perfiles de dificultad del agente, así como el entrenamiento y el comportamiento de los modelos de visión y el funcionamiento conjunto del sistema.
+\paragraph{Capítulo 6. Experimentación y resultados.} Describe el entorno experimental y evalúa los componentes desarrollados. Se analizan las funciones heurísticas, las optimizaciones de búsqueda y los perfiles de dificultad del agente, así como el entrenamiento y el comportamiento de los modelos de visión y el funcionamiento conjunto del sistema.
 
-    \item[] \textbf{Capítulo 7. Conclusiones y trabajo futuro.} Recoge las principales conclusiones obtenidas, valora el grado de cumplimiento de los objetivos, identifica las limitaciones del sistema y plantea posibles líneas de mejora y ampliación.
-\end{itemize}
+\paragraph{Capítulo 7. Conclusiones y trabajo futuro.} Recoge las principales conclusiones obtenidas, valora el grado de cumplimiento de los objetivos, identifica las limitaciones del sistema y plantea posibles líneas de mejora y ampliación.
+
+\endgroup
