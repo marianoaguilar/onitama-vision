@@ -1,6 +1,6 @@
-# TFG-Onitama
+# Onitama-vision
 
-TFG-Onitama is an academic final project that brings together a complete **Onitama** rules engine, a search-based AI, and a computer-vision-assisted desktop application for playing on a **real physical board**.
+Onitama-vision is an academic final project that brings together a complete **Onitama** rules engine, a search-based AI, and a computer-vision-assisted desktop application for playing on a **real physical board**.
 
 The project is designed for a specific use case: a human plays Onitama on a physical board, a camera observes the board and cards, the software reconstructs the game state, validates legal transitions, and the AI answers with its own move. The main user-facing entry point is the desktop GUI, but the repository also includes supporting tools for testing, calibration, benchmarking, and experimentation.
 
