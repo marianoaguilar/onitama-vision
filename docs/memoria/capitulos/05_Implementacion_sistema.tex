@@ -356,10 +356,10 @@ Este modelo clasifica cada recorte como una de las 16 cartas oficiales del juego
 El resultado conjunto se agrupa en \texttt{CardClassificationResult}, desde donde se recuperan las dos cartas rojas, las dos cartas azules y la carta lateral.
 
 
-\subsection{Snapshot visual}
-\label{subsec:snapshot-visual}
+\subsection{Representación de la observación visual}
+\label{subsec:observacion-visual}
 
-La salida principal del módulo de visión es \texttt{VisionSnapshot}, definido en \texttt{snapshot.py}. Esta estructura combina:
+La observación reconstruida por el módulo de visión se representa mediante \texttt{VisionSnapshot}, definido en \texttt{snapshot.py}. Esta estructura agrupa la información visual detectada en la imagen:
 
 \begin{itemize}
     \item \texttt{board}: objeto \texttt{VisionBoard} con la disposición detectada de las piezas.
@@ -368,7 +368,7 @@ La salida principal del módulo de visión es \texttt{VisionSnapshot}, definido 
     \item \texttt{side\_card}: nombre de la carta lateral.
 \end{itemize}
 
-El snapshot representa una observación visual completa, pero todavía no contiene toda la información necesaria para ser un estado lógico de partida. En concreto, la cámara puede detectar piezas y cartas, pero no determina por sí misma a qué jugador le corresponde mover. Por ese motivo, la conversión mediante \texttt{to\_game\_state(to\_move)} recibe el turno como parámetro externo.
+Para integrar esta observación con el motor de reglas, \texttt{VisionSnapshot} proporciona la conversión \texttt{to\_game\_state(to\_move)}. El parámetro \texttt{to\_move} incorpora el turno de juego que debe asociarse a la posición reconstruida.
 
 Durante esta conversión se transforman las piezas visuales en piezas del motor, se resuelven los nombres de cartas mediante \texttt{CARD\_BY\_NAME} y se aplican validaciones básicas: límites de piezas por jugador, existencia de como máximo un maestro por color y unicidad de las cinco cartas visibles. Si estas comprobaciones se cumplen, se construye un \texttt{GameState} compatible con el motor.
 
