@@ -72,7 +72,7 @@ La representación central del motor es \texttt{GameState}. Se define como una \
 Un \texttt{GameState} almacena la información necesaria para reconstruir una posición completa:
 
 \begin{itemize}
-    \item \texttt{board}: tablero de 5 x 5, representado como una tupla de tuplas.
+    \item \texttt{board}: matriz de 5 x 5 que representa el tablero, con el lado azul en la parte superior y el lado rojo en la parte inferior.
     \item \texttt{to\_move}: jugador al que corresponde mover.
     \item \texttt{red\_cards} y \texttt{blue\_cards}: cartas activas de cada jugador.
     \item \texttt{side\_card}: carta lateral disponible para el intercambio.
@@ -262,8 +262,9 @@ El punto de entrada principal es la clase \texttt{VisionPipeline}, definida en \
 El flujo implementado se apoya en dos ficheros de calibración:
 
 \begin{itemize}
-    \item \texttt{data/vision/calibration.json}: almacena los puntos del tablero, el tamaño de salida de la vista rectificada y la rotación aplicada.
-    \item \texttt{data/vision/card\_rois.json}: almacena las cinco regiones de interés correspondientes a las cartas visibles.
+    \item \texttt{data/vision/calibration.json}: almacena los puntos del tablero, el tamaño de salida de la vista rectificada y la rotación aplicada para adaptar la observación a la orientación lógica utilizada por el motor.
+
+    \item \texttt{data/vision/card\_rois.json}: almacena las cinco regiones de interés correspondientes a las cartas visibles; la carta lateral mantiene una región fija en el lado opuesto a la cámara, aunque su orientación varíe según el jugador correspondiente.
 \end{itemize}
 
 A partir de estos datos, el pipeline procesa el frame en dos ramas: una para el tablero y otra para las cartas. La primera rectifica la zona del tablero y detecta las piezas; la segunda extrae las regiones de cartas y clasifica cada una de ellas. Finalmente, ambas salidas se combinan en un \texttt{VisionSnapshot}.
@@ -527,7 +528,16 @@ Esta organización permite que \texttt{MainWindow} actúe como coordinador de la
 
 La pantalla inicial se define en \texttt{SetupPage} y reúne las decisiones previas a la partida: el color del jugador humano, el nivel de dificultad del agente de inteligencia artificial y el estado de la calibración visual.
 
-El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. Por su parte, la calibración visual depende de dos ficheros requeridos por el módulo de visión:
+El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. La Figura~\ref{fig:gui-setup} muestra esta pantalla inicial de configuración.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{imagenes/gui_setup.png}
+    \caption{Pantalla de configuración inicial de la aplicación.}
+    \label{fig:gui-setup}
+\end{figure}
+
+Por su parte, la calibración visual depende de dos ficheros requeridos por el módulo de visión:
 
 \begin{itemize}
     \item \texttt{data/vision/calibration.json}: calibración geométrica del tablero.
@@ -538,13 +548,23 @@ Antes de habilitar el inicio de partida, la interfaz comprueba que ambos fichero
 
 \texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la transformación geométrica. \texttt{CardRoisCalibrationDialog} permite definir las regiones \texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0} y \texttt{blue\_1}. Ambos diálogos utilizan captura de cámara propia, permiten congelar la imagen y editar los puntos de forma interactiva antes de guardar la configuración.
 
-\vspace{0.3cm}
+La Figura~\ref{fig:gui-calibracion} muestra las ventanas de calibración integradas en la aplicación, utilizadas para definir la región del tablero y las regiones de interés de las cartas antes de iniciar una partida asistida por visión.
+
 \begin{figure}[H]
-\centering
-\includegraphics[width=1\textwidth]{imagenes/gui_setup.png}
-\caption{Pantalla de configuración inicial de la aplicación.}
-\label{fig:gui-setup}
+    \centering
+
+    \includegraphics[width=0.85\textwidth]{imagenes/gui_calibracion_tablero.png}
+    \caption*{(a) Calibración del tablero.}
+
+    \vspace{0.4cm}
+
+    \includegraphics[width=0.85\textwidth]{imagenes/gui_calibracion_cartas.png}
+    \caption*{(b) Calibración de las regiones de cartas.}
+
+    \caption{Ventanas de calibración integradas en la aplicación gráfica.}
+    \label{fig:gui-calibracion}
 \end{figure}
+
 
 \subsection{Vista de partida y actualización en vivo}
 \label{subsec:vista-partida-gui}
@@ -565,10 +585,12 @@ La traducción de fases, resultados y errores a mensajes comprensibles para el u
 
 La aplicación también puede abrir una ventana secundaria de cámara mediante \texttt{CameraWindow}. Esta vista permite observar el último frame capturado sin mezclar la representación de cámara con la vista principal de partida.
 
+La Figura~\ref{fig:gui-partida} muestra un ejemplo de vista de partida, durante el turno del jugador humano.
+
 \vspace{0.3cm}
 \begin{figure}[H]
 \centering
-\includegraphics[width=1\textwidth]{imagenes/gui_partida.png}
+\includegraphics[width=0.85\textwidth]{imagenes/gui_partida.png}
 \caption{Vista principal de partida asistida por visión.}
 \label{fig:gui-partida}
 \end{figure}

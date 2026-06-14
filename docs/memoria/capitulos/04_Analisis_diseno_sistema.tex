@@ -119,36 +119,36 @@ Los requisitos no funcionales recogen las propiedades que condicionan la calidad
 
 \subsection{Restricciones y supuestos de diseño}
 
-Las siguientes restricciones y supuestos delimitan el contexto de uso previsto para el sistema, condicionado por el tablero físico, la cámara, la calibración y los modelos de reconocimiento visual empleados.
+Las siguientes restricciones y supuestos delimitan el contexto de uso previsto para el sistema, condicionado por el tablero físico, la cámara, la calibración, la disposición de la escena y los modelos de reconocimiento visual empleados.
 
-\paragraph{Entorno físico}
+\paragraph{Entorno físico y disposición de la escena}
 
 \begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm]
     \item El sistema se diseña para partidas físicas de Onitama entre un jugador humano y un agente de inteligencia artificial.
 
-    \item La manipulación física de piezas y cartas corresponde al jugador humano; el sistema interpreta, valida y guía la partida, pero no incluye mecanismos de actuación física automática.
+    \item Desde la perspectiva de la cámara, el lado azul del tablero debe quedar situado a la izquierda de la imagen y el lado rojo a la derecha.
 
-    \item Se requiere una cámara compatible para capturar el tablero y las cartas visibles durante la partida.
+    \item La carta lateral debe mantenerse en una región fija del montaje, situada en el lado opuesto a la cámara, como decisión de diseño para simplificar la calibración de las regiones de cartas.
 
-    \item El tablero físico y las cartas visibles deben encontrarse dentro del campo de visión de la cámara.
+    \item La carta lateral debe colocarse perpendicular al lado del tablero y orientarse hacia el jugador correspondiente, evitando disposiciones paralelas al tablero.
 \end{enumerate}
 
-\paragraph{Calibración y condiciones de captura}
+\paragraph{Captura, calibración y condiciones visuales}
 
 \begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm, resume]
-    \item Se asume que la cámara permanece fija durante la partida. Si cambia su posición, el encuadre o la disposición física del montaje, será necesario recalibrar el sistema.
+    \item Se requiere una cámara compatible, situada de forma fija durante la partida, con el tablero y las cartas visibles dentro del encuadre.
 
-    \item La calibración del tablero y de las regiones de cartas es necesaria antes de iniciar una partida asistida por visión.
+    \item La partida asistida por visión requiere una calibración previa del tablero y de las regiones de cartas, que deberá repetirse si cambia la posición de la cámara, el encuadre o la disposición física del montaje.
 
-    \item El funcionamiento del módulo de visión depende de condiciones externas como iluminación, enfoque, perspectiva, reflejos, oclusiones y visibilidad suficiente de las piezas y cartas.
+    \item El funcionamiento del módulo de visión depende de condiciones razonables de iluminación, enfoque y visibilidad de piezas y cartas.
 \end{enumerate}
 
 \paragraph{Alcance del sistema}
 
 \begin{enumerate}[label=\textbf{RS-\twodigits*:}, leftmargin=2.2cm, resume]
-    \item El sistema está orientado a los componentes físicos, disposición del tablero y modelos de visión utilizados durante el desarrollo, por lo que cambios significativos en piezas, cartas o distribución espacial pueden requerir ajustes adicionales.
+    \item El sistema está diseñado y evaluado para el montaje físico, la disposición de la escena y los modelos de visión empleados durante el desarrollo.
 
-    \item El sistema no contempla la recuperación automática ante desincronizaciones complejas producidas por varios movimientos no observados o por cambios físicos incoherentes con las reglas del juego.
+    \item La manipulación física de piezas y cartas corresponde al jugador humano; el sistema observa, interpreta, valida y guía la partida, pero no mueve componentes de forma automática.
 
     \item La aplicación está orientada al uso en escritorio, por lo que no se plantea como una aplicación web, móvil o multijugador en línea.
 \end{enumerate}
