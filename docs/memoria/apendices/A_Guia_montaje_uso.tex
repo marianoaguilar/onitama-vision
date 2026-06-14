@@ -1,0 +1,72 @@
+\chapter{Guía rápida de montaje y uso}
+\label{ap:guia-montaje-uso}
+
+Este apéndice resume de forma esquemática las indicaciones prácticas para preparar el montaje físico y utilizar la aplicación en una partida asistida por visión.
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=\textwidth]{imagenes/montaje_uso.png}
+    \caption{Montaje físico recomendado para el uso del sistema.}
+    \label{fig:montaje-fisico}
+\end{figure}
+
+\section{Montaje inicial del sistema}
+
+\begin{enumerate}
+    \item Colocar el tapete de Onitama dentro del encuadre de la cámara.
+
+    \item Orientar el tapete de forma que, desde la perspectiva de la imagen, el lado azul quede a la izquierda y el lado rojo a la derecha.
+
+    \item Reservar espacio dentro del encuadre para las cinco cartas visibles de la partida.
+
+    \item En el montaje utilizado, la webcam del portátil se situó aproximadamente a 9 cm del borde más cercano del tapete y a unos 12 cm de altura.
+
+    \item Ajustar ligeramente la altura de la cámara si es necesario para ampliar el campo de visión, siempre que las piezas sigan observándose con suficiente detalle.
+\end{enumerate}
+
+\section{Preparación de una partida física}
+
+\begin{enumerate}
+    \item Colocar las piezas en la configuración inicial de Onitama.
+
+    \item Barajar las cartas de movimiento y seleccionar las cinco cartas visibles de la partida.
+
+    \item Colocar las dos cartas del jugador rojo y las dos cartas del jugador azul en sus regiones correspondientes.
+
+    \item Situar la carta lateral en una región fija, ubicada en el lado opuesto a la cámara.
+
+    \item Colocar la carta lateral perpendicular al lado del tablero y orientarla hacia el jugador correspondiente.
+\end{enumerate}
+
+\section{Configuración y calibración}
+
+\begin{enumerate}
+    \item Abrir la aplicación gráfica del sistema desde un terminal mediante el comando \texttt{onitama-vision}.
+
+    \item Seleccionar el color del jugador humano y el nivel de dificultad de la inteligencia artificial.
+
+    \item Si la aplicación dispone de una calibración previa del tablero y de las regiones de cartas, y el montaje físico no ha cambiado, reutilizar dicha configuración.
+
+    \item Si no existe una calibración previa, o si se ha modificado la posición de la cámara o el tapete, realizar de nuevo la calibración procurando mantener una disposición similar al montaje de referencia empleado durante el desarrollo:
+    \begin{enumerate}[label=\alph*)]
+        \item Para calibrar el tablero, marcar sus cuatro esquinas sobre la imagen capturada.
+
+        \item Para calibrar las cartas, seleccionar cada carta mediante su botón correspondiente y marcar los cuatro puntos que delimitan su región de interés.
+    \end{enumerate}
+
+    \item Iniciar la partida desde la interfaz gráfica.
+\end{enumerate}
+
+\section{Recomendaciones durante el uso}
+
+\begin{itemize}
+    \item Mantener condiciones de iluminación estables.
+
+    \item Evitar reflejos sobre las cartas y sombras intensas sobre el tablero o las piezas.
+
+    \item Evitar oclusiones prolongadas de piezas o cartas.
+
+    \item No mover la cámara ni el tapete durante la partida.
+
+    \item Si la aplicación detecta una discrepancia, corregir la escena física antes de continuar.
+\end{itemize}
