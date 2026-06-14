@@ -16,7 +16,7 @@ __pycache__/
 # Project-local generated data
 /scripts/results/
 data/vision/*
-!data/vision/calibration.json
+!data/vision/board_calibration.json
 !data/vision/card_rois.json
 AGENTS.md
 

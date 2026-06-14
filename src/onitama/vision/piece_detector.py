@@ -40,7 +40,7 @@ class YoloPieceDetector:
         self,
         *,
         model_path: str | Path = "models/pieces_yolo11s_640_best.pt",
-        calibration_path: str | Path = "data/vision/calibration.json",
+        calibration_path: str | Path = "data/vision/board_calibration.json",
         padding_ratio: float = 0.25,
         imgsz: int = 640,
         conf: float = 0.50,

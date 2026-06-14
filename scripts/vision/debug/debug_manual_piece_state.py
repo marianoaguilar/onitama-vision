@@ -59,7 +59,7 @@ def draw_state_overlay(img, state: VisionBoard, board_size: int = 5):
 
 
 def main() -> None:
-    calib = HomographyCalibration.load(Path("data/vision/calibration.json"))
+    calib = HomographyCalibration.load(Path("data/vision/board_calibration.json"))
     M = compute_homography_matrix(calib)
 
     cap = open_camera()

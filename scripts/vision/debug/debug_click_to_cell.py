@@ -24,7 +24,7 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
 
 
 def main() -> None:
-    calib = HomographyCalibration.load(Path("data/vision/calibration.json"))
+    calib = HomographyCalibration.load(Path("data/vision/board_calibration.json"))
     M = compute_homography_matrix(calib)
 
     cap = open_camera()

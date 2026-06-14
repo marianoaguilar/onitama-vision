@@ -191,7 +191,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--piece-model", type=Path, default=Path("models/pieces_yolo11s_640_best.pt"))
     parser.add_argument("--card-model", type=Path, default=Path("models/cards_yolo11n-cls_320_best.pt"))
-    parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
+    parser.add_argument("--calibration", type=Path, default=Path("data/vision/board_calibration.json"))
     parser.add_argument("--rois-path", type=Path, default=Path("data/vision/card_rois.json"))
     parser.add_argument("--camera-id", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)

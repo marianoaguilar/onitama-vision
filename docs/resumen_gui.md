@@ -104,7 +104,7 @@ Dialogo para calibrar el tablero.
 Permite:
 - capturar una imagen,
 - marcar las 4 esquinas,
-- guardar `data/vision/calibration.json`.
+- guardar `data/vision/board_calibration.json`.
 
 ### `src/onitama/gui/calibration/card_rois_calibration_dialog.py`
 Dialogo para calibrar las cartas.
@@ -140,7 +140,7 @@ En `SetupPage`, el usuario:
 - pulsa `Iniciar partida`.
 
 `MainWindow` comprueba antes que existan y sean validos:
-- `data/vision/calibration.json`
+- `data/vision/board_calibration.json`
 - `data/vision/card_rois.json`
 
 Si falta algo, no deja empezar.

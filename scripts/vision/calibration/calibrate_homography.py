@@ -29,7 +29,7 @@ def open_camera(device: int = 0, width: int = 1280, height: int = 720, fps: int 
 
 
 def main() -> None:
-    out_path = Path("data/vision/calibration.json")
+    out_path = Path("data/vision/board_calibration.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     dst_w, dst_h = 500, 500

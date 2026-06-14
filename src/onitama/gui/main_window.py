@@ -33,7 +33,7 @@ from onitama.gui.view_logic import StatusView, build_status_view
 from onitama.gui.widgets import BoardWidget, CardWidget, MessageBanner
 
 
-_CALIBRATION_PATH = Path("data/vision/calibration.json")
+_CALIBRATION_PATH = Path("data/vision/board_calibration.json")
 _CARD_ROIS_PATH = Path("data/vision/card_rois.json")
 _CARD_ROI_SLOTS = ("red_0", "red_1", "side", "blue_0", "blue_1")
 _DEFAULT_REQUIRED_REPEATS = 3

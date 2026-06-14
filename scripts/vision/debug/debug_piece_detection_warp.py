@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preview and capture one warped board image for piece detection."
     )
-    parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
+    parser.add_argument("--calibration", type=Path, default=Path("data/vision/board_calibration.json"))
     parser.add_argument("--output", type=Path, default=Path("data/vision/piece_detection_warp.jpg"))
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)

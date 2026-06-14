@@ -262,7 +262,7 @@ El punto de entrada principal es la clase \texttt{VisionPipeline}, definida en \
 El flujo implementado se apoya en dos ficheros de calibración:
 
 \begin{itemize}
-    \item \texttt{data/vision/calibration.json}: almacena los puntos del tablero, el tamaño de salida de la vista rectificada y la rotación aplicada para adaptar la observación a la orientación lógica utilizada por el motor.
+    \item \texttt{data/vision/board\_calibration.json}: almacena los puntos del tablero, el tamaño de salida de la vista rectificada y la rotación aplicada para adaptar la observación a la orientación lógica utilizada por el motor.
 
     \item \texttt{data/vision/card\_rois.json}: almacena las cinco regiones de interés correspondientes a las cartas visibles; la carta lateral mantiene una región fija en el lado opuesto a la cámara, aunque su orientación varíe según el jugador correspondiente.
 \end{itemize}
@@ -322,7 +322,7 @@ El módulo utiliza estrategias distintas para piezas y cartas porque la informac
 
 \subsubsection{Detección de piezas}
 
-El reconocimiento de piezas parte de la calibración del tablero implementada en \texttt{homography.py}. A partir de \texttt{data/vision/calibration.json}, se cargan los cuatro puntos del tablero, el tamaño de salida y la rotación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del tablero, lo que permite conservar piezas que sobresalen parcialmente del área estricta de juego.
+El reconocimiento de piezas parte de la calibración del tablero implementada en \texttt{homography.py}. A partir de \texttt{data/vision/board\_calibration.json}, se cargan los cuatro puntos del tablero, el tamaño de salida y la rotación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del tablero, lo que permite conservar piezas que sobresalen parcialmente del área estricta de juego.
 
 Sobre la imagen rectificada actúa \texttt{YoloPieceDetector}, definido en \\ \texttt{piece\_detector.py}. El modelo utilizado se carga desde:
 
@@ -540,7 +540,7 @@ El color seleccionado determina qué jugador será controlado por el usuario, mi
 Por su parte, la calibración visual depende de dos ficheros requeridos por el módulo de visión:
 
 \begin{itemize}
-    \item \texttt{data/vision/calibration.json}: calibración geométrica del tablero.
+    \item \texttt{data/vision/board\_calibration.json}: calibración geométrica del tablero.
     \item \texttt{data/vision/card\_rois.json}: regiones de interés de las cartas.
 \end{itemize}
 

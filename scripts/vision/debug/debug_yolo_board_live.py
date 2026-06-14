@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
         description="Live debug: YOLO detections -> VisionBoard. Saves/prints discrete board before game session."
     )
     parser.add_argument("--model", type=Path, default=Path("models/pieces_yolo11s_640_best.pt"))
-    parser.add_argument("--calibration", type=Path, default=Path("data/vision/calibration.json"))
+    parser.add_argument("--calibration", type=Path, default=Path("data/vision/board_calibration.json"))
     parser.add_argument("--camera-id", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
