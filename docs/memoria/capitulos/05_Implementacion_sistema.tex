@@ -35,7 +35,7 @@ Las principales tecnologías utilizadas en la implementación del sistema son la
 El código principal del proyecto se ubica en el paquete \texttt{src/onitama/}. La estructura general del repositorio es la siguiente:
 
 \begin{verbatim}
-TFG-Onitama/
+onitama-vision/
 ├── src/onitama/
 │   ├── engine/      # Motor de juego
 │   ├── ai/          # Agente de inteligencia artificial
@@ -46,13 +46,15 @@ TFG-Onitama/
 │   ├── cli/         # Interfaz de terminal auxiliar
 │   └── errors.py    # Errores comunes de visión y ejecución
 ├── scripts/         # Herramientas auxiliares
+│   ├── ai/          # Torneos y medición de búsqueda
+│   └── vision/      # Calibración y depuración visual
 ├── tests/           # Pruebas automatizadas
 ├── models/          # Modelos entrenados
 ├── data/vision/     # Datos de calibración
 └── docs/            # Documentación del proyecto
 \end{verbatim}
 
-La versión completa del proyecto, incluyendo el código fuente, la documentación y los recursos auxiliares necesarios para su ejecución, se encuentra disponible en GitHub: \url{https://github.com/marianoaguilar/TFG-Onitama}.
+La versión completa del proyecto, incluyendo el código fuente, la documentación y los recursos auxiliares necesarios para su ejecución, se encuentra disponible en GitHub: \url{https://github.com/marianoaguilar/onitama-vision}.
 
 En las siguientes secciones se describe cada uno de los componentes principales con mayor detalle, siguiendo un recorrido desde el núcleo lógico del sistema hasta la aplicación final utilizada por el usuario.
 

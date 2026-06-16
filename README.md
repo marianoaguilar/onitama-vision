@@ -4,6 +4,12 @@ Onitama-vision is an academic final project that brings together a complete **On
 
 The project is designed for a specific use case: a human plays Onitama on a physical board, a camera observes the board and cards, the software reconstructs the game state, validates legal transitions, and the AI answers with its own move. The main user-facing entry point is the desktop GUI, but the repository also includes supporting tools for testing, calibration, benchmarking, and experimentation.
 
+
+<p align="center">
+  <img src="docs/memoria/imagenes/gui_setup.png" alt="Onitama-vision setup screen" width="49%">
+  <img src="docs/memoria/imagenes/gui_partida.png" alt="Onitama-vision desktop game view" width="49%">
+</p>
+
 ## Table of Contents
 
 1. [Implemented features](#1-implemented-features)
@@ -47,8 +53,8 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 Clone the repository:
 
 ```bash
-git clone https://github.com/marianoaguilar/TFG-Onitama.git
-cd TFG-Onitama
+git clone https://github.com/marianoaguilar/onitama-vision.git
+cd onitama-vision
 ```
 
 Create and activate a virtual environment:
@@ -85,7 +91,7 @@ onitama-vision
 You can also run it directly from the source tree:
 
 ```bash
-PYTHONPATH=src python -m onitama.gui.vision_app
+python -m onitama.gui.vision_app
 ```
 
 ### 5.2 First-time setup
@@ -101,7 +107,7 @@ From the GUI you can:
 
 If the camera, table position, board placement, or card layout changes, recalibration is usually required.
 
-Recommended physical setup:
+Recommended camera framing for calibration:
 
 ![Ideal physical setup](docs/Disposicion_ideal.png)
 
@@ -125,10 +131,16 @@ Search benchmark:
 python scripts/ai/bench_search.py --help
 ```
 
+Vision pipeline evaluation:
+
+```bash
+python scripts/vision/eval_vision_pipeline.py --help
+```
+
 ## 6. Project structure
 
 ```text
-TFG-Onitama/
+onitama-vision/
 ├── src/onitama/
 │   ├── engine/        # Pure game state, cards, pieces, actions and rules
 │   ├── ai/            # Search, evaluation and AI controllers
@@ -138,7 +150,9 @@ TFG-Onitama/
 │   ├── gui/           # Desktop application
 │   ├── cli/           # Auxiliary terminal interfaces
 │   └── errors.py      # Shared exception types for vision-assisted play
-├── scripts/           # Calibration, debugging, tournaments, benchmarks
+├── scripts/           # Auxiliary tooling
+│   ├── ai/            # Tournaments and search benchmarks
+│   └── vision/        # Calibration, capture, snapshots and visual debugging
 ├── tests/             # Automated test suite
 ├── models/            # Trained vision models
 ├── data/vision/       # Calibration and ROI data
@@ -154,10 +168,9 @@ TFG-Onitama/
 
 ## 8. Documentation
 
-For a full technical explanation of the project, methodology, architecture, and implementation details, see [docs/memoria/proyecto.pdf](docs/memoria/proyecto.pdf).
+For a full technical explanation of the project in Spanish, including methodology, architecture, implementation details, experiments, and results, see [docs/memoria/proyecto.pdf](docs/memoria/proyecto.pdf).
 
 ## 9. Legal notice
-
 
 This repository is an academic project and is not an official Onitama product.
 

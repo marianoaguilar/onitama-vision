@@ -1,7 +1,7 @@
 # Resumen del Proyecto: Motor de Onitama con IA
 
 ## 1. Introduccion
-Este documento resume el trabajo implementado hasta la fecha en el proyecto **TFG-Onitama**.  
+Este documento resume el trabajo implementado hasta la fecha en el proyecto **onitama-vision**.  
 El objetivo principal es construir un motor de juego de Onitama en Python, con reglas correctas, estado inmutable, interfaz de consola y agentes de IA basados en busqueda alfa-beta.
 
 El proyecto esta orientado a dos usos:
