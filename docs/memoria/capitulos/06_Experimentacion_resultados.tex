@@ -72,7 +72,7 @@ En estas pruebas se utilizaron los modelos finales incorporados al proyecto:
     \item \texttt{models/cards\_yolo11n-cls\_320\_best.pt}, para la clasificación de cartas.
 \end{itemize}
 
-La inferencia de estos modelos se realizó en el equipo local utilizando CPU, sin aceleración CUDA. El entrenamiento de los modelos de visión no se llevó a cabo en este equipo, sino en Google Colab. Los detalles sobre los conjuntos de datos, el proceso de entrenamiento y las métricas obtenidas se desarrollan en la sección dedicada a la evaluación del módulo de visión por computador.
+La inferencia de estos modelos se realizó en el equipo local utilizando CPU, sin aceleración CUDA. El entrenamiento de los modelos de visión no se llevó a cabo en este equipo, sino en Google Colab~\cite{google_colab}. Los detalles sobre los conjuntos de datos, el proceso de entrenamiento y las métricas obtenidas se desarrollan en la sección dedicada a la evaluación del módulo de visión por computador.
 
 
 %==============================================================================
@@ -411,7 +411,7 @@ El módulo de visión se evaluó a partir de dos conjuntos de datos, uno para ca
 
 En ambos casos, las capturas se realizaron con la cámara fija en la misma posición utilizada posteriormente durante la inferencia. Durante la adquisición se introdujeron variaciones en la iluminación, la disposición y la orientación de los elementos, manteniendo estable el montaje físico general.
 
-Para preparar los conjuntos se utilizó Roboflow. Esta herramienta permitió organizar los datos, definir las clases, realizar las anotaciones o asignaciones correspondientes, dividir las muestras en entrenamiento, validación y prueba, aplicar el preprocesado necesario y exportar las versiones utilizadas durante el entrenamiento.
+Para preparar los conjuntos se utilizó Roboflow~\cite{roboflow_docs}. Esta herramienta permitió organizar los datos, definir las clases, realizar las anotaciones o asignaciones correspondientes, dividir las muestras en entrenamiento, validación y prueba, aplicar el preprocesado necesario y exportar las versiones utilizadas durante el entrenamiento.
 
 La Tabla~\ref{tab:datasets-vision} resume los dos conjuntos de datos empleados.
 
@@ -503,7 +503,7 @@ En la versión final del conjunto de cartas no se generaron imágenes adicionale
 
 El detector de piezas se entrenó para localizar los elementos presentes sobre el tablero rectificado. Cada predicción proporciona una caja delimitadora, una clase y un valor de confianza. Posteriormente, el sistema utiliza la posición de la caja para asignar la pieza detectada a una casilla concreta del tablero.
 
-El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11s.pt} preentrenado. La variante \textit{small} se escogió por ofrecer un equilibrio adecuado entre capacidad y coste computacional, permitiendo localizar y distinguir las cuatro clases de piezas sin comprometer la posterior ejecución del sistema en el equipo local.
+El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11s.pt} preentrenado, perteneciente a la familia YOLO11~\cite{ultralytics_yolo11}. La variante \textit{small} se escogió por ofrecer un equilibrio adecuado entre capacidad y coste computacional, permitiendo localizar y distinguir las cuatro clases de piezas sin comprometer la posterior ejecución del sistema en el equipo local.
 
 La configuración principal del entrenamiento se resume en la Tabla~\ref{tab:config-entrenamiento-piezas}.
 
@@ -525,7 +525,7 @@ Tamaño de \textit{batch} & 16 \\
 \label{tab:config-entrenamiento-piezas}
 \end{table}
 
-Las transformaciones aplicadas durante el entrenamiento se ajustaron al entorno previsto de funcionamiento. Dado que la cámara y la orientación del tablero permanecen fijas, no se utilizaron volteos ni rotaciones globales de la imagen. En cambio, se introdujeron variaciones moderadas de color, desplazamiento y escala para aumentar la tolerancia ante cambios de iluminación y pequeñas diferencias de calibración.
+Las transformaciones aplicadas durante el entrenamiento se ajustaron al entorno previsto de funcionamiento. La aumentación de datos es una técnica habitual para mejorar la capacidad de generalización de modelos visuales entrenados con conjuntos limitados~\cite{shorten2019augmentation}. Dado que la cámara y la orientación del tablero permanecen fijas, no se utilizaron volteos ni rotaciones globales de la imagen. En cambio, se introdujeron variaciones moderadas de color, desplazamiento y escala para aumentar la tolerancia ante cambios de iluminación y pequeñas diferencias de calibración.
 
 Los parámetros principales de aumentación fueron:
 
@@ -538,7 +538,7 @@ Los parámetros principales de aumentación fueron:
     \item probabilidad de \textit{Mosaic}: \texttt{mosaic=0.3}.
 \end{itemize}
 
-La Figura~\ref{fig:resultados-entrenamiento-piezas} muestra la evolución de las pérdidas y de las métricas principales durante el entrenamiento.
+La Figura~\ref{fig:resultados-entrenamiento-piezas} muestra la evolución de las pérdidas y de las métricas principales durante el entrenamiento del detector, incluyendo precisión, \textit{recall}, \textit{mAP50} y \textit{mAP50-95}, proporcionadas por Ultralytics durante la validación del modelo~\cite{ultralytics_metrics}.
 
 \begin{figure}[H]
 \centering
@@ -570,7 +570,7 @@ Precisión & 0.995 & 0.991 \\
 \label{tab:metricas-detector-piezas}
 \end{table}
 
-Los resultados muestran una detección muy fiable sobre ambos subconjuntos. En validación, la matriz de confusión registró 502 clasificaciones correctas sobre las 503 instancias anotadas. El único error correspondió a un estudiante rojo clasificado como maestro rojo, sin observarse piezas omitidas, detecciones adicionales sobre el fondo ni otras confusiones entre clases.
+Los resultados muestran una detección muy fiable sobre ambos subconjuntos. Los valores de precisión y \textit{recall}, ambos próximos a 1, indican que el detector produjo muy pocas detecciones falsas y apenas omitió instancias reales. En validación, la matriz de confusión registró 502 clasificaciones correctas sobre las 503 instancias anotadas. El único error correspondió a un estudiante rojo clasificado como maestro rojo, sin observarse piezas omitidas, detecciones adicionales sobre el fondo ni otras confusiones entre clases.
 
 El rendimiento sobre el conjunto de prueba fue muy próximo al obtenido en validación. El \textit{mAP50} se mantuvo en 0.995 y el \textit{mAP50-95} descendió únicamente de 0.890 a 0.879. La proximidad entre ambos resultados indica que el modelo generaliza adecuadamente a imágenes nuevas.
 
@@ -589,7 +589,7 @@ Este archivo es cargado por el detector durante la inferencia. El funcionamiento
 
 El clasificador de cartas se entrenó para identificar la carta presente en cada recorte obtenido mediante las ROIs calibradas.
 
-El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11n-cls.pt} preentrenado, correspondiente a la variante de clasificación de YOLO11. El tamaño \textit{nano} se escogió por su bajo coste computacional y porque ofrecía capacidad suficiente para distinguir las 16 clases de cartas en un entorno visual controlado.
+El entrenamiento se realizó en Google Colab utilizando una GPU NVIDIA Tesla T4 y la biblioteca Ultralytics. Se partió de un modelo \texttt{yolo11n-cls.pt} preentrenado, correspondiente a la variante de clasificación de YOLO11~\cite{ultralytics_yolo11}. El tamaño \textit{nano} se escogió por su bajo coste computacional y porque ofrecía capacidad suficiente para distinguir las 16 clases de cartas en un entorno visual controlado.
 
 La configuración principal del entrenamiento se resume en la Tabla~\ref{tab:config-entrenamiento-cartas}.
 
@@ -613,7 +613,7 @@ Tamaño de \textit{batch} & 32 \\
 
 Durante el entrenamiento se mantuvieron activas las transformaciones internas predeterminadas de Ultralytics para aumentar la variabilidad de las muestras. El proceso se configuró con 30 épocas, suficientes para que las métricas de validación alcanzaran sus valores máximos y se mantuvieran estables antes de finalizar.
 
-La Figura~\ref{fig:resultados-entrenamiento-cartas} muestra la evolución de la pérdida y de las métricas de exactitud durante el entrenamiento.
+La Figura~\ref{fig:resultados-entrenamiento-cartas} muestra la evolución de la pérdida y de las métricas principales durante el entrenamiento del clasificador, incluyendo la exactitud \textit{top-1} y \textit{top-5} proporcionadas por Ultralytics durante la validación del modelo~\cite{ultralytics_classify}.
 
 \begin{figure}[H]
 \centering

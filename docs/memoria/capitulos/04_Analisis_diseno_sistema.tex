@@ -1,7 +1,7 @@
 \chapter{Análisis y diseño del sistema}
 \label{chap:analisis-diseno-sistema}
 
-Una vez presentados los fundamentos teóricos, tecnológicos y reglamentarios sobre los que se apoya el proyecto, este capítulo aborda el análisis y diseño del sistema desarrollado. El objetivo es describir el problema desde el punto de vista de la solución software, identificando los requisitos principales, los actores que intervienen, la organización general del sistema y los flujos de funcionamiento que permiten coordinar el motor de juego, la inteligencia artificial, la visión por computador y la interfaz de usuario.
+Una vez presentados los fundamentos teóricos, tecnológicos y reglamentarios sobre los que se apoya el proyecto, este capítulo aborda el análisis y diseño del sistema desarrollado. El objetivo es describir el problema desde el punto de vista de la solución software, identificando los requisitos principales, los actores que intervienen, la organización general del sistema y los flujos de funcionamiento que permiten coordinar todos sus componentes entre sí.
 
 
 %==============================================================================
@@ -197,7 +197,7 @@ En los casos de uso considerados intervienen los siguientes elementos externos a
     El jugador realiza físicamente sobre el tablero la jugada indicada por el sistema. La cámara observa el resultado y la aplicación comprueba si el estado físico coincide con el estado esperado tras aplicar la acción de la inteligencia artificial.
 
     \item[\textbf{CU-08. Consultar estado de la partida.}]
-    El jugador puede consultar en la interfaz el tablero reconstruido, las piezas detectadas, las cartas disponibles, la carta lateral, los mensajes de estado y la información relativa al turno actual.
+    El jugador puede consultar en la interfaz el tablero reconstruido, las piezas detectadas, las cartas disponibles, la carta lateral y los mensajes de estado. Además, también puede acceder a la cámara en tiempo real para observar la escena capturada.
 
     \item[\textbf{CU-09. Gestionar la sesión de juego.}]
     El jugador puede reiniciar la partida, finalizarla, volver a la configuración inicial o salir de la aplicación.
@@ -281,7 +281,7 @@ La Figura~\ref{fig:flujo-general-partida} resume el funcionamiento global de una
 
 \subsection{Turno del jugador humano}
 
-La Figura~\ref{fig:flujo-general-partida} resume el funcionamiento global de una partida física asistida por cámara, desde la configuración inicial hasta su finalización.
+La Figura~\ref{fig:flujo-turno-humano} resume el proceso de validación del turno del jugador humano, desde la observación de la escena física hasta la aceptación o el rechazo del movimiento detectado.
 
 \vspace{0.5cm}
 \begin{figure}[H]

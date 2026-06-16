@@ -1,24 +1,27 @@
 \chapter*{}
-%\thispagestyle{empty}
-%\cleardoublepage
 
-%\thispagestyle{empty}
+% -----------------------------------------------------------------------------
+% Portada secundaria
+% -----------------------------------------------------------------------------
 
 \input{portada/portada_2}
 
 
+% -----------------------------------------------------------------------------
+% Resumen en español
+% -----------------------------------------------------------------------------
 
 \cleardoublepage
 \thispagestyle{empty}
 
 \begin{center}
-{\large\bfseries \myTitle : \mySubTitle}\\
+{\large\bfseries \myTitle: \mySubTitle}\\
 \end{center}
+
 \begin{center}
 \myName\\
 \end{center}
 
-%\vspace{0.7cm}
 \noindent{\textbf{Palabras clave}: Onitama, agente inteligente, visión por computador, búsqueda adversarial, minimax, poda alfa-beta, detección de objetos, clasificación de imágenes.}\\
 
 \vspace{0.7cm}
@@ -28,22 +31,24 @@ Los juegos de tablero digitales suelen partir de un estado interno conocido por 
 
 El sistema implementado integra un motor de reglas, un agente de inteligencia artificial, un módulo de visión por computador, una capa de sincronización físico-lógica y una interfaz gráfica de escritorio. El motor representa la partida y valida sus reglas; el agente selecciona jugadas mediante búsqueda adversarial basada en minimax con poda alfa-beta; y el módulo de visión detecta las piezas, clasifica las cartas visibles y reconstruye una observación estructurada de la escena. Dicha observación se estabiliza y se contrasta con las transiciones legales antes de aceptarse como nuevo estado confirmado.
 
-La evaluación realizada analiza el comportamiento del agente, las optimizaciones de búsqueda, los modelos de visión y el funcionamiento integrado del sistema. Los resultados muestran que la solución permite mantener la coherencia entre el tablero físico y la representación lógica de la partida, validar los movimientos realizados sobre el tablero real y permitir la participación de un agente automático sin sustituir la interacción física del jugador.
+La evaluación realizada analiza el comportamiento del agente, las optimizaciones de búsqueda, los modelos de visión y el funcionamiento integrado del sistema. Los resultados obtenidos confirman la consistencia del sistema completo, al mantener alineadas la evolución observada sobre el tablero real y la evolución interna utilizada para validar la partida y tomar decisiones.
+
+
+% -----------------------------------------------------------------------------
+% Resumen en inglés
+% -----------------------------------------------------------------------------
 
 \cleardoublepage
-
-
 \thispagestyle{empty}
 
-
 \begin{center}
-{\large\bfseries Project Title: Project Subtitle}\\
+{\large\bfseries Development of an intelligent system for Onitama with computer vision: Automatic reconstruction of the state of a physical game and move selection using Minimax with alpha-beta pruning}\\
 \end{center}
+
 \begin{center}
 \myName\\
 \end{center}
 
-%\vspace{0.7cm}
 \noindent{\textbf{Keywords}: Onitama, intelligent agent, computer vision, adversarial search, minimax, alpha-beta pruning, object detection, image classification.}\\
 
 \vspace{0.7cm}
@@ -53,7 +58,12 @@ Digital board games usually start from an internal state known by the program. I
 
 The implemented system integrates a rules engine, an artificial intelligence agent, a computer vision module, a physical-logical synchronization layer, and a desktop graphical interface. The engine represents the game and validates its rules; the agent selects moves using adversarial search based on minimax with alpha-beta pruning; and the vision module detects the pieces, classifies the visible cards, and reconstructs a structured observation of the scene. This observation is stabilized and compared against the legal transitions before being accepted as the new confirmed state.
 
-The evaluation analyzes the behavior of the agent, the search optimizations, the vision models, and the integrated operation of the system. The results show that the solution can maintain coherence between the physical board and the logical representation of the game, validate the moves performed on the real board, and allow an automatic agent to participate without replacing the player's physical interaction.
+The evaluation analyzes the behavior of the agent, the search optimizations, the vision models, and the integrated operation of the system. The results obtained confirm the consistency of the complete system, keeping the evolution observed on the real board aligned with the internal evolution used to validate the game and make decisions.
+
+
+% -----------------------------------------------------------------------------
+% Autorización para consulta en biblioteca
+% -----------------------------------------------------------------------------
 
 \chapter*{}
 \thispagestyle{empty}
@@ -72,9 +82,13 @@ consultada por las personas que lo deseen.
 \vspace{2cm}
 
 \begin{flushright}
-Granada a 22 de junio de 2026 .
+Granada, a 22 de junio de 2026.
 \end{flushright}
 
+
+% -----------------------------------------------------------------------------
+% Informe y autorización del director
+% -----------------------------------------------------------------------------
 
 \chapter*{}
 \thispagestyle{empty}
@@ -83,20 +97,19 @@ Granada a 22 de junio de 2026 .
 
 D. \textbf{\myProf}, Profesor del Área de Ingeniería Informática del Departamento de Ciencias de la Computación e Inteligencia Artificial de la Universidad de Granada.
 
-
 \vspace{0.5cm}
 
 \textbf{Informa:}
 
 \vspace{0.5cm}
 
-Que el presente trabajo, titulado \textit{\textbf{\myTitle : \mySubTitle}},
-ha sido realizado bajo su supervisión por \textbf{\myName}, y autorizamos la defensa de dicho trabajo ante el tribunal
+Que el presente trabajo, titulado \textit{\textbf{\myTitle: \mySubTitle}},
+ha sido realizado bajo su supervisión por \textbf{\myName}, y autoriza la defensa de dicho trabajo ante el tribunal
 que corresponda.
 
 \vspace{0.5cm}
 
-Y para que conste, expiden y firman el presente informe en Granada a 22 de junio de 2026 .
+Y para que conste, expide y firma el presente informe en Granada, a 22 de junio de 2026.
 
 \vspace{1cm}
 
@@ -106,17 +119,20 @@ Y para que conste, expiden y firman el presente informe en Granada a 22 de junio
 
 \noindent \textbf{\myProf}
 
+
+% -----------------------------------------------------------------------------
+% Agradecimientos
+% -----------------------------------------------------------------------------
+
 \chapter*{Agradecimientos}
 \thispagestyle{empty}
 
-       \vspace{1cm}
-
+\vspace{1cm}
 
 En primer lugar, quiero agradecer a mi tutor, Salvador García López, por su orientación, disponibilidad y seguimiento durante el desarrollo de este Trabajo Fin de Grado. Su gran profesionalidad y experiencia han sido esenciales para idear y estructurar el proyecto. Me ha aportado visión y consejos muy valiosos en cada una de las etapas del proceso.
 
-También quiero dar las gracias a mi familia, por su apoyo constante a lo largo de estos años. Mis padres y hermano son pilares fundamentales en mi vida, que aportan la confianza y ánimo necesarios para impulsarme en los momentos más difíciles. Sois fuente de gran inspiración, todo un ejemplo a seguir. Gracias de corazón.
+También quiero dar las gracias a mi familia, por su apoyo constante a lo largo de estos años. Mis padres y mi hermano son pilares fundamentales en mi vida, que me han aportado siempre la confianza, el ánimo y la tranquilidad necesarios para seguir avanzando. Son fuente de gran inspiración y todo un ejemplo a seguir. Gracias de corazón.
 
-No me puedo olvidar de mis amigos y compañeros, que me han acompañado durante toda mi etapa universitaria, e incluso algunos desde mucho antes.
-Mi paso por la ETSIIT ha sido mucho mas facil a vuestro lado. Gracias por la ayuda compartida, el apoyo y por sacarme una sonrisa siempre que nos juntábamos.
+No me puedo olvidar de mis amigos y compañeros, que me han acompañado durante toda mi etapa universitaria, e incluso algunos desde mucho antes. Mi paso por la ETSIIT ha sido mucho más fácil a su lado. Gracias por la ayuda compartida, el apoyo y por sacarme una sonrisa siempre que nos juntamos.
 
-Finalmente, me gustaría agradecer a todas las personas que, de alguna manera u otra, han formado parte de esta etapa tan bonita de mi vida y me han hecho disfrutarla como nadie. Es una suerte haber tenido el privilegio de llegar hasta aquí.
+Finalmente, me gustaría agradecer a todas las personas que, de alguna manera u otra, han formado parte de esta etapa tan bonita de mi vida y me han visto crecer en lo académico y en lo personal. Es una suerte haber tenido el privilegio de llegar hasta aquí.

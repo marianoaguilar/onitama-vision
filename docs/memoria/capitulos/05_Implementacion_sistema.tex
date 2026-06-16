@@ -48,7 +48,8 @@ TFG-Onitama/
 ├── scripts/         # Herramientas auxiliares
 ├── tests/           # Pruebas automatizadas
 ├── models/          # Modelos entrenados
-└── data/vision/     # Datos de calibración
+├── data/vision/     # Datos de calibración
+└── docs/            # Documentación del proyecto
 \end{verbatim}
 
 La versión completa del proyecto, incluyendo el código fuente, la documentación y los recursos auxiliares necesarios para su ejecución, se encuentra disponible en GitHub: \url{https://github.com/marianoaguilar/TFG-Onitama}.
@@ -158,7 +159,7 @@ La implementación incorpora varias técnicas configurables asociadas al proceso
     \item \textbf{Ordenación de acciones}: combina la mejor acción almacenada en la tabla de transposición, capturas, \textit{killer moves} e historial de movimientos.
     \item \textbf{Profundización iterativa}: \texttt{choose\_action()} puede lanzar búsquedas de profundidad creciente hasta alcanzar el límite configurado.
     \item \textbf{Ventanas de aspiración}: a partir de la puntuación obtenida en una profundidad anterior, se intenta primero una búsqueda con una ventana más estrecha.
-    \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis únicamente sobre acciones de captura para evitar evaluaciones prematuras en posiciones tácticamente inestables.
+    \item \textbf{Búsqueda quiescente}: cuando se alcanza la frontera de búsqueda, \texttt{quiescence()} puede extender el análisis sobre acciones tácticamente relevantes, como capturas o victorias inmediatas por entrada al templo rival, para evitar evaluaciones prematuras en posiciones inestables.
 \end{itemize}
 
 Estas opciones se controlan desde los parámetros de \texttt{choose\_action()}, que permiten fijar la profundidad principal, seleccionar el evaluador y activar o ajustar las técnicas auxiliares de búsqueda. De este modo, la misma implementación puede ejecutarse con distintas configuraciones, facilitando su análisis experimental posterior.
@@ -178,10 +179,10 @@ Sobre esta base, se implementan las siguientes versiones:
 \begin{description}
     \item[\texttt{evaluate\_v1()}] Constituye la primera versión de la heurística y actúa como referencia inicial. Su evaluación se centra en factores básicos y tácticos:
     \begin{itemize}
-        \item diferencia material entre estudiantes propios y rivales;
-        \item progreso relativo del maestro hacia el templo contrario, aproximado mediante la distancia \textit{Manhattan};
-        \item penalización de amenazas directas sobre el maestro propio;
-        \item penalización de estudiantes propios situados en casillas atacadas por el rival.
+        \item Diferencia material entre estudiantes propios y rivales.
+        \item Progreso relativo del maestro hacia el templo contrario, aproximado mediante la distancia \textit{Manhattan}.
+        \item Penalización de amenazas directas sobre el maestro propio.
+        \item Penalización de estudiantes propios situados en casillas atacadas por el rival.
     \end{itemize}
 
     El progreso del maestro aproxima la cercanía a una de las condiciones de victoria, mientras que las penalizaciones tácticas evitan valorar positivamente posiciones en las que las piezas propias quedan expuestas.
@@ -190,11 +191,11 @@ Sobre esta base, se implementan las siguientes versiones:
 
     Además de los factores considerados en \texttt{evaluate\_v1()}, esta versión incorpora:
     \begin{itemize}
-        \item valoración ofensiva de amenazas sobre el maestro rival;
-        \item penalización y recompensa de estudiantes amenazados en ambos sentidos;
-        \item movilidad, medida a partir de la diferencia de movimientos legales disponibles;
-        \item centralidad de los estudiantes en el tablero;
-        \item avance de las piezas hacia el campo contrario.
+        \item Valoración ofensiva de amenazas sobre el maestro rival.
+        \item Penalización y recompensa de estudiantes amenazados en ambos sentidos.
+        \item Movilidad, medida a partir de la diferencia de movimientos legales disponibles.
+        \item Centralidad de los estudiantes en el tablero.
+        \item Avance de las piezas hacia el campo contrario.
     \end{itemize}
 
     Con estos cambios, la evaluación incorpora información sobre presión ofensiva, capacidad de acción y ocupación posicional del tablero, además de los criterios tácticos y materiales de la versión inicial.
@@ -211,9 +212,9 @@ Sobre esta base, se implementan las siguientes versiones:
 
     Esta versión mantiene la valoración material y las amenazas sobre maestros y estudiantes, pero ajusta parte de sus criterios según la fase de partida:
     \begin{itemize}
-        \item el progreso del maestro gana importancia en fases finales;
-        \item la movilidad tiene más peso en fases iniciales y menos en finales;
-        \item los criterios explícitos de centralidad y avance se sustituyen por tablas posicionales;
+        \item El progreso del maestro gana importancia en fases finales.
+        \item La movilidad tiene más peso en fases iniciales y menos en finales.
+        \item Los criterios explícitos de centralidad y avance se sustituyen por tablas posicionales.
     \end{itemize}
 
     Las tablas posicionales permiten valorar la ubicación de las piezas según su tipo y su posición relativa en el tablero. En el caso de los estudiantes, favorecen el avance y la ocupación de zonas centrales; en el caso del maestro, aplican una valoración más prudente, evitando empujarlo de forma excesivamente agresiva en fases tempranas.
@@ -528,7 +529,9 @@ Esta organización permite que \texttt{MainWindow} actúe como coordinador de la
 
 La pantalla inicial se define en \texttt{SetupPage} y reúne las decisiones previas a la partida: el color del jugador humano, el nivel de dificultad del agente de inteligencia artificial y el estado de la calibración visual.
 
-El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. La Figura~\ref{fig:gui-setup} muestra esta pantalla inicial de configuración.
+El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. 
+
+La Figura~\ref{fig:gui-setup} muestra esta pantalla inicial de configuración.
 
 \begin{figure}[H]
     \centering
