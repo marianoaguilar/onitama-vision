@@ -530,12 +530,12 @@ Las transformaciones aplicadas durante el entrenamiento se ajustaron al entorno 
 Los parámetros principales de aumentación fueron:
 
 \begin{itemize}
-    \item variación de tono: \texttt{hsv\_h=0.015};
-    \item variación de saturación: \texttt{hsv\_s=0.3};
-    \item variación de luminosidad: \texttt{hsv\_v=0.3};
-    \item traslación máxima: \texttt{translate=0.02};
-    \item variación de escala: \texttt{scale=0.1};
-    \item probabilidad de \textit{Mosaic}: \texttt{mosaic=0.3}.
+    \item Variación de tono: \texttt{hsv\_h=0.015}
+    \item Variación de saturación: \texttt{hsv\_s=0.3}
+    \item Variación de luminosidad: \texttt{hsv\_v=0.3}
+    \item Traslación máxima: \texttt{translate=0.02}
+    \item Variación de escala: \texttt{scale=0.1}
+    \item Probabilidad de \textit{Mosaic}: \texttt{mosaic=0.3}
 \end{itemize}
 
 La Figura~\ref{fig:resultados-entrenamiento-piezas} muestra la evolución de las pérdidas y de las métricas principales durante el entrenamiento del detector, incluyendo precisión, \textit{recall}, \textit{mAP50} y \textit{mAP50-95}, proporcionadas por Ultralytics durante la validación del modelo~\cite{ultralytics_metrics}.
@@ -663,8 +663,8 @@ Tras evaluar por separado el detector de piezas y el clasificador de cartas, se 
 Para ello se prepararon 10 estados físicos distintos. Cada uno se fotografió bajo dos condiciones:
 
 \begin{itemize}
-    \item buena iluminación;
-    \item poca luz y presencia de sombras.
+    \item Buena iluminación.
+    \item Poca luz y presencia de sombras.
 \end{itemize}
 
 El conjunto quedó formado por 20 imágenes externas, no utilizadas durante el entrenamiento ni durante la selección de los modelos. La posición de la cámara, la orientación del tablero y la calibración se mantuvieron iguales a las empleadas durante el funcionamiento normal del sistema.
