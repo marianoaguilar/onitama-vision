@@ -50,6 +50,8 @@ The project is designed for a specific use case: a human plays Onitama on a phys
 
 ## 4. Installation
 
+The commands below assume a Linux environment.
+
 Clone the repository:
 
 ```bash
@@ -64,16 +66,16 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install the main application dependencies:
+If you do not have an NVIDIA GPU, install the CPU-only PyTorch build first:
 
 ```bash
-pip install -e .[gui,vision]
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
-If you also want the test dependency and the full optional stack:
+Then install the project and its dependencies:
 
 ```bash
-pip install -e .[full]
+python -m pip install -e .
 ```
 
 The repository already includes the trained models in `models/`. Calibration files live under `data/vision/`, but a different camera or physical setup will usually require recalibration.
