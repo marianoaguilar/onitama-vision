@@ -128,7 +128,7 @@ E4 & 4 & 2 & 100 & 600 & 1000 \\
 
 La métrica principal utilizada fue la tasa de puntuación, calculada asignando 1 punto por victoria, 0.5 puntos por empate y 0 puntos por derrota. Esta métrica permite comparar el rendimiento global de cada heurística teniendo en cuenta tanto victorias como empates.
 
-La Tabla~\ref{tab:resultados-comparacion-heuristicas} muestra los resultados para cada evaluador obtenidos en cada experimento.
+La Tabla~\ref{tab:resultados-comparacion-heuristicas} muestra los resultados para cada evaluador obtenidos en cada experimento. Además, la Figura~\ref{fig:comparacion-heuristicas} presenta una comparación visual de la tasa de puntuación obtenida por cada función heurística.
 
 \begin{table}[H]
 \centering
@@ -158,6 +158,13 @@ E4 & \texttt{v3} & 286 & 4 & 110 & 288.0 & 72.00 & 23.23 ms \\
 \caption{Resultados de los torneos \textit{round-robin} entre funciones heurísticas.}
 \label{tab:resultados-comparacion-heuristicas}
 \end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{imagenes/comparacion_heuristicas.pdf}
+    \caption{Comparación visual de la tasa de puntuación obtenida por las funciones heurísticas en los torneos \textit{round-robin}.}
+    \label{fig:comparacion-heuristicas}
+\end{figure}
 
 Los resultados muestran que \texttt{v3} obtiene la mejor puntuación en todos los experimentos. A profundidad 3, su tasa de puntuación se mantiene prácticamente estable al cambiar el bloque de semillas: 64.81~\% en E1 y 65.00~\% en E2. A profundidad 4, vuelve a ser la mejor heurística, con un 75.88~\% en E3 y un 72.00~\% en E4. Además, al revisar los enfrentamientos directos de cada torneo, \texttt{v3} supera por separado tanto a \texttt{v1} como a \texttt{v2} en los cuatro experimentos.
 
@@ -197,9 +204,7 @@ El diseño del benchmark se definió atendiendo a los siguientes criterios:
 
 La configuración completa incluye tabla de transposición (TT), ordenación de movimientos, profundización iterativa (ID) y ventanas de aspiración. A partir de ella se compararon variantes en las que se desactiva una técnica concreta, además de una configuración mínima sin ninguna de estas técnicas.
 
-La tabla recoge el tiempo total, el tiempo medio por decisión y dos ratios respecto a la configuración completa: tiempo relativo y nodos relativos. En ambos ratios, valores mayores que 1 indican un mayor coste y valores menores que 1 indican un menor coste.
-
-La Tabla~\ref{tab:resultados-optimizaciones-busqueda} resume los resultados principales.
+La Tabla~\ref{tab:resultados-optimizaciones-busqueda} recoge el tiempo total, el tiempo medio por decisión y dos ratios respecto a la configuración completa: tiempo relativo y nodos relativos. En ambos ratios, valores mayores que 1 indican un mayor coste y valores menores que 1 indican un menor coste.
 
 \begin{table}[H]
 \centering
@@ -720,7 +725,7 @@ Las Figuras~\ref{fig:pipeline-capturas-originales}--\ref{fig:pipeline-clasificac
 \begin{figure}[H]
     \centering
 
-    \begin{subfigure}[b]{0.92\textwidth}
+    \begin{subfigure}[b]{\textwidth}
         \centering
         \includegraphics[width=\textwidth]
         {imagenes/pipeline_captura_buena_luz.jpg}
@@ -730,7 +735,7 @@ Las Figuras~\ref{fig:pipeline-capturas-originales}--\ref{fig:pipeline-clasificac
 
     \vspace{0.5cm}
 
-    \begin{subfigure}[b]{0.92\textwidth}
+    \begin{subfigure}[b]{\textwidth}
         \centering
         \includegraphics[width=\textwidth]
         {imagenes/pipeline_captura_poca_luz.jpg}
