@@ -82,7 +82,7 @@ La inferencia de estos modelos se realizó en el equipo local utilizando CPU, si
 \label{sec:evaluacion-agente-ia}
 
 
-\subsection{Comparación experimental de funciones heurísticas}
+\subsection{Comparación de funciones heurísticas}
 \label{subsec:comparacion-heuristicas}
 
 El objetivo de esta prueba es comparar las funciones heurísticas implementadas para el agente de inteligencia artificial y seleccionar la más adecuada para los experimentos posteriores. Para ello, se ejecutaron partidas automáticas entre agentes que utilizaban la misma configuración de búsqueda y solo diferían en la función de evaluación empleada.
@@ -242,13 +242,13 @@ La Tabla~\ref{tab:resultados-optimizaciones-busqueda} recoge el tiempo total, el
 
 \textbf{Ordenación de movimientos.} Es la optimización con efecto más claro. Al desactivarla, el tiempo aumenta en todas las profundidades: 1.74 veces en profundidad 3, 2.31 veces en profundidad 4 y 3.25 veces en profundidad 5. El número de nodos explorados también crece de forma notable. Por tanto, esta técnica se mantiene en la configuración final.
 
-\textbf{Tabla de transposición.} Presenta un comportamiento menos estable. En profundidad 4 mejora el rendimiento respecto a la variante sin tabla, pero en profundidad 3 y 5 no aporta una reducción clara del tiempo. En profundidad 5, incluso explorando más nodos, la variante sin tabla obtiene un tiempo ligeramente menor. Esto indica que el ahorro de nodos no siempre compensa el coste de consultar y actualizar la tabla.
+\textbf{Tabla de transposición.} Presenta un comportamiento menos consistente que la ordenación de movimientos. En profundidad 4 su uso sí mejora el rendimiento, pero en profundidad 3 y 5 su efecto sobre el tiempo es escaso o incluso ligeramente desfavorable. Aunque en varios casos reduce el número de nodos explorados, ese ahorro no siempre compensa el coste de consultar y actualizar la tabla.
 
 \textbf{Profundización iterativa y ventanas de aspiración.} No mejoran el rendimiento en este escenario. Ambas técnicas están relacionadas, ya que las ventanas de aspiración utilizan el valor obtenido en una profundidad anterior para iniciar la siguiente búsqueda con una ventana más estrecha. En una búsqueda a profundidad fija, las iteraciones previas y los posibles reintentos añaden coste adicional. Por ello, las configuraciones que desactivan estas técnicas son más rápidas en las tres profundidades evaluadas.
 
 \textbf{Configuración mínima.} Sirve como referencia para observar el efecto acumulado de eliminar varias técnicas de búsqueda. Sus resultados muestran que desactivar todas las optimizaciones no es una buena alternativa, ya que el coste aumenta de forma clara respecto a la configuración completa, especialmente en profundidad 4 y 5.
 
-Con estos resultados, se probó una configuración combinada manteniendo solo la técnica que había mostrado una mejora clara de rendimiento: la ordenación de movimientos. En esta variante se desactivan simultáneamente la tabla de transposición, la profundización iterativa y las ventanas de aspiración, manteniendo constante la búsqueda quiescente. La Tabla~\ref{tab:confirmacion-optimizaciones-busqueda} compara esta configuración con la configuración completa y con la mejor variante individual observada en cada profundidad.
+Con estos resultados, se probó una configuración combinada manteniendo solo la técnica que había mostrado una mejora clara de rendimiento: la ordenación de movimientos. En esta variante se desactivan simultáneamente la tabla de transposición, la profundización iterativa y las ventanas de aspiración, manteniendo constante la búsqueda quiescente. La Tabla~\ref{tab:confirmacion-optimizaciones-busqueda} compara esta configuración con la configuración completa y con la mejor variante individual observada anteriormente en cada profundidad.
 
 \begin{table}[H]
 \centering
@@ -407,7 +407,7 @@ Las pruebas realizadas mostraron además un nivel de juego elevado y tiempos de 
 \subsection{Captura y preparación de los datos}
 \label{subsec:captura-preparacion-datos}
 
-El módulo de visión se evaluó a partir de dos conjuntos de datos, uno para cada tarea visual del sistema:
+El módulo de visión se desarrolló y evaluó a partir de dos conjuntos de datos, uno para cada tarea visual del sistema:
 
 \begin{itemize}
     \item \textbf{Piezas}: detección de objetos sobre imágenes del tablero rectificado.
@@ -503,7 +503,7 @@ Durante la preparación de los recortes se descartó deformar las cartas mediant
 En la versión final del conjunto de cartas no se generaron imágenes adicionales mediante aumentación en Roboflow. El conjunto utilizado para el entrenamiento coincidió, por tanto, con las 2000 imágenes preparadas tras el recorte y el redimensionado con \textit{padding} negro.
 
 
-\subsection{Entrenamiento del detector de piezas}
+\subsection{Entrenamiento y resultados del detector de piezas}
 \label{subsec:entrenamiento-detector-piezas}
 
 El detector de piezas se entrenó para localizar los elementos presentes sobre el tablero rectificado. Cada predicción proporciona una caja delimitadora, una clase y un valor de confianza. Posteriormente, el sistema utiliza la posición de la caja para asignar la pieza detectada a una casilla concreta del tablero.
@@ -589,7 +589,7 @@ Los pesos correspondientes a la mejor época se incorporaron al proyecto en la s
 Este archivo es cargado por el detector durante la inferencia. El funcionamiento del modelo dentro del pipeline completo se analiza en la Sección~\ref{subsec:evaluacion-condiciones-reales}.
 
 
-\subsection{Entrenamiento del clasificador de cartas}
+\subsection{Entrenamiento y resultados del clasificador de cartas}
 \label{subsec:entrenamiento-clasificador-cartas}
 
 El clasificador de cartas se entrenó para identificar la carta presente en cada recorte obtenido mediante las ROIs calibradas.
@@ -660,7 +660,7 @@ Los pesos utilizados por el clasificador se incorporaron al proyecto en la sigui
 Este archivo es cargado durante la clasificación de los recortes correspondientes a las cinco ROIs de cartas. El funcionamiento del modelo dentro del pipeline completo se analiza en la Sección~\ref{subsec:evaluacion-condiciones-reales}.
 
 
-\subsection{Evaluación en condiciones reales de uso}
+\subsection{Pruebas en condiciones reales de uso}
 \label{subsec:evaluacion-condiciones-reales}
 
 Tras evaluar por separado el detector de piezas y el clasificador de cartas, se comprobó el funcionamiento del pipeline visual completo sobre imágenes capturadas con el montaje real. El objetivo era determinar si el sistema podía reconstruir correctamente una observación de la partida ante diferentes disposiciones del tablero y condiciones de iluminación.

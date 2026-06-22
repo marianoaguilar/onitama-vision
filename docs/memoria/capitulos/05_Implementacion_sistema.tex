@@ -325,7 +325,7 @@ El módulo utiliza estrategias distintas para piezas y cartas porque la informac
 
 \subsubsection{Detección de piezas}
 
-El reconocimiento de piezas parte de la calibración del tablero implementada en \texttt{homography.py}. A partir de \texttt{data/vision/board\_calibration.json}, se cargan los cuatro puntos del tablero, el tamaño de salida y la rotación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del tablero, lo que permite conservar piezas que sobresalen parcialmente del área estricta de juego.
+El reconocimiento de piezas se apoya en la calibración geométrica del tablero y en \texttt{homography.py}, módulo encargado de aplicar la transformación necesaria para obtener una vista rectificada. En la detección de piezas, esta rectificación se genera con un margen adicional alrededor del área de juego, lo que permite conservar piezas que sobresalen parcialmente del tablero.
 
 Sobre la imagen rectificada actúa \texttt{YoloPieceDetector}, definido en \\ \texttt{piece\_detector.py}. El modelo utilizado se carga desde:
 
@@ -345,13 +345,13 @@ Finalmente, \texttt{detections\_to\_board()} construye un \texttt{VisionBoard}. 
 
 \subsubsection{Clasificación de cartas}
 
-En el caso de las cartas, las regiones de interés se gestionan en \texttt{card\_rois.py}. Estas regiones se cargan desde \texttt{data/vision/card\_rois.json} y corresponden a cinco posiciones fijas:
+En el caso de las cartas, \texttt{card\_rois.py} gestiona las regiones de interés asociadas a las cinco posiciones fijas visibles en el montaje:
 
 \begin{center}
 \texttt{red\_0, red\_1, side, blue\_0, blue\_1}
 \end{center}
 
-Cada ROI se recorta del frame original, se enmascara si es necesario y se prepara como una imagen cuadrada antes de enviarla al clasificador. La clasificación se realiza mediante \texttt{YoloCardClassifier}, definido en \texttt{card\_classifier.py}, utilizando el modelo:
+Cada una de estas regiones se recorta del frame original y se adapta a un formato cuadrado añadiendo bordes negros cuando es necesario, antes de enviarla al clasificador. La clasificación se realiza mediante \texttt{YoloCardClassifier}, definido en \texttt{card\_classifier.py}, utilizando el modelo:
 
 \begin{center}
 \texttt{models/cards\_yolo11n-cls\_320\_best.pt}
@@ -495,7 +495,15 @@ El método más importante es \texttt{step()}, ya que concentra la coordinación
 
 La conversión de \texttt{VisionSnapshot} a \texttt{GameState} depende de la fase de la sesión. Durante el arranque, el jugador inicial se obtiene a partir del sello de la carta lateral. Durante la partida, el runtime interpreta la observación usando el turno del estado confirmado o del estado esperado, según corresponda. Esta lógica es necesaria porque el módulo de visión reconoce piezas y cartas, pero no controla por sí mismo el turno actual de la partida.
 
-Además, el runtime centraliza los errores y avisos que pueden aparecer durante la ejecución, como problemas de cámara, modelos o calibración, así como observaciones visuales inválidas. Estos datos se incorporan a \texttt{VisionRuntimeState} para que la interfaz pueda informar al usuario sin acceder directamente a las capas internas.
+Además, el runtime centraliza los problemas que pueden aparecer durante la ejecución y los incorpora a \texttt{VisionRuntimeState}, de modo que la interfaz pueda informar al usuario sin acceder directamente a las capas internas. De forma esquemática, estos problemas se organizan en tres niveles:
+
+\begin{itemize}
+    \item \textbf{Errores de ejecución}: incluyen fallos de cámara, inicialización del pipeline o problemas internos que impiden continuar con normalidad. Se notifican de forma inmediata.
+    \item \textbf{Avisos de observación}: indican que la imagen capturada no permite reconstruir con suficiente fiabilidad un estado válido de la partida, ya sea por detecciones o por clasificaciones ambiguas.
+    \item \textbf{Rechazos de sesión}: aparecen cuando la observación sí se ha convertido en un estado válido, pero dicho estado no encaja con la transición legal esperada, como ocurre en un movimiento humano rechazado o en una discrepancia durante la ejecución física de la jugada de la IA.
+\end{itemize}
+
+Para evitar mensajes causados por ruido visual o por cambios momentáneos en el tablero y las cartas, el runtime aplica un filtrado temporal antes de mostrar algunos avisos y resultados. En concreto, una observación inválida debe repetirse durante varios frames consecutivos antes de mostrarse, con un umbral más bajo al inicio y otro más alto durante la partida. De forma similar, los rechazos de sesión también deben repetirse antes de presentarse al usuario.
 
 
 %==============================================================================
@@ -509,9 +517,9 @@ La interfaz gráfica se implementa en el paquete \texttt{onitama.gui} mediante P
 \subsection{Estructura de la aplicación}
 \label{subsec:estructura-gui}
 
-El punto de entrada de la aplicación es \texttt{vision\_app.py}, asociado al ejecutable \texttt{onitama-vision}. Este módulo crea la aplicación Qt, instancia \texttt{MainWindow} y muestra la ventana principal.
+El punto de entrada de la aplicación es \texttt{vision\_app.py}, asociado al ejecutable \texttt{onitama-vision}. Este módulo crea la aplicación Qt y muestra la ventana principal.
 
-La ventana principal se implementa en \texttt{main\_window.py}. Su estructura se basa en un \texttt{QStackedWidget}, que permite alternar entre la pantalla inicial de configuración y la vista de partida asistida por visión. Cuando se inicia una partida, \texttt{MainWindow} valida la configuración, construye el \texttt{VisionRuntimeConfig}, cambia a la vista de juego y arranca la ejecución mediante un worker en segundo plano.
+Esta ventana, implementada en \texttt{main\_window.py}, se apoya en un \\ \texttt{QStackedWidget} para alternar entre la pantalla inicial de configuración y la vista de partida asistida por visión. Al iniciar una partida, valida la configuración, construye el \texttt{VisionRuntimeConfig}, cambia a la vista de juego y arranca la ejecución mediante un worker en segundo plano.
 
 Los componentes principales de la interfaz se reparten de la siguiente forma:
 
@@ -529,12 +537,9 @@ Esta organización permite que \texttt{MainWindow} actúe como coordinador de la
 \subsection{Configuración y calibración}
 \label{subsec:configuracion-calibracion-gui}
 
-La pantalla inicial se define en \texttt{SetupPage} y reúne las decisiones previas a la partida: el color del jugador humano, el nivel de dificultad del agente de inteligencia artificial y el estado de la calibración visual.
+La pantalla inicial, implementada en \texttt{SetupPage}, reúne las decisiones previas a la partida: el color del jugador humano, el nivel de dificultad del agente de inteligencia artificial y el estado de la calibración visual, como se muestra en la Figura~\ref{fig:gui-setup}.
 
-El color seleccionado determina qué jugador será controlado por el usuario, mientras que la dificultad se utiliza para construir la configuración del agente que se enviará al runtime. 
-
-La Figura~\ref{fig:gui-setup} muestra esta pantalla inicial de configuración.
-
+\vspace{0.3cm}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{imagenes/gui_setup.png}
@@ -549,12 +554,11 @@ Por su parte, la calibración visual depende de dos ficheros requeridos por el m
     \item \texttt{data/vision/card\_rois.json}: regiones de interés de las cartas.
 \end{itemize}
 
-Antes de habilitar el inicio de partida, la interfaz comprueba que ambos ficheros existan y sean válidos. Si falta alguno de ellos, el usuario puede generarlo desde la propia aplicación mediante diálogos integrados en Qt.
+Antes de habilitar el inicio de partida, la interfaz comprueba que ambos ficheros existan y sean válidos. Si falta alguno, el usuario puede generarlo desde la propia aplicación mediante diálogos integrados en Qt.
 
-\texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la transformación geométrica. \texttt{CardRoisCalibrationDialog} permite definir las regiones \texttt{red\_0}, \texttt{red\_1}, \texttt{side}, \texttt{blue\_0} y \texttt{blue\_1}. Ambos diálogos utilizan captura de cámara propia, permiten congelar la imagen y editar los puntos de forma interactiva antes de guardar la configuración.
+\texttt{BoardCalibrationDialog} permite marcar las cuatro esquinas del tablero y guardar la transformación geométrica. \texttt{CardRoisCalibrationDialog} permite definir las cinco regiones de interés de las cartas. En ambos casos, el usuario puede capturar una imagen, congelarla y ajustar los puntos antes de guardar la configuración, como se muestra en la Figura~\ref{fig:gui-calibracion}.
 
-La Figura~\ref{fig:gui-calibracion} muestra las ventanas de calibración integradas en la aplicación, utilizadas para definir la región del tablero y las regiones de interés de las cartas antes de iniciar una partida asistida por visión.
-
+\vspace{0.3cm}
 \begin{figure}[H]
     \centering
 
@@ -618,7 +622,7 @@ El paquete \texttt{onitama.cli} proporciona interfaces de terminal para dos esce
 
 Estas interfaces permiten probar el motor, la inteligencia artificial y la integración con visión sin depender necesariamente de la interfaz gráfica.
 
-La carpeta \texttt{scripts} reúne herramientas de apoyo al desarrollo. Entre ellas se incluyen scripts de calibración, previsualización, captura de datos, depuración del pipeline visual, construcción de snapshots, torneos entre agentes y medición del rendimiento de la búsqueda. Estas utilidades no forman parte del flujo principal de uso, pero han sido importantes para ajustar y validar los distintos módulos durante el desarrollo.
+La carpeta \texttt{scripts} reúne herramientas de apoyo al desarrollo para tareas de calibración, captura, depuración y evaluación, tanto del pipeline visual como del rendimiento de los agentes. Estas utilidades no forman parte del flujo principal de uso, pero han sido importantes para ajustar y validar los distintos módulos durante el desarrollo.
 
 Por último, la carpeta \texttt{tests} contiene pruebas automatizadas ejecutadas con \texttt{pytest}. Estas pruebas cubren aspectos como las reglas del motor, la aplicación de acciones, las condiciones de victoria, la conversión entre visión y motor, la estabilización de observaciones, la sincronización y partes del runtime.
 
