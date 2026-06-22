@@ -61,6 +61,6 @@ class VisionRuntimeState:
     expected_state: GameState | None
     ai_action: Action | None
     error_message: str | None
-    observation_kind: VisionObservationKind | None
+    observation_warning_kind: VisionObservationKind | None
     winner_player: Player | None
     winner_reason: str | None

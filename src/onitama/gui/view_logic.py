@@ -76,10 +76,10 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         )
 
     if state.phase is SessionPhase.BOOTSTRAP:
-        if state.observation_kind is not None:
+        if state.observation_warning_kind is not None:
             return StatusView(
                 title="No se puede confirmar la posición inicial",
-                detail=observation_detail(state.observation_kind),
+                detail=observation_detail(state.observation_warning_kind),
                 tone="warning",
             )
         return StatusView(
@@ -88,6 +88,12 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         )
 
     if state.phase is SessionPhase.WAITING_HUMAN_MOVE:
+        if state.observation_warning_kind is not None:
+            return StatusView(
+                title="Lectura inválida",
+                detail=observation_detail(state.observation_warning_kind),
+                tone="warning",
+            )
         if state.last_outcome is SessionOutcome.HUMAN_MOVE_REJECTED:
             return StatusView(
                 title="Movimiento rechazado",
@@ -99,12 +105,6 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
                 title="Movimiento de la IA confirmado",
                 detail="Turno del jugador humano",
                 tone="success",
-            )
-        if state.observation_kind is not None:
-            return StatusView(
-                title="Lectura inválida",
-                detail=observation_detail(state.observation_kind),
-                tone="warning",
             )
         return StatusView(
             title="Turno del jugador humano",
@@ -122,16 +122,16 @@ def build_status_view(state: VisionRuntimeState | None) -> StatusView:
         if state.current_state is not None and state.ai_action is not None:
             action_text = format_action(state.current_state, state.ai_action).replace("PASS", "PASA")
 
+        if state.observation_warning_kind is not None:
+            return StatusView(
+                title="Lectura inválida",
+                detail=observation_detail(state.observation_warning_kind),
+                tone="warning",
+            )
         if state.last_outcome is SessionOutcome.AI_EXECUTION_MISMATCH:
             return StatusView(
                 title="El movimiento de la IA no coincide",
                 detail=f"Esperado: {action_text}",
-                tone="warning",
-            )
-        if state.observation_kind is not None:
-            return StatusView(
-                title="Lectura inválida",
-                detail=observation_detail(state.observation_kind),
                 tone="warning",
             )
 

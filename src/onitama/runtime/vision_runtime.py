@@ -37,7 +37,12 @@ class VisionGameRuntime:
     """
 
     _BOOTSTRAP_OBSERVATION_WARNING_THRESHOLD = 2
-    _IN_GAME_OBSERVATION_WARNING_THRESHOLD = 10
+    _IN_GAME_OBSERVATION_WARNING_THRESHOLD = 15
+    _SESSION_WARNING_THRESHOLD = 3
+    _FILTERED_SESSION_WARNING_OUTCOMES = {
+        SessionOutcome.HUMAN_MOVE_REJECTED,
+        SessionOutcome.AI_EXECUTION_MISMATCH,
+    }
     _RESET_FRAME_DISCARD_COUNT = 4
 
     def __init__(
@@ -61,6 +66,8 @@ class VisionGameRuntime:
         
         # Keep the latest emitted session outcome.
         self._last_outcome: SessionOutcome | None = None
+        self._pending_session_warning_outcome: SessionOutcome | None = None
+        self._pending_session_warning_count = 0
 
         # Runtime state.
         self.running = False
@@ -95,6 +102,7 @@ class VisionGameRuntime:
         self.session = self._build_session(self.config)
         self._clear_error()
         self._clear_observation_warning()
+        self._reset_pending_session_warning()
         self._last_outcome = None
         self._pending_reset_frame_discards = self._RESET_FRAME_DISCARD_COUNT
 
@@ -115,7 +123,7 @@ class VisionGameRuntime:
 
         # When the session says the AI should move, no camera frame is needed.
         if self.session.phase is SessionPhase.READY_FOR_AI:
-            self._last_outcome = self.session.run_ai_turn()
+            self._record_session_outcome(self.session.run_ai_turn())
             return self._build_state()
 
         # Otherwise the runtime advances from one observed camera frame.
@@ -124,6 +132,7 @@ class VisionGameRuntime:
 
         ok, frame = self._camera.read()
         if not ok:
+            self._reset_pending_session_warning()
             self._record_error(VisionCameraError("Could not read a frame from the camera."))
             return self._build_state()
 
@@ -141,9 +150,11 @@ class VisionGameRuntime:
             snapshot = self.pipeline.snapshot_from_frame(frame)
             observed_state = self._state_from_snapshot_for_session(snapshot)
         except VisionObservationError as exc:
+            self._reset_pending_session_warning()
             self._record_observation_warning(exc)
             return self._build_state()
         except VisionFatalError as exc:
+            self._reset_pending_session_warning()
             self._clear_observation_warning()
             self._record_error(exc)
             return self._build_state()
@@ -152,7 +163,7 @@ class VisionGameRuntime:
         self._clear_observation_warning()
 
         # Let the session decide whether the observation is stable, legal and actionable.
-        self._last_outcome = self.session.process_observation(observed_state)
+        self._record_session_outcome(self.session.process_observation(observed_state))
         return self._build_state()
 
     def get_state(self) -> VisionRuntimeState:
@@ -240,6 +251,27 @@ class VisionGameRuntime:
             return self._BOOTSTRAP_OBSERVATION_WARNING_THRESHOLD
         return self._IN_GAME_OBSERVATION_WARNING_THRESHOLD
 
+    def _record_session_outcome(self, outcome: SessionOutcome) -> None:
+        if outcome not in self._FILTERED_SESSION_WARNING_OUTCOMES:
+            self._reset_pending_session_warning()
+            self._last_outcome = outcome
+            return
+
+        if outcome is not self._pending_session_warning_outcome:
+            self._pending_session_warning_outcome = outcome
+            self._pending_session_warning_count = 1
+        else:
+            self._pending_session_warning_count += 1
+
+        if self._pending_session_warning_count >= self._SESSION_WARNING_THRESHOLD:
+            self._last_outcome = outcome
+        elif self._last_outcome is not outcome:
+            self._last_outcome = None
+
+    def _reset_pending_session_warning(self) -> None:
+        self._pending_session_warning_outcome = None
+        self._pending_session_warning_count = 0
+
     def _build_state(self) -> VisionRuntimeState:
         current_state = self.session.current_state
         winner_info = winner(current_state) if current_state is not None else None
@@ -253,7 +285,7 @@ class VisionGameRuntime:
             expected_state=self.session.expected_state,
             ai_action=self.session.last_ai_action,
             error_message=self._tracked_error_message,
-            observation_kind=self._observation_warning_kind,
+            observation_warning_kind=self._observation_warning_kind,
             winner_player=winner_player,
             winner_reason=winner_reason,
         )
